@@ -1,5 +1,5 @@
 let currentMode='customer';
-let currentCategory='table';
+let currentCategory='';
 let selectedResourceId='';
 
 function $(id){return document.getElementById(id)}
