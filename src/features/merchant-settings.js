@@ -1,3 +1,4 @@
+import { renderListResources } from './merchant-list-resources.js';
 import { decorTypes, floorGeometry, legacyFloor, templatePositions } from './floor-design.js';
 
 function node(tag, text = '') {
@@ -56,7 +57,7 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     const floorPicker = container.querySelector('[data-floor-category]');
     if (floorPicker) floorPicker.disabled = true;
     const feedbackArea = section === 'categories' ? categoryContainer : container;
-    const feedback = feedbackArea.querySelector('[role=status]');
+    const feedback = feedbackArea.querySelector(`[data-section="${section}"] [role=status]`);
     saving = true;
     feedback.textContent = 'กำลังบันทึก…';
     try {
@@ -64,18 +65,18 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       const selectedCode = rpc === 'save_merchant_floor_item' ? result || resourceCode : resourceCode;
       await reload();
       const replacement = (section === 'categories' ? categoryContainer : container).querySelector(`[data-section="${section}"]`);
-      const categorySelect = replacement?.querySelector('[data-floor-category]');
+      const categorySelect = replacement?.querySelector(section === 'resources' ? '[data-list-category]' : '[data-floor-category]');
       if (categorySelect && categoryCode) {
         categorySelect.value = categoryCode;
         categorySelect.dispatchEvent(new Event('change'));
-        const resourceSelect = replacement.querySelector('[data-floor-item]');
+        const resourceSelect = replacement.querySelector(section === 'resources' ? '[data-list-resource]' : '[data-floor-item]');
         if (selectedCode && [...resourceSelect.options].some(option => option.value === selectedCode)) {
           resourceSelect.value = selectedCode;
           resourceSelect.dispatchEvent(new Event('change'));
         }
         if (blockIndex != null) replacement.querySelectorAll('.editor-decor')[blockIndex]?.click();
       }
-      const freshMessage = feedbackArea.querySelector('[role=status]');
+      const freshMessage = feedbackArea.querySelector(`[data-section="${section}"] [role=status]`);
       if (freshMessage) freshMessage.textContent = 'บันทึกแล้ว';
       return true;
     } catch (error) {
@@ -147,9 +148,9 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     categoryContainer.append(categoryPanel);
   }
 
-  const floorPanel = panel('🗺️ ออกแบบผังโต๊ะและที่นั่ง');
+  const floorPanel = panel('🗺️ ออกแบบผังโต๊ะ ที่นั่ง และห้อง');
   floorPanel.dataset.section = 'floor';
-  const floorCategories = categories.filter(category => ['table', 'seat'].includes(category.template));
+  const floorCategories = categories.filter(category => ['table', 'seat', 'vip'].includes(category.template));
   if (floorCategories.length) {
     const categoryArea = node('div');
     categoryArea.className = 'layout-tools';
@@ -438,14 +439,14 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
 
     async function addPoint(copy) {
       if (saving) return;
-      const table = floorCategories.find(row => row.code === category.value).template === 'table';
-      const prefix = table ? 'โต๊ะ' : 'ที่นั่ง';
+      const kind = floorCategories.find(row => row.code === category.value).template;
+      const prefix = ({ table: 'โต๊ะ', seat: 'ที่นั่ง', vip: 'ห้อง' })[kind];
       let sequence = items.length + 1;
       while (items.some(resource => resource.name === prefix + ' ' + sequence)) sequence++;
       const temp = {
         code: 'F-pending', pending: true,
         name: copy ? (name.value + ' (สำเนา)').slice(0, 100) : prefix + ' ' + sequence,
-        capacity: copy ? Number(capacity.value) : table ? 4 : 1,
+        capacity: copy ? Number(capacity.value) : kind === 'seat' ? 1 : 4,
         display: copy ? floorGeometry({ x: Number(x.value) + 8, y: Number(y.value) + 5, w: Number(itemWidth.value), h: Number(itemHeight.value) })
           : { x: 50, y: 50, w: 84, h: 72 }
       };
@@ -475,4 +476,12 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
   }
   floorPanel.append(message.cloneNode());
   container.replaceChildren(floorPanel);
+  const listCategories = categories.filter(row => ['staff', 'ticket'].includes(row.template));
+  if (listCategories.length) {
+    const listPanel = panel('จัดการพนักงานและโซนบัตร');
+    listPanel.dataset.section = 'resources';
+    renderListResources(listPanel, listCategories, resources, args =>
+      persist('save_merchant_list_resource', args, 'resources', args.p_category_code, args.p_code));
+    container.prepend(listPanel);
+  }
 }

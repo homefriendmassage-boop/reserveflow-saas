@@ -69,7 +69,7 @@ export function renderFloor(plan, resources, resourceField, template) {
   });
   floor.replaceChildren(...labels, ...buttons);
   floor.classList.remove('hidden');
-  status.textContent = template === 'seat' ? 'เลือกที่นั่งว่างจากผัง' : 'เลือกโต๊ะว่างจากผัง';
+  status.textContent = ({ seat: 'เลือกที่นั่งว่างจากผัง', vip: 'เลือกห้องว่างจากผัง', table: 'เลือกโต๊ะว่างจากผัง' })[template];
   highlightTable(resourceField.value);
 }
 

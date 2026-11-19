@@ -23,16 +23,12 @@
       <section class="panel" id="bookingSelection">
         <h2 id="bookingSelectionTitle">เลือกวัน เวลา และรายการ</h2>
         <p id="bookingSelectionHint" class="sub"></p>
-        <div class="fields">
+        <div class="fields live-booking-date">
           <div class="field hidden"><label for="category">หมวด</label><select id="category" name="category" required></select></div>
           <div class="field"><label for="date">วันที่ใช้บริการ</label><input id="date" name="date" type="date" required></div>
-          <div class="field"><label for="hour">เวลาเริ่ม</label><select id="hour" name="hour" required></select></div>
-          <div class="field"><label for="hours">จำนวนชั่วโมง</label><input id="hours" name="hours" type="number" min="1" value="2" required></div>
-          <div class="field"><label for="guests">จำนวนคน</label><input id="guests" name="guests" type="number" min="1" value="2" required></div>
-          <div class="field"><label for="tickets">จำนวนบัตร</label><input id="tickets" name="tickets" type="number" min="1" value="1" required></div>
-          <div class="field"><label for="bookingEnd">ถึงเวลา</label><input id="bookingEnd" readonly></div>
         </div>
         <div class="field" id="bookingResourceField"><label for="resource">เลือกรายการ</label><select id="resource" name="resource" required></select></div>
+        <div id="bookingResourceCards" class="resource-grid hidden" role="group" aria-label="รายการที่จองได้"></div>
         <section id="bookingFloorSection" class="hidden" aria-label="ผังร้าน">
           <div class="chips live-floor-legend">
             <span class="chip"><i class="dot available"></i>ว่าง</span>
@@ -42,6 +38,13 @@
           <p id="floorStatus" class="sub" role="status"></p>
           <div class="layout-shell"><div class="plan customer-plan live-booking-plan" id="bookingFloor"></div></div>
         </section>
+        <div class="fields live-booking-time">
+          <div class="field"><label for="hour">เวลาเริ่ม</label><select id="hour" name="hour" required></select></div>
+          <div class="field"><label for="hours">จำนวนชั่วโมง</label><input id="hours" name="hours" type="number" min="1" value="2" required></div>
+          <div class="field"><label for="bookingEnd">ถึงเวลา</label><input id="bookingEnd" readonly></div>
+          <div class="field"><label for="guests">จำนวนคน</label><input id="guests" name="guests" type="number" min="1" value="2" required></div>
+          <div class="field"><label for="tickets">จำนวนบัตร</label><input id="tickets" name="tickets" type="number" min="1" value="1" required></div>
+        </div>
       </section>
       <section class="panel" id="bookingContact">
         <h2>ข้อมูลผู้จอง</h2>

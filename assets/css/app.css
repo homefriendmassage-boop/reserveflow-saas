@@ -393,3 +393,9 @@
 .merchant-floor-canvas .decor-block,
 .customer-plan .decor-block { left: var(--table-x); top: var(--table-y); }
 
+.live-booking-date { grid-template-columns: minmax(0, 1fr); }
+.live-booking-time { margin-top: 16px; }
+.live-staff-photo { width: 62px; height: 62px; object-fit: cover; border-radius: 12px; }
+#bookingResourceCards small { display: block; color: var(--muted); overflow-wrap: anywhere; }
+.merchant-resource-fields { align-items: end; }
+.merchant-resource-fields label > span { display: block; margin-bottom: 5px; color: var(--muted); }

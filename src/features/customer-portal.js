@@ -12,6 +12,8 @@ const categoryTabs = document.getElementById('liveCategoryTabs');
 const submitStatus = document.getElementById('bookingSubmitStatus');
 const selectionTitle = document.getElementById('bookingSelectionTitle');
 const selectionHint = document.getElementById('bookingSelectionHint');
+const resourceCards = document.getElementById('bookingResourceCards');
+const customerPhoto = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 const resourceField = document.getElementById('bookingResourceField');
 let floorLoading = false;
 let sending = false;
@@ -72,12 +74,47 @@ function updateEstimate() {
     : '—';
   submit.disabled = !resource || floorLoading || sending;
   highlightTable(fields.resource.value);
+  for (const card of resourceCards.children) {
+    const selected = card.dataset.code === fields.resource.value;
+    card.classList.toggle('selected', selected);
+    card.setAttribute('aria-pressed', String(selected));
+  }
 }
 
 function updateResources() {
   fields.resource.replaceChildren(new Option('เลือกรายการ', ''), ...selectedCategory().resources.map(resource => {
     const label = [resource.name, resource.description].filter(Boolean).join(' · ');
     return new Option(label, resource.code);
+  }));
+  const category = selectedCategory();
+  const showCards = ['staff', 'ticket'].includes(category.template) && category.resources.length > 0;
+  resourceCards.classList.toggle('hidden', !showCards);
+  resourceCards.replaceChildren(...(showCards ? category.resources : []).map(resource => {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'card-btn';
+    card.dataset.code = resource.code;
+    const details = document.createElement('span');
+    for (const [tag, value] of [['strong',resource.name],['small',resource.position],['small',resource.description]]) {
+      if (!value) continue;
+      const line = document.createElement(tag);
+      line.textContent = value;
+      details.append(line);
+    }
+    if (category.template === 'staff' && customerPhoto.test(resource.photo || '')) {
+      const photo = document.createElement('img');
+      photo.loading = 'lazy';
+      photo.className = 'live-staff-photo';
+      photo.alt = '';
+      photo.src = resource.photo;
+      card.append(photo);
+    }
+    card.append(details);
+    card.addEventListener('click', () => {
+      fields.resource.value = resource.code;
+      fields.resource.dispatchEvent(new Event('input'));
+    });
+    return card;
   }));
   updateEstimate();
 }
@@ -134,13 +171,13 @@ async function start() {
     const request = ++planRequest;
     const category = selectedCategory();
     floorLoading = false;
-    const mapped = ['table', 'seat'].includes(category.template);
-    const itemLabel = category.template === 'seat' ? 'ที่นั่ง' : 'โต๊ะ';
+    const mapped = ['table', 'seat', 'vip'].includes(category.template);
+    const itemLabel = ({ seat: 'ที่นั่ง', vip: 'ห้อง', table: 'โต๊ะ' })[category.template];
     selectionTitle.textContent = mapped ? `เลือก${itemLabel}จากผัง` : `เลือก${category.name.replace(/^จอง/, '')}`;
-    selectionHint.textContent = mapped ? 'เลือกวันและเวลา แล้วกดตำแหน่งที่ว่างบนผัง' : 'เลือกวัน เวลา และรายการที่ต้องการจอง';
-    resourceField.classList.remove('hidden');
+    selectionHint.textContent = mapped ? 'เลือกวันและจุดบนผัง แล้วกำหนดเวลา ระบบจะตรวจว่าจุดที่เลือกยังว่าง' : 'เลือกวัน เวลา และรายการที่ต้องการจอง';
+    resourceField.classList.toggle('hidden', !resourceCards.classList.contains('hidden'));
     if (!mapped || !fields.date.value || !fields.date.checkValidity()
-      || (category.template === 'seat' && !fields.hours.checkValidity())) {
+      || (['seat', 'vip'].includes(category.template) && !fields.hours.checkValidity())) {
       showFloorMessage('', false);
       updateEstimate();
       return;
@@ -186,7 +223,7 @@ async function start() {
   fields.date.addEventListener('change', loadFloor);
   fields.hour.addEventListener('change', loadFloor);
   fields.hours.addEventListener('change', () => {
-    if (selectedCategory().template === 'seat') void loadFloor();
+    if (['seat', 'vip'].includes(selectedCategory().template)) void loadFloor();
   });
   void loadFloor();
   for (const field of [fields.resource, fields.hours, fields.guests, fields.tickets]) {
@@ -209,7 +246,7 @@ async function start() {
       pendingRequest = { fingerprint, id: crypto.randomUUID() };
     }
     sending = true;
-    const editable = [...fields, ...categoryTabs.children, ...document.querySelectorAll('#bookingFloor button')].filter(field => !field.disabled);
+    const editable = [...fields, ...categoryTabs.children, ...document.querySelectorAll('#bookingFloor button, #bookingResourceCards button')].filter(field => !field.disabled);
     editable.forEach(field => { field.disabled = true; });
     submitStatus.textContent = 'กำลังส่งคำขอ…';
 
