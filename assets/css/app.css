@@ -308,3 +308,6 @@
   .merchant-category-row .field:first-child,
   .merchant-category-add .field:first-child { grid-column: 1 / -1; }
 }
+
+.live-category-tabs { flex-wrap: wrap; overflow: visible; }
+.merchant-settings-panel > .inline-actions { margin-block: 12px; }

@@ -161,8 +161,12 @@ export function renderMerchantSettings(container, { categories, resources, layou
     const y = field(editor, 'บน → ล่าง (%)', input('number', 50, 5, 95));
     const itemWidth = field(editor, 'กว้าง (px)', input('number', 84, 24, 320));
     const itemHeight = field(editor, 'สูง (px)', input('number', 72, 24, 320));
+    const tools = node('div');
+    tools.className = 'inline-actions';
+    const addItem = button('+ เพิ่มจุดจอง');
     const clone = button('คัดลอกจุดที่เลือก');
-    editor.append(button('บันทึกจุดจอง', 'submit'), clone);
+    const saveItem = button('บันทึกจุดจอง');
+    tools.append(addItem, clone, saveItem);
     const decorBar = node('div');
     decorBar.className = 'fields';
     const decorName = field(decorBar, 'ชื่อบล็อกผัง', input('text', ''));
@@ -278,9 +282,16 @@ export function renderMerchantSettings(container, { categories, resources, layou
     item.addEventListener('change', loadItem);
     category.addEventListener('change', loadFloor);
     for (const control of [width, height, x, y, itemWidth, itemHeight]) control.addEventListener('input', draw);
+    addItem.addEventListener('click', () => {
+      item.value = '';
+      loadItem();
+      name.focus();
+    });
+    saveItem.addEventListener('click', () => editor.requestSubmit());
     clone.addEventListener('click', () => {
       item.value = '';
       name.value = (name.value + ' (สำเนา)').slice(0, 100);
+      name.focus();
       x.value = Math.min(95, Number(x.value) + 8);
       clone.disabled = true;
       draw();
@@ -293,7 +304,9 @@ export function renderMerchantSettings(container, { categories, resources, layou
         p_width: Number(itemWidth.value), p_height: Number(itemHeight.value)
       }, 'floor', category.value, item.value);
     });
-    floorPanel.append(categoryArea, frame, decorBar, node('p', 'ลากจุดบนผังแล้วกดบันทึกจุดจอง'), canvas, editor);
+    const hint = node('p', 'เลือกหรือลากโต๊ะบนผัง แล้วกดบันทึกจุดจอง');
+    hint.className = 'sub';
+    floorPanel.append(categoryArea, frame, tools, hint, canvas, editor, decorBar);
     loadFloor();
   } else {
     floorPanel.append(node('p', 'เพิ่มหมวดโต๊ะหรือที่นั่งเพื่อเริ่มสร้างผัง'));

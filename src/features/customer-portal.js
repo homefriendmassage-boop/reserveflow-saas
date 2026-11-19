@@ -9,6 +9,7 @@ const estimate = document.getElementById('bookingEstimate');
 const submit = document.getElementById('sendBooking');
 const fields = form.elements;
 const selection = document.getElementById('bookingSelection');
+const categoryTabs = document.getElementById('liveCategoryTabs');
 const contact = document.getElementById('bookingContact');
 const continueButton = document.getElementById('bookingContinue');
 const backButton = document.getElementById('bookingBack');
@@ -88,6 +89,26 @@ async function start() {
   categories = data.categories;
   title.textContent = `ส่งคำขอจอง · ${data.name}`;
   fields.category.replaceChildren(...categories.map(category => new Option(category.name, category.code)));
+  categoryTabs.replaceChildren(...categories.map(category => {
+    const tab = document.createElement('button');
+    tab.type = 'button';
+    tab.dataset.category = category.code;
+    tab.textContent = category.name;
+    tab.addEventListener('click', () => {
+      if (fields.category.value === category.code) return;
+      fields.category.value = category.code;
+      fields.category.dispatchEvent(new Event('change'));
+    });
+    return tab;
+  }));
+  function markCategory() {
+    for (const tab of categoryTabs.children) {
+      const active = tab.dataset.category === fields.category.value;
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-pressed', String(active));
+    }
+  }
+  markCategory();
   fields.hour.replaceChildren(...bookingTimeOptions());
   fields.date.min = dateAtShop(data.timezone);
   fields.date.value = fields.date.min;
@@ -156,6 +177,7 @@ async function start() {
   }
 
   fields.category.addEventListener('change', () => {
+    markCategory();
     updateResources();
     void loadFloor();
   });
