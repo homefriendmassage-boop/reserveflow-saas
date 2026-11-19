@@ -138,3 +138,26 @@
 .plan .anchor,
 .plan .entrance,
 .plan .decor-block { pointer-events: none; }
+
+.live-booking-plan {
+  width: 100%;
+  min-width: 560px;
+  height: auto;
+  aspect-ratio: var(--floor-width, 960) / var(--floor-height, 540);
+}
+
+.live-booking-plan .resource {
+  min-width: 54px;
+  min-height: 44px;
+}
+
+.live-booking-plan .resource:disabled { cursor: default; }
+.live-booking-plan .floor-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: #e5ebf6;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}

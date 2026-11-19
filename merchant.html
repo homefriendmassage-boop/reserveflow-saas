@@ -18,19 +18,8 @@
 <main>
   <section class="panel" id="merchantLogin">
     <h2>เข้าสู่ระบบร้านค้า</h2>
-    <form id="merchantForm" class="fields">
-      <div class="field">
-        <label for="merchantEmail">อีเมล</label>
-        <input id="merchantEmail" name="email" type="email" autocomplete="username" required>
-      </div>
-      <div class="field">
-        <label for="merchantPassword">รหัสผ่าน</label>
-        <input id="merchantPassword" name="password" type="password" autocomplete="current-password" required>
-      </div>
-      <div class="field">
-        <button type="submit" id="merchantSignIn" class="btn primary" disabled>เข้าสู่ระบบ</button>
-      </div>
-    </form>
+    <button type="button" id="merchantSignIn" class="btn primary" disabled>เข้าสู่ระบบด้วย LINE</button>
+    <p class="sub">สำหรับเจ้าของร้านและแอดมินที่ได้รับสิทธิ์</p>
   </section>
   <section class="panel hidden" id="merchantDashboard">
     <button type="button" id="merchantSignOut" class="btn soft">ออกจากระบบ</button>

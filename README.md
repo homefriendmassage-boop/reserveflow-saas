@@ -45,9 +45,9 @@ python3 -m http.server 8000 --bind 127.0.0.1
 ระบบใช้ Supabase JS 2.98.0 จาก `assets/vendor/supabase-js/` และ publishable key
 ของโปรเจกต์ ReserveFlow ใน `src/data/supabase-config.js`
 บัญชีต้องมีแถวใน `shop_members` ก่อนอ่านร้านและรายการจองผ่าน RLS
-เซสชันอยู่ในหน่วยความจำและการรีโหลดจะกลับไปหน้าล็อกอิน
+เซสชัน LINE อยู่ใน sessionStorage ของแท็บ
 
-การทดสอบกับฐานจริง ให้ล็อกอินด้วยบัญชี demo-one และ demo-two ทีละบัญชี
+การทดสอบกับฐานจริง ให้ล็อกอินด้วยบัญชี LINE ที่ผูกสิทธิ์กับ demo-one และ demo-two ทีละบัญชี
 ตรวจว่าตัวเลือกร้านและรายการจองเป็นของร้านที่บัญชีเป็นสมาชิก แล้วออกจากระบบ
 หน้าเดโมเดิมยังใช้ข้อมูลในเบราว์เซอร์
 
@@ -90,3 +90,27 @@ returning slug, public_booking_enabled;
 ในรายการจองโต๊ะ ให้กด **ยืนยันการจอง** สำหรับคำขอในอนาคตที่รอยืนยัน
 กด **ใช้งานเสร็จ · คืนโต๊ะ** หลังเริ่มใช้โต๊ะ หรือกด **ยกเลิกการจอง** เพื่อคืนโต๊ะ
 ทั้งสองสถานะเก็บรายการเดิมไว้และคืนช่วงเวลาให้จองได้อีกครั้ง
+
+### ผังโต๊ะลูกค้าและ LINE Login หลังบ้าน
+
+รัน `supabase/migrations/20261119000004_public_table_plan.sql` เพื่อเปิด RPC ผังโต๊ะ
+หน้าจองใช้ตำแหน่งจาก `resources.display` และขนาดกับองค์ประกอบผังจาก `layouts`
+พร้อมสถานะว่างตามวันที่และเวลา RPC ส่งเพียงข้อมูลผังและสถานะโต๊ะสำหรับร้านที่เปิดรับจอง
+ภาพพื้นหลังจาก Storage และการบันทึกผังจากตัวแก้ผังเดโมยังไม่ได้เชื่อมในขั้นนี้
+
+ตั้งค่า LINE Login ก่อนเผยแพร่หน้าหลังบ้านรุ่นนี้:
+
+1. ใน LINE Developers Console สร้างหรือใช้ LINE Login channel ของ ReserveFlow
+   เปิด Web app และเพิ่ม Callback URL
+   `https://zotgxsimkrofqxkhjjak.supabase.co/auth/v1/callback`
+2. ใน Supabase Authentication → Providers เพิ่ม Custom Provider แบบ OIDC
+   ใช้ identifier `custom:line` และ issuer `https://access.line.me`
+   ใส่ LINE Channel ID และ Channel Secret ใน Supabase Dashboard
+   ตั้ง scopes เป็น `openid profile` และอนุญาตให้ผู้ให้บริการไม่ต้องส่งอีเมล (Email optional)
+3. ใน Supabase Authentication → URL Configuration เพิ่ม Redirect URL
+   `https://homefriendmassage-boop.github.io/reserveflow-saas/merchant.html`
+4. ให้แอดมินล็อกอิน LINE ครั้งแรกเพื่อให้ Supabase สร้างหรือเชื่อมบัญชี Auth
+   ตรวจ UID จาก Authentication → Users แล้วผูก UID ที่ยืนยันแล้วกับร้านใน `shop_members`
+   บทบาท `owner` หรือ `admin` จึงเห็นร้านและจัดการรายการได้ อีเมลเก่าอาจมี UID คนละตัวกับ LINE
+5. ทดสอบด้วย LINE ของแอดมินที่ผูกไว้และอีกบัญชีที่ไม่มีสมาชิกในร้าน
+   รักษา Channel Secret ไว้เฉพาะใน Supabase

@@ -23,7 +23,7 @@ function setMode(mode){
 function bindPageEvents() {
   const clickHandlers = {
     customerMode: () => setMode('customer'),
-    adminMode: () => setMode('admin'),
+    adminMode: () => { location.href = './merchant.html'; },
     superadminMode: () => setMode('superadmin'),
     submitBooking: createBooking,
     addCategoryButton: addCategory,

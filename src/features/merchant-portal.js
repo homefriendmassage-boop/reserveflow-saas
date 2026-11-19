@@ -4,7 +4,6 @@ import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.j
 
 const byId = id => document.getElementById(id);
 const login = byId('merchantLogin');
-const form = byId('merchantForm');
 const signIn = byId('merchantSignIn');
 const signOut = byId('merchantSignOut');
 const dashboard = byId('merchantDashboard');
@@ -117,7 +116,7 @@ if (typeof window.supabase?.createClient !== 'function') {
   status.textContent = 'โหลดระบบเข้าสู่ระบบไม่สำเร็จ กรุณารีเฟรชหน้า';
 } else {
   const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    auth: { persistSession: false, detectSessionInUrl: false }
+    auth: { flowType: 'pkce', storage: window.sessionStorage }
   });
 
   async function runAction(operation, success) {
@@ -230,26 +229,22 @@ if (typeof window.supabase?.createClient !== 'function') {
   client.auth.onAuthStateChange(event => {
     if (event === 'SIGNED_OUT') showLogin();
   });
-  signIn.disabled = false;
 
-  form.addEventListener('submit', async event => {
-    event.preventDefault();
-    signIn.disabled = true;
-    status.textContent = 'กำลังเข้าสู่ระบบ…';
+  async function loadSession() {
     try {
-      const { error } = await client.auth.signInWithPassword({
-        email: form.elements.email.value.trim(),
-        password: form.elements.password.value
-      });
-      if (error) {
-        showLogin('เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจอีเมล รหัสผ่าน และการเชื่อมต่อแล้วลองใหม่');
+      const { data, error } = await client.auth.getSession();
+      if (error) throw error;
+      if (!data.session) {
+        const params = new URLSearchParams(location.search);
+        if (params.has('error') || params.has('error_code') || params.has('code')) {
+          showLogin('เข้าสู่ระบบด้วย LINE ไม่สำเร็จ กรุณาลองอีกครั้ง');
+        }
         return;
       }
-
       const shops = await listMerchantShops(client);
       if (!shops.length) {
         await client.auth.signOut({ scope: 'local' });
-        showLogin('บัญชีนี้ยังไม่มีสิทธิ์เข้าถึงร้านค้า');
+        showLogin('บัญชี LINE นี้ยังไม่มีสิทธิ์เข้าถึงร้านค้า');
         return;
       }
       shopMenu.replaceChildren(...shops.map(shop => {
@@ -262,13 +257,28 @@ if (typeof window.supabase?.createClient !== 'function') {
       status.textContent = '';
       await loadShop();
     } catch {
-      await client.auth.signOut({ scope: 'local' });
       showLogin('ตรวจสิทธิ์ร้านค้าไม่สำเร็จ กรุณาลองอีกครั้ง');
     } finally {
-      form.elements.password.value = '';
+      signIn.disabled = false;
+    }
+  }
+
+  signIn.addEventListener('click', async () => {
+    signIn.disabled = true;
+    status.textContent = 'กำลังเปิด LINE Login…';
+    try {
+      const redirectTo = new URL('./merchant.html', location.href).href;
+      const { error } = await client.auth.signInWithOAuth({
+        provider: 'custom:line',
+        options: { redirectTo }
+      });
+      if (error) throw error;
+    } catch {
+      showLogin('เปิด LINE Login ไม่ได้ กรุณาลองอีกครั้ง');
       signIn.disabled = false;
     }
   });
+  void loadSession();
 
   shopMenu.addEventListener('change', loadShop);
   signOut.addEventListener('click', async () => {

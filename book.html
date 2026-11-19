@@ -18,6 +18,7 @@
 <main>
   <section class="panel">
     <h1 id="bookingTitle">ส่งคำขอจอง</h1>
+    <a href="./merchant.html">หลังบ้านแอดมิน</a>
     <p id="bookingStatus" role="status">กำลังโหลดข้อมูลร้าน…</p>
     <form id="publicBookingForm" class="hidden">
       <div class="fields">
@@ -32,6 +33,11 @@
         <div class="field"><label for="customerPhone">เบอร์โทรศัพท์</label><input id="customerPhone" name="customerPhone" type="tel" autocomplete="tel" maxlength="20" required></div>
         <div class="field"><label for="note">หมายเหตุ</label><textarea id="note" name="note" maxlength="500"></textarea></div>
       </div>
+      <section id="bookingFloorSection" class="hidden">
+        <h2>เลือกโต๊ะจากผังร้าน</h2>
+        <p id="floorStatus" role="status"></p>
+        <div class="layout-shell"><div class="plan live-booking-plan" id="bookingFloor"></div></div>
+      </section>
       <p id="bookingEstimate"></p>
       <p class="sub">ส่งคำขอให้ร้านยืนยัน เวลาใช้ตามเขตเวลาของร้าน ขั้นตอนนี้ไม่มีการชำระเงิน</p>
       <button id="sendBooking" type="submit" class="btn primary">ส่งคำขอจอง</button>

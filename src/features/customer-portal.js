@@ -1,3 +1,4 @@
+import { highlightTable, renderFloor, showFloorMessage } from './customer-floor.js';
 import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 
@@ -49,8 +50,9 @@ function updateEstimate() {
   const duration = fields.hours.disabled ? 2 : Number(fields.hours.value);
   estimate.textContent = resource
     ? `ระยะเวลา ${duration} ชม. · ยอดโดยประมาณ ${money.format(Number(category.price) * Number(units) + Number(category.service_fee))}`
-    : 'หมวดนี้ยังไม่มีรายการให้จอง';
+    : 'ไม่มีรายการว่างให้จองในรอบที่เลือก';
   submit.disabled = !resource;
+  highlightTable(fields.resource.value);
 }
 
 function updateResources() {
@@ -87,7 +89,46 @@ async function start() {
   status.textContent = '';
   form.classList.remove('hidden');
 
-  fields.category.addEventListener('change', updateResources);
+  let planRequest = 0;
+  async function loadFloor() {
+    const request = ++planRequest;
+    const category = selectedCategory();
+    if (category.template !== 'table' || !fields.date.value || !fields.date.checkValidity()) {
+      showFloorMessage('', false);
+      return;
+    }
+    for (const option of fields.resource.options) option.disabled = false;
+    showFloorMessage('กำลังตรวจโต๊ะว่าง…');
+    const [hour, minute] = fields.hour.value.split(':').map(Number);
+    try {
+      const { data: plan, error } = await client.rpc('booking_table_plan', {
+        p_shop_slug: shopSlug, p_category_code: category.code,
+        p_date: fields.date.value, p_hour: hour, p_minute: minute
+      });
+      if (request !== planRequest) return;
+      if (error || !plan) {
+        showFloorMessage('ดูผังไม่ได้ในขณะนี้ เลือกโต๊ะจากช่องรายการได้');
+        return;
+      }
+      const occupied = new Set(plan.tables.filter(table => table.occupied).map(table => table.code));
+      for (const option of fields.resource.options) option.disabled = occupied.has(option.value);
+      if (occupied.has(fields.resource.value)) {
+        fields.resource.value = Array.from(fields.resource.options).find(option => !option.disabled)?.value || '';
+      }
+      renderFloor(plan, category.resources, fields.resource);
+      updateEstimate();
+    } catch {
+      if (request === planRequest) showFloorMessage('โหลดผังร้านไม่สำเร็จ');
+    }
+  }
+
+  fields.category.addEventListener('change', () => {
+    updateResources();
+    void loadFloor();
+  });
+  fields.date.addEventListener('change', loadFloor);
+  fields.hour.addEventListener('change', loadFloor);
+  void loadFloor();
   for (const field of [fields.resource, fields.hours, fields.guests, fields.tickets]) {
     field.addEventListener('input', updateEstimate);
   }
@@ -121,6 +162,7 @@ async function start() {
       pendingRequest = undefined;
       status.textContent = `ส่งคำขอแล้ว · รอร้านยืนยัน · ${money.format(data.amount)} · เลขจอง ${data.id}`;
     } catch (error) {
+      if (error.message === 'BOOKING_SLOT_TAKEN') void loadFloor();
       status.textContent = errorMessages[error.message]
         || 'ยืนยันผลการส่งไม่ได้ ลองส่งข้อมูลเดิมอีกครั้งเพื่อป้องกันการจองซ้ำ';
     } finally {
