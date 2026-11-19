@@ -95,6 +95,21 @@ export function renderMerchantSettings(container, { categories, resources, layou
       const order = field(form, 'ลำดับ', input('number', category?.sort_order ?? Math.min(10000, (categories.at(-1)?.sort_order ?? 0) + 1), 0, 10000));
       const visible = field(form, 'แสดงผล', select([['true','แสดง'],['false','ซ่อน']]));
       visible.value = String(category?.visible ?? true);
+      if (category) {
+        const actions = node('div');
+        actions.className = 'inline-actions';
+        const index = categories.indexOf(category);
+        for (const [direction, label] of [[-1, '↑ ขึ้น'], [1, '↓ ลง']]) {
+          const move = button(label);
+          move.disabled = !categories[index + direction];
+          move.setAttribute('aria-label', label + ' ' + category.name);
+          move.addEventListener('click', () => void persist('move_merchant_category', {
+            p_code: category.code, p_direction: direction
+          }, 'categories'));
+          actions.append(move);
+        }
+        form.append(actions);
+      }
       form.append(button(category ? 'บันทึกหมวด' : '+ เพิ่มหมวดใหม่', 'submit'));
       form.addEventListener('submit', event => {
         event.preventDefault();

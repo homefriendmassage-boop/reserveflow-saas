@@ -19,6 +19,7 @@ begin
     or p_order is null or p_order not between 0 and 10000 then
     raise exception using errcode = '22023', message = 'INVALID_CATEGORY_SETTINGS';
   end if;
+  perform 1 from public.shops where id = p_shop_id for update;
   if p_code is null then
     if p_template is null or p_template not in ('table','staff','vip','seat','ticket') then
       raise exception using errcode = '22023', message = 'INVALID_CATEGORY_SETTINGS';
@@ -122,11 +123,45 @@ begin
 end;
 $$;
 
+create function public.move_merchant_category(p_shop_id uuid, p_code text, p_direction integer)
+returns void
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  position integer;
+  sorted_codes text[];
+  neighbor text;
+begin
+  if not exists (select 1 from public.shop_members
+    where shop_id = p_shop_id and user_id = (select auth.uid()) and role = 'owner') then
+    raise exception using errcode = '42501', message = 'MERCHANT_BOOKING_FORBIDDEN';
+  end if;
+  if p_direction is null or p_direction not in (-1, 1) then
+    raise exception using errcode = '22023', message = 'INVALID_CATEGORY_SETTINGS';
+  end if;
+  perform 1 from public.shops where id = p_shop_id for update;
+  select array_agg(code order by sort_order, code) into sorted_codes
+    from public.categories where shop_id = p_shop_id;
+  position := array_position(sorted_codes, p_code);
+  if position is null then raise exception using errcode = '22023', message = 'INVALID_CATEGORY_SETTINGS'; end if;
+  neighbor := sorted_codes[position + p_direction];
+  if neighbor is null then return; end if;
+  sorted_codes[position + p_direction] := p_code;
+  sorted_codes[position] := neighbor;
+  update public.categories c set sort_order = ranked.ordinality - 1
+  from unnest(sorted_codes) with ordinality as ranked(code, ordinality)
+  where c.shop_id = p_shop_id and c.code = ranked.code
+    and c.sort_order is distinct from ranked.ordinality - 1;
+end;
+$$;
+
 revoke all on function public.save_merchant_category(uuid,text,text,text,boolean,numeric,numeric,integer),
   public.save_merchant_floor_item(uuid,text,text,text,integer,integer,integer,integer,integer),
-  public.save_merchant_floor(uuid,text,integer,integer,boolean,jsonb) from public, anon, authenticated;
+  public.save_merchant_floor(uuid,text,integer,integer,boolean,jsonb),
+  public.move_merchant_category(uuid,text,integer) from public, anon, authenticated;
 grant execute on function public.save_merchant_category(uuid,text,text,text,boolean,numeric,numeric,integer),
   public.save_merchant_floor_item(uuid,text,text,text,integer,integer,integer,integer,integer),
-  public.save_merchant_floor(uuid,text,integer,integer,boolean,jsonb) to authenticated;
+  public.save_merchant_floor(uuid,text,integer,integer,boolean,jsonb),
+  public.move_merchant_category(uuid,text,integer) to authenticated;
 
 commit;
