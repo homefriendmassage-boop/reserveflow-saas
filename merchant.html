@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>จัดการร้าน | ReserveFlow</title>
+  <link rel="stylesheet" href="./assets/css/app.css">
+  <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
+  <script type="module" src="./src/features/merchant-portal.js"></script>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div class="logo"><b>R</b>ReserveFlow</div>
+    <a href="./index.html">กลับไปหน้าเดโม</a>
+  </div>
+</header>
+<main>
+  <section class="panel" id="merchantLogin">
+    <h2>เข้าสู่ระบบร้านค้า</h2>
+    <form id="merchantForm" class="fields">
+      <div class="field">
+        <label for="merchantEmail">อีเมล</label>
+        <input id="merchantEmail" name="email" type="email" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="merchantPassword">รหัสผ่าน</label>
+        <input id="merchantPassword" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="field">
+        <button type="submit" id="merchantSignIn" class="btn primary" disabled>เข้าสู่ระบบ</button>
+      </div>
+    </form>
+  </section>
+  <section class="panel hidden" id="merchantDashboard">
+    <button type="button" id="merchantSignOut" class="btn soft">ออกจากระบบ</button>
+    <h2>รายการจองของร้าน</h2>
+    <div class="field">
+      <label for="merchantShop">ร้านค้า</label>
+      <select id="merchantShop"></select>
+    </div>
+    <div id="merchantBookings" aria-live="polite"></div>
+  </section>
+  <p id="merchantStatus" role="status"></p>
+</main>
+</body>
+</html>
