@@ -33,6 +33,8 @@ const dateField = byId('merchantTableDate');
 const timeField = byId('merchantTableTime');
 const guestField = byId('merchantTableGuests');
 const tableSubmit = tableForm.querySelector('button[type="submit"]');
+const categorySettings = byId('merchantCategorySettings');
+const statCards = [...byId('merchantStats').querySelectorAll('strong')];
 const settings = byId('merchantShopSettings');
 const advancedSettings = byId('merchantAdvancedSettings');
 const search = byId('merchantBookingSearch');
@@ -111,7 +113,7 @@ function showLogin(message = '') {
   displayedBookings = [];
   advancedSettings.replaceChildren();
   search.value = '';
-  settings.open = false;
+  categorySettings.replaceChildren();
   dashboard.classList.add('hidden');
   login.classList.remove('hidden');
   status.textContent = message;
@@ -230,6 +232,13 @@ if (typeof window.supabase?.createClient !== 'function') {
       const rows = await createSupabaseStore(client, shop.value).getBookings();
       if (request !== bookingRequest) return;
       displayedBookings = rows;
+      const totals = [
+        rows.length,
+        rows.filter(row => row.status === 'pending_payment').length,
+        rows.filter(row => row.status === 'pending_confirm').length,
+        rows.filter(row => ['confirmed', 'checked_in'].includes(row.status)).length
+      ];
+      statCards.forEach((card, index) => { card.textContent = totals[index]; });
       bookingTimezone = shop.dataset.timezone;
       renderBookingList();
     } catch {
@@ -295,11 +304,14 @@ if (typeof window.supabase?.createClient !== 'function') {
     settings.classList.toggle('hidden', currentRole !== 'owner');
     tableEditor.classList.toggle('hidden', !canManageTables());
     byId('merchantShopName').value = shop.textContent;
+    byId('merchantShopSlug').value = shop.dataset.slug || '';
     byId('merchantShopOpen').checked = shop.dataset.open === 'true';
     displayedBookings = [];
     advancedSettings.replaceChildren();
+    categorySettings.replaceChildren();
+    statCards.forEach(card => { card.textContent = '—'; });
     search.value = '';
-      tableCategories = new Set();
+    tableCategories = new Set();
     pendingBooking = undefined;
     tableMenu.replaceChildren();
     tableSubmit.disabled = true;
@@ -333,7 +345,7 @@ if (typeof window.supabase?.createClient !== 'function') {
         option.dataset.capacity = resource.capacity || 100;
         return option;
       }));
-      renderMerchantSettings(advancedSettings, { categories, resources, layouts, owner: currentRole === 'owner',
+      renderMerchantSettings(advancedSettings, { categoryContainer: categorySettings, categories, resources, layouts, owner: currentRole === 'owner',
         save: async (rpc, parameters) => {
           if (shopMenu.value !== shop.value) throw new Error('Shop changed');
           const { error } = await client.rpc(rpc, { ...parameters, p_shop_id: shop.value });

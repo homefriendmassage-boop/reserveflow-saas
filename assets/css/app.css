@@ -270,7 +270,7 @@
 .merchant-category-row .field { min-width: 0; }
 
 @media (min-width: 1000px) {
-  .merchant-settings-panel .merchant-category-row,
+  .merchant-editor .merchant-category-row,
   .merchant-category-header {
     display: grid;
     grid-template-columns: minmax(100px, 1.4fr) minmax(90px, 1fr) minmax(82px, 0.8fr)
@@ -303,8 +303,8 @@
 }
 
 @media (max-width: 640px) {
-  .merchant-settings-panel .merchant-category-row,
-  .merchant-settings-panel .merchant-category-add { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .merchant-editor .merchant-category-row,
+  .merchant-editor .merchant-category-add { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .merchant-category-row .field:first-child,
   .merchant-category-add .field:first-child { grid-column: 1 / -1; }
 }
@@ -326,3 +326,56 @@
 .live-floor-legend { margin-block: 14px 8px; }
 #sendBooking { margin-top: 14px; }
 #bookingStatus:empty, #bookingSubmitStatus:empty { display: none; }
+
+.merchant-nav a,
+.merchant-nav span {
+  padding: 8px 12px;
+  border-radius: 9px;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.merchant-nav [aria-current] {
+  color: var(--blue);
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(30,48,90,.10);
+}
+.merchant-editor .merchant-category-row,
+.merchant-editor .merchant-category-add {
+  margin-block: 0;
+  padding-block: 10px;
+  align-items: end;
+}
+.merchant-editor label.field > span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.merchant-category-row .inline-actions { align-self: center; }
+.merchant-editor .merchant-floor-canvas {
+  margin: 12px auto;
+  max-width: min(100%, calc(var(--floor-max-width) * .9));
+}
+.merchant-editor .merchant-floor-canvas + .fields {
+  padding: 14px;
+  background: #f7f9fd;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  align-items: end;
+}
+.merchant-account .field { max-width: 300px; }
+.merchant-account details { margin-bottom: 14px; }
+#merchantBookingSearch { margin-bottom: 12px; }
+#merchantCategorySettings p[role=status]:empty,
+#merchantAdvancedSettings p[role=status]:empty { display: none; }
+@media (min-width: 1000px) {
+  .merchant-editor .merchant-category-row { align-items: center; }
+  .merchant-category-row .inline-actions { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .merchant-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .merchant-nav a, .merchant-nav span { padding-inline: 5px; font-size: 11px; }
+  .merchant-editor .layout-tools .field,
+  .merchant-editor .layout-size-controls .field { min-width: min(125px, 100%); }
+}

@@ -12,7 +12,10 @@
 <header>
   <div class="top">
     <div class="logo"><b>R</b>ReserveFlow</div>
-    <a href="./booking-platform-demo.html">ดูหน้าตัวอย่าง</a>
+    <nav class="switch merchant-nav" aria-label="หน้าร้านและหลังบ้าน">
+      <a id="merchantPublicLink" class="hidden">ลูกค้า</a>
+      <span aria-current="page">🧑‍💼 หลังบ้านแอดมิน</span>
+    </nav>
   </div>
 </header>
 <main>
@@ -49,27 +52,21 @@
     </details>
     <button id="merchantRegisterSignOut" class="btn soft" type="button">ออกจากระบบ</button>
   </section>
-  <section class="panel hidden" id="platformAdmin">
-    <h2>Superadmin · ร้านค้าบนแพลตฟอร์ม</h2>
-    <button type="button" class="btn soft small" id="platformSignOut">ออกจากระบบ</button>
-    <div id="platformShopList"></div>
-    <div id="platformLineSettings"></div>
-  </section>
-  <section class="panel hidden" id="merchantDashboard">
-    <button type="button" id="merchantSignOut" class="btn soft">ออกจากระบบ</button>
-    <h2>รายการจองของร้าน</h2>
-    <div class="field">
-      <label for="merchantShop">ร้านค้า</label>
-      <select id="merchantShop"></select>
-      <a id="merchantPublicLink" class="hidden">ดูหน้าจองของร้านนี้</a>
+  <section class="hidden" id="merchantDashboard" aria-label="หลังบ้านร้านค้า">
+    <div class="stats merchant-stats" id="merchantStats" aria-label="สรุปรายการจอง">
+      <div class="stat"><strong>—</strong><span>ทั้งหมด</span></div>
+      <div class="stat"><strong>—</strong><span>จองรอชำระ</span></div>
+      <div class="stat"><strong>—</strong><span>รอคอนเฟิร์ม</span></div>
+      <div class="stat"><strong>—</strong><span>จองแล้ว/เช็กอิน</span></div>
     </div>
-    <p id="merchantRole"></p>
-    <details><summary>UID บัญชีของฉัน</summary><p><code id="merchantAccountUid"></code></p></details>
-    <details id="merchantShopSettings" class="merchant-settings-panel hidden">
-      <summary>ตั้งค่าร้าน</summary>
+    <div id="merchantCategorySettings" class="merchant-editor"></div>
+    <section id="merchantShopSettings" class="panel hidden">
+      <h2>🏪 ตั้งค่าร้านค้า</h2>
+      <p class="sub">แก้ไขชื่อร้านและการเปิดรับจองออนไลน์</p>
       <form id="merchantShopSettingsForm" class="fields">
         <div class="field"><label for="merchantShopName">ชื่อร้าน</label><input id="merchantShopName" maxlength="100" required></div>
         <label class="merchant-switch"><input id="merchantShopOpen" type="checkbox"> เปิดรับจองออนไลน์</label>
+        <div class="field"><label for="merchantShopSlug">ชื่อในลิงก์จอง</label><input id="merchantShopSlug" readonly></div>
         <div class="field"><button class="btn soft" type="submit">บันทึกการตั้งค่า</button></div>
       </form>
       <div id="merchantLineSettings"></div>
@@ -77,8 +74,10 @@
       <div class="field"><label for="merchantTeamSearch">ค้นหาชื่อทีมงานหรือ UID</label><input id="merchantTeamSearch" type="search"></div>
       <p id="merchantTeamStatus" role="status"></p>
       <div id="merchantTeamList" aria-live="polite"></div>
-    </details>
-    <div id="merchantAdvancedSettings"></div>
+    </section>
+    <div id="merchantAdvancedSettings" class="merchant-editor"></div>
+    <section class="panel">
+    <h2>รายการจองทั้งหมด</h2>
     <details id="merchantTableEditor" class="merchant-settings-panel hidden">
       <summary>จองโต๊ะให้ลูกค้า</summary>
       <form id="merchantTableForm">
@@ -101,6 +100,23 @@
       <input id="merchantBookingSearch" type="search" autocomplete="off">
     </div>
     <div id="merchantBookings" aria-live="polite"></div>
+    </section>
+    <section class="panel merchant-account">
+      <h2>บัญชีและร้านค้า</h2>
+      <div class="field">
+        <label for="merchantShop">ร้านค้า</label>
+        <select id="merchantShop"></select>
+      </div>
+      <p id="merchantRole"></p>
+      <details><summary>UID บัญชีของฉัน</summary><p><code id="merchantAccountUid"></code></p></details>
+      <button type="button" id="merchantSignOut" class="btn soft">ออกจากระบบ</button>
+    </section>
+  </section>
+  <section class="panel hidden" id="platformAdmin">
+    <h2>Superadmin · ร้านค้าบนแพลตฟอร์ม</h2>
+    <button type="button" class="btn soft small" id="platformSignOut">ออกจากระบบ</button>
+    <div id="platformShopList"></div>
+    <div id="platformLineSettings"></div>
   </section>
   <p id="merchantStatus" role="status"></p>
 </main>

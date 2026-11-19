@@ -36,28 +36,29 @@ function select(options) {
 }
 
 function panel(title) {
-  const section = node('details');
-  section.className = 'merchant-settings-panel';
-  section.append(node('summary', title));
+  const section = node('section');
+  section.className = 'panel';
+  section.append(node('h2', title));
   return section;
 }
 
 const templates = [['table','โต๊ะ'],['staff','พนักงาน'],['vip','ห้อง VIP'],['seat','ที่นั่ง'],['ticket','บัตร']];
 
-export function renderMerchantSettings(container, { categories, resources, layouts, owner, save, reload }) {
+export function renderMerchantSettings(container, { categoryContainer, categories, resources, layouts, owner, save, reload }) {
   const message = node('p');
   message.setAttribute('role', 'status');
   let saving = false;
 
   async function persist(rpc, args, section, categoryCode, resourceCode) {
     if (saving) return;
+    const feedbackArea = section === 'categories' ? categoryContainer : container;
+    const feedback = feedbackArea.querySelector('[role=status]');
     saving = true;
-    message.textContent = 'กำลังบันทึก…';
+    feedback.textContent = 'กำลังบันทึก…';
     try {
       await save(rpc, args);
       await reload();
-      const replacement = container.querySelector(`[data-section="${section}"]`);
-      if (replacement) replacement.open = true;
+      const replacement = (section === 'categories' ? categoryContainer : container).querySelector(`[data-section="${section}"]`);
       const categorySelect = replacement?.querySelector('[data-floor-category]');
       if (categorySelect && categoryCode) {
         categorySelect.value = categoryCode;
@@ -68,18 +69,21 @@ export function renderMerchantSettings(container, { categories, resources, layou
           resourceSelect.dispatchEvent(new Event('change'));
         }
       }
-      const freshMessage = container.querySelector('[role=status]');
+      const freshMessage = feedbackArea.querySelector('[role=status]');
       if (freshMessage) freshMessage.textContent = 'บันทึกแล้ว';
     } catch {
-      message.textContent = 'บันทึกไม่ได้ กรุณาตรวจข้อมูลและสิทธิ์ของบัญชี';
+      feedback.textContent = 'บันทึกไม่ได้ กรุณาตรวจข้อมูลและสิทธิ์ของบัญชี';
     } finally {
       saving = false;
     }
   }
 
-  const panels = [];
+  categoryContainer.replaceChildren();
   if (owner) {
     const categoryPanel = panel('ตั้งค่าหมวดการจอง');
+    const hint = node('p', 'แก้ชื่อหมวด การแสดงผล ราคา ค่าบริการ และลำดับที่ลูกค้าเห็น');
+    hint.className = 'sub';
+    categoryPanel.append(hint);
     categoryPanel.dataset.section = 'categories';
     if (categories.length) {
       const header = node('div');
@@ -128,25 +132,25 @@ export function renderMerchantSettings(container, { categories, resources, layou
       });
       categoryPanel.append(form);
     }
-    panels.push(categoryPanel);
+    categoryPanel.append(message);
+    categoryContainer.append(categoryPanel);
   }
 
-  const floorPanel = panel('ออกแบบผังโต๊ะและที่นั่ง');
+  const floorPanel = panel('🗺️ ออกแบบผังโต๊ะและที่นั่ง');
   floorPanel.dataset.section = 'floor';
   const floorCategories = categories.filter(category => ['table', 'seat'].includes(category.template));
   if (floorCategories.length) {
     const categoryArea = node('div');
-    categoryArea.className = 'fields';
+    categoryArea.className = 'layout-tools';
     const category = field(categoryArea, 'แก้ผังหมวด', select(floorCategories.map(item => [item.code, item.name])));
     category.dataset.floorCategory = '';
     const frame = node('div');
-    frame.className = 'fields';
+    frame.className = 'layout-size-controls';
     const aspect = field(frame, 'รูปแบบกรอบผัง', select([['custom','กำหนดเอง'],['portrait','แนวตั้ง (3:4)'],['wide','แนวนอน (16:9)'],['square','สี่เหลี่ยมจัตุรัส']]));
     const width = field(frame, 'ความกว้าง (px)', input('number', 960, 320, 1600));
     const height = field(frame, 'ความสูง (px)', input('number', 540, 280, 1600));
     const saveFrame = button('บันทึกผัง');
     const grid = button('ใช้ Template ตาราง');
-    frame.append(saveFrame, grid);
     const canvas = node('div');
     canvas.className = 'plan customer-plan merchant-floor-canvas';
 
@@ -161,19 +165,20 @@ export function renderMerchantSettings(container, { categories, resources, layou
     const y = field(editor, 'บน → ล่าง (%)', input('number', 50, 5, 95));
     const itemWidth = field(editor, 'กว้าง (px)', input('number', 84, 24, 320));
     const itemHeight = field(editor, 'สูง (px)', input('number', 72, 24, 320));
-    const tools = node('div');
-    tools.className = 'inline-actions';
     const addItem = button('+ เพิ่มจุดจอง');
     const clone = button('คัดลอกจุดที่เลือก');
     const saveItem = button('บันทึกจุดจอง');
-    tools.append(addItem, clone, saveItem);
-    const decorBar = node('div');
-    decorBar.className = 'fields';
-    const decorName = field(decorBar, 'ชื่อบล็อกผัง', input('text', ''));
+    categoryArea.append(grid, addItem, clone);
+    editor.append(saveItem);
+    const decorType = field(frame, 'ชนิดบล็อกประกอบผัง', select([
+      ['', 'ข้อความอิสระ'], ['เวที', '🎤 เวที'], ['ประตู', '🚪 ประตู'], ['ห้องน้ำ', '🚻 ห้องน้ำ'],
+      ['ทางเข้า', '➡️ ทางเข้า'], ['ทางออก', '⬅️ ทางออก'], ['ผนัง', '▰ ผนัง']
+    ]));
+    const decorName = field(frame, 'ชื่อบล็อกผัง', input('text', ''));
     decorName.maxLength = 80;
     const addDecor = button('+ เพิ่มบล็อก');
     const removeDecor = button('นำบล็อกสุดท้ายออก');
-    decorBar.append(addDecor, removeDecor);
+    frame.append(addDecor, removeDecor, saveFrame);
     let items = [];
     let decor = [];
     let dragging;
@@ -251,7 +256,8 @@ export function renderMerchantSettings(container, { categories, resources, layou
       const data = layouts.find(layout => layout.category_code === category.value);
       width.value = data?.width ?? 960;
       height.value = data?.height ?? 540;
-      aspect.value = 'custom';
+      const dimensions = width.value + '×' + height.value;
+      aspect.value = { '540×720': 'portrait', '960×540': 'wide', '700×700': 'square' }[dimensions] || 'custom';
       decor = Array.isArray(data?.decorations) ? [...data.decorations] : [];
       items = resources.filter(resource => resource.category_code === category.value);
       item.replaceChildren(...items.map(resource => new Option(resource.name, resource.code)), new Option('+ เพิ่มจุดจอง', ''));
@@ -272,10 +278,12 @@ export function renderMerchantSettings(container, { categories, resources, layou
       if (size) [width.value, height.value] = size;
       draw();
     });
+    decorType.addEventListener('change', () => { decorName.value = decorType.value; });
     addDecor.addEventListener('click', () => {
       if (!decorName.reportValidity() || !decorName.value.trim() || decor.length >= 30) return;
       decor.push({ label: decorName.value.trim(), x: 50, y: 12 + (decor.length % 5) * 10, w: 140, h: 36 });
       decorName.value = '';
+      decorType.value = '';
       draw();
     });
     removeDecor.addEventListener('click', () => { decor.pop(); draw(); });
@@ -306,11 +314,11 @@ export function renderMerchantSettings(container, { categories, resources, layou
     });
     const hint = node('p', 'เลือกหรือลากโต๊ะบนผัง แล้วกดบันทึกจุดจอง');
     hint.className = 'sub';
-    floorPanel.append(categoryArea, frame, tools, hint, canvas, editor, decorBar);
+    floorPanel.append(hint, categoryArea, frame, canvas, editor);
     loadFloor();
   } else {
     floorPanel.append(node('p', 'เพิ่มหมวดโต๊ะหรือที่นั่งเพื่อเริ่มสร้างผัง'));
   }
-  panels.push(floorPanel, message);
-  container.replaceChildren(...panels);
+  floorPanel.append(message.cloneNode());
+  container.replaceChildren(floorPanel);
 }
