@@ -12,7 +12,7 @@
 <header>
   <div class="top">
     <div class="logo"><b>R</b>ReserveFlow</div>
-    <a href="./index.html">กลับไปหน้าเดโม</a>
+    <a href="./index.html">ดูหน้าตัวอย่าง</a>
   </div>
 </header>
 <main>
@@ -35,13 +35,14 @@
     <div class="field">
       <label for="merchantShop">ร้านค้า</label>
       <select id="merchantShop"></select>
+      <a id="merchantPublicLink" class="hidden">ดูหน้าจองของร้านนี้</a>
     </div>
     <p id="merchantRole"></p>
-    <details id="merchantShopSettings" class="hidden">
+    <details id="merchantShopSettings" class="merchant-settings-panel hidden">
       <summary>ตั้งค่าร้าน</summary>
       <form id="merchantShopSettingsForm" class="fields">
         <div class="field"><label for="merchantShopName">ชื่อร้าน</label><input id="merchantShopName" maxlength="100" required></div>
-        <div class="field"><label><input id="merchantShopOpen" type="checkbox"> เปิดรับจองออนไลน์</label></div>
+        <label class="merchant-switch"><input id="merchantShopOpen" type="checkbox"> เปิดรับจองออนไลน์</label>
         <div class="field"><button class="btn soft" type="submit">บันทึกการตั้งค่า</button></div>
       </form>
       <h3>กำหนดสิทธิ์ทีมงาน</h3>
@@ -52,7 +53,7 @@
       </form>
     </details>
     <div id="merchantAdvancedSettings"></div>
-    <details id="merchantTableEditor" class="hidden">
+    <details id="merchantTableEditor" class="merchant-settings-panel hidden">
       <summary>จองโต๊ะให้ลูกค้า</summary>
       <form id="merchantTableForm">
         <div class="fields">

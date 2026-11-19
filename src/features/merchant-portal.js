@@ -23,6 +23,7 @@ const tableSubmit = tableForm.querySelector('button[type="submit"]');
 const settings = byId('merchantShopSettings');
 const advancedSettings = byId('merchantAdvancedSettings');
 const search = byId('merchantBookingSearch');
+const publicLink = byId('merchantPublicLink');
 const emailForm = byId('merchantEmailForm');
 const emailSignIn = byId('merchantEmailSignIn');
 const roleLabel = { owner: 'เจ้าของร้าน', admin: 'แคชเชียร์ (แอดมินเดิม)', cashier: 'แคชเชียร์', staff: 'พนักงาน' };
@@ -68,6 +69,7 @@ tableMenu.addEventListener('change', updateTableCapacity);
 function showLogin(message = '') {
   bookingRequest++;
   shopMenu.replaceChildren();
+  publicLink.classList.add('hidden');
   tableMenu.replaceChildren();
   tableForm.reset();
   toggleTableSchedule();
@@ -212,6 +214,8 @@ if (typeof window.supabase?.createClient !== 'function') {
     if (!shop) return;
     const request = ++bookingRequest;
     currentRole = shop.dataset.role;
+    publicLink.classList.toggle('hidden', !shop.dataset.slug);
+    publicLink.href = './book.html?' + new URLSearchParams({ shop: shop.dataset.slug || '' });
     byId('merchantRole').textContent = roleLabel[currentRole] || '';
     settings.classList.toggle('hidden', currentRole !== 'owner');
     tableEditor.classList.toggle('hidden', !canManageTables());
@@ -317,6 +321,7 @@ if (typeof window.supabase?.createClient !== 'function') {
       shopMenu.replaceChildren(...shops.map(shop => {
         const option = new Option(shop.name, shop.id);
         option.dataset.timezone = shop.timezone;
+        if (shop.slug) option.dataset.slug = shop.slug;
         option.dataset.role = shop.role;
         option.dataset.open = String(shop.public_booking_enabled);
         return option;

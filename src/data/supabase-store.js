@@ -6,7 +6,7 @@ async function read(query) {
 
 export async function listMerchantShops(client) {
   const [shops, memberships] = await Promise.all([
-    read(client.from('shops').select('id,name,timezone,public_booking_enabled').order('name')),
+    read(client.from('shops').select('id,slug,name,timezone,public_booking_enabled').order('name')),
     read(client.from('shop_members').select('shop_id,role'))
   ]);
   const roles = new Map(memberships.map(member => [member.shop_id, member.role]));

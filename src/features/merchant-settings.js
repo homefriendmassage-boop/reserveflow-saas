@@ -5,9 +5,9 @@ function node(tag, text = '') {
 }
 
 function field(form, text, control) {
-  const label = node('label', text);
+  const label = node('label');
   label.className = 'field';
-  label.append(control);
+  label.append(node('span', text), control);
   form.append(label);
   return control;
 }
@@ -81,20 +81,27 @@ export function renderMerchantSettings(container, { categories, resources, layou
   if (owner) {
     const categoryPanel = panel('ตั้งค่าหมวดการจอง');
     categoryPanel.dataset.section = 'categories';
+    if (categories.length) {
+      const header = node('div');
+      header.className = 'merchant-category-header';
+      header.setAttribute('aria-hidden', 'true');
+      header.append(...['ชื่อหมวด', 'แม่แบบ', 'แสดงผล', 'ราคาเริ่มต้น', 'ค่าบริการ', 'ลำดับ', 'ย้ายลำดับ', 'จัดการ'].map(label => node('span', label)));
+      categoryPanel.append(header);
+    }
     for (const category of [...categories, null]) {
       const form = node('form');
-      form.className = 'fields merchant-category-row';
+      form.className = category ? 'fields merchant-category-row' : 'fields merchant-category-add';
       const name = field(form, 'ชื่อหมวด', input('text', category?.name ?? ''));
       name.maxLength = 100;
       const type = field(form, 'แม่แบบ', select(templates));
       type.value = category?.template || 'table';
       type.disabled = Boolean(category);
+      const visible = field(form, 'แสดงผล', select([['true','แสดง'],['false','ซ่อน']]));
+      visible.value = String(category?.visible ?? true);
       const price = field(form, 'ราคาเริ่มต้น', input('number', category?.price ?? 0, 0, 99999999.99));
       const fee = field(form, 'ค่าบริการ', input('number', category?.service_fee ?? 0, 0, 99999999.99));
       price.step = fee.step = '0.01';
       const order = field(form, 'ลำดับ', input('number', category?.sort_order ?? Math.min(10000, (categories.at(-1)?.sort_order ?? 0) + 1), 0, 10000));
-      const visible = field(form, 'แสดงผล', select([['true','แสดง'],['false','ซ่อน']]));
-      visible.value = String(category?.visible ?? true);
       if (category) {
         const actions = node('div');
         actions.className = 'inline-actions';

@@ -247,3 +247,64 @@
   overflow: hidden;
   pointer-events: none;
 }
+
+.merchant-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.merchant-switch input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--blue);
+}
+
+.merchant-category-header { display: none; }
+.merchant-category-add {
+  border-top: 1px solid #e5ebf6;
+  padding-top: 16px;
+}
+.merchant-category-row .field { min-width: 0; }
+
+@media (min-width: 1000px) {
+  .merchant-settings-panel .merchant-category-row,
+  .merchant-category-header {
+    display: grid;
+    grid-template-columns: minmax(100px, 1.4fr) minmax(90px, 1fr) minmax(82px, 0.8fr)
+      repeat(2, minmax(78px, 0.85fr)) minmax(62px, 0.55fr) minmax(115px, 1fr) minmax(92px, 0.8fr);
+    gap: 8px;
+    align-items: center;
+  }
+
+  .merchant-category-header {
+    margin-top: 18px;
+    padding: 10px 0;
+    background: var(--bg);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .merchant-category-row .field { position: relative; }
+  .merchant-category-row .field > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .merchant-category-row .field input,
+  .merchant-category-row .field select { padding-inline: 8px; }
+  .merchant-category-row .inline-actions { display: grid; grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 640px) {
+  .merchant-settings-panel .merchant-category-row,
+  .merchant-settings-panel .merchant-category-add { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .merchant-category-row .field:first-child,
+  .merchant-category-add .field:first-child { grid-column: 1 / -1; }
+}
