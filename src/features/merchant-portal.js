@@ -339,7 +339,7 @@ if (typeof window.supabase?.createClient !== 'function') {
     try {
       const redirectTo = new URL('./merchant.html', location.href).href;
       const { error } = await client.auth.signInWithOAuth({
-        provider: 'custom:line',
+        provider: 'custom:line-manual',
         options: { redirectTo }
       });
       if (error) throw error;

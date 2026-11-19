@@ -103,10 +103,15 @@ returning slug, public_booking_enabled;
 1. ใน LINE Developers Console สร้างหรือใช้ LINE Login channel ของ ReserveFlow
    เปิด Web app และเพิ่ม Callback URL
    `https://zotgxsimkrofqxkhjjak.supabase.co/auth/v1/callback`
-2. ใน Supabase Authentication → Providers เพิ่ม Custom Provider แบบ OIDC
-   ใช้ identifier `custom:line` และ issuer `https://access.line.me`
-   ใส่ LINE Channel ID และ Channel Secret ใน Supabase Dashboard
-   ตั้ง scopes เป็น `openid profile` และอนุญาตให้ผู้ให้บริการไม่ต้องส่งอีเมล (Email optional)
+2. ใช้ Supabase Auth Admin API สร้าง Custom Provider ชนิด OAuth2 ด้วย identifier `custom:line-manual`
+   ใส่ LINE Channel ID และ Channel Secret ฝั่ง Supabase ตั้ง scopes เป็น `openid profile`
+   และเปิด `email_optional` ใช้ปลายทางดังนี้
+   - Authorization URL `https://access.line.me/oauth2/v2.1/authorize`
+   - Token URL `https://api.line.me/oauth2/v2.1/token`
+   - UserInfo URL `https://api.line.me/oauth2/v2.1/userinfo`
+
+   โปรเจกต์นี้ใช้ OAuth2 เพื่ออ่านโปรไฟล์จาก LINE UserInfo เพราะการทดสอบ OIDC
+   ของช่อง LINE เดิมถูก Supabase ปฏิเสธด้วยอัลกอริทึมลายเซ็น HS256
 3. ใน Supabase Authentication → URL Configuration เพิ่ม Redirect URL
    `https://homefriendmassage-boop.github.io/reserveflow-saas/merchant.html`
 4. ให้แอดมินล็อกอิน LINE ครั้งแรกเพื่อให้ Supabase สร้างหรือเชื่อมบัญชี Auth
