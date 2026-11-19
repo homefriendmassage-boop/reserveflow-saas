@@ -147,6 +147,9 @@ function renderTabs(){
 }
 function switchCategory(id){currentCategory=id;selectedResourceId='';$('paymentStep').classList.add('hidden');renderCustomer()}
 function renderCustomer(){
+  const previousCategory=currentCategory;
+  ensureCurrentCategory();
+  if(currentCategory!==previousCategory) selectedResourceId='';
   const preserve={
     date:$('bookingDate')?.value||today(),
     start:$('startTime')?.value||'18:00',
