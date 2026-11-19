@@ -19,7 +19,15 @@
   <section class="panel" id="merchantLogin">
     <h2>เข้าสู่ระบบร้านค้า</h2>
     <button type="button" id="merchantSignIn" class="btn primary" disabled>เข้าสู่ระบบด้วย LINE</button>
-    <p class="sub">สำหรับเจ้าของร้านและแอดมินที่ได้รับสิทธิ์</p>
+    <p class="sub">สำหรับเจ้าของร้าน แคชเชียร์ และพนักงานที่ได้รับสิทธิ์</p>
+    <details>
+      <summary>เข้าสู่ระบบด้วยอีเมล</summary>
+      <form id="merchantEmailForm" class="fields">
+        <div class="field"><label for="merchantEmail">อีเมล</label><input id="merchantEmail" name="email" type="email" autocomplete="username" required></div>
+        <div class="field"><label for="merchantPassword">รหัสผ่าน</label><input id="merchantPassword" name="password" type="password" autocomplete="current-password" required></div>
+        <div class="field"><button id="merchantEmailSignIn" type="submit" class="btn soft" disabled>เข้าสู่ระบบ</button></div>
+      </form>
+    </details>
   </section>
   <section class="panel hidden" id="merchantDashboard">
     <button type="button" id="merchantSignOut" class="btn soft">ออกจากระบบ</button>
@@ -28,7 +36,34 @@
       <label for="merchantShop">ร้านค้า</label>
       <select id="merchantShop"></select>
     </div>
-    <details id="merchantTableEditor">
+    <p id="merchantRole"></p>
+    <details id="merchantShopSettings" class="hidden">
+      <summary>ตั้งค่าร้าน</summary>
+      <form id="merchantShopSettingsForm" class="fields">
+        <div class="field"><label for="merchantShopName">ชื่อร้าน</label><input id="merchantShopName" maxlength="100" required></div>
+        <div class="field"><label><input id="merchantShopOpen" type="checkbox"> เปิดรับจองออนไลน์</label></div>
+        <div class="field"><button class="btn soft" type="submit">บันทึกการตั้งค่า</button></div>
+      </form>
+      <h3>กำหนดสิทธิ์ทีมงาน</h3>
+      <form id="merchantStaffRoleForm" class="fields">
+        <div class="field"><label for="merchantStaffUid">User UID จาก Supabase Auth</label><input id="merchantStaffUid" required maxlength="36"></div>
+        <div class="field"><label for="merchantStaffRole">สิทธิ์</label><select id="merchantStaffRole"><option value="cashier">แคชเชียร์</option><option value="staff">พนักงาน</option><option value="remove">นำสิทธิ์ออก</option></select></div>
+        <div class="field"><button class="btn soft" type="submit">บันทึกสิทธิ์ทีมงาน</button></div>
+      </form>
+    </details>
+    <details id="merchantTableLayout" class="hidden">
+      <summary>จัดตำแหน่งโต๊ะบนผัง</summary>
+      <form id="merchantTableLayoutForm">
+        <div class="fields">
+          <div class="field"><label for="merchantLayoutTable">โต๊ะ</label><select id="merchantLayoutTable" required></select></div>
+          <div class="field"><label for="merchantLayoutX">ซ้าย → ขวา (%)</label><input id="merchantLayoutX" type="number" min="5" max="95" required></div>
+          <div class="field"><label for="merchantLayoutY">บน → ล่าง (%)</label><input id="merchantLayoutY" type="number" min="5" max="95" required></div>
+        </div>
+        <div id="merchantLayoutPreview" class="plan customer-plan live-booking-plan" aria-label="ตัวอย่างตำแหน่งโต๊ะ"></div>
+        <button type="submit" class="btn soft">บันทึกตำแหน่งโต๊ะ</button>
+      </form>
+    </details>
+    <details id="merchantTableEditor" class="hidden">
       <summary>จองโต๊ะให้ลูกค้า</summary>
       <form id="merchantTableForm">
         <div class="fields">
@@ -45,6 +80,10 @@
       </form>
     </details>
     <p id="merchantActionStatus" role="status"></p>
+    <div class="field">
+      <label for="merchantBookingSearch">ค้นหาด้วยเลขจองหรือรหัสรายการ</label>
+      <input id="merchantBookingSearch" type="search" autocomplete="off">
+    </div>
     <div id="merchantBookings" aria-live="polite"></div>
   </section>
   <p id="merchantStatus" role="status"></p>

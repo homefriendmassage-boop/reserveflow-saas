@@ -19,6 +19,56 @@ const dateField = byId('merchantTableDate');
 const timeField = byId('merchantTableTime');
 const guestField = byId('merchantTableGuests');
 const tableSubmit = tableForm.querySelector('button[type="submit"]');
+const settings = byId('merchantShopSettings');
+const layout = byId('merchantTableLayout');
+const layoutMenu = byId('merchantLayoutTable');
+const layoutX = byId('merchantLayoutX');
+const layoutY = byId('merchantLayoutY');
+const layoutPreview = byId('merchantLayoutPreview');
+const search = byId('merchantBookingSearch');
+const emailForm = byId('merchantEmailForm');
+const emailSignIn = byId('merchantEmailSignIn');
+const roleLabel = { owner: 'เจ้าของร้าน', admin: 'แคชเชียร์ (แอดมินเดิม)', cashier: 'แคชเชียร์', staff: 'พนักงาน' };
+let currentRole;
+let tableResources = [];
+let layoutsByCategory = new Map();
+let displayedBookings = [];
+let bookingTimezone;
+const canManageTables = () => ['owner', 'admin', 'cashier'].includes(currentRole);
+
+function renderLayoutPreview() {
+  const selected = tableResources.find(row => row.key === layoutMenu.value);
+  const size = layoutsByCategory.get(selected?.category_code);
+  layoutPreview.style.setProperty('--floor-width', size?.width || 960);
+  layoutPreview.style.setProperty('--floor-height', size?.height || 540);
+  layoutPreview.replaceChildren(...tableResources
+    .filter(table => table.category_code === selected?.category_code)
+    .map((table, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'resource' + (table === selected ? ' selected' : '');
+      button.textContent = table.code;
+      button.style.setProperty('--table-x', (table === selected && layoutX.validity.valid ? layoutX.value : table.display?.x ?? 20 + index % 4 * 20) + '%');
+      button.style.setProperty('--table-y', (table === selected && layoutY.validity.valid ? layoutY.value : table.display?.y ?? 20 + Math.floor(index / 4) * 12) + '%');
+      button.addEventListener('click', () => {
+        layoutMenu.value = table.key;
+        loadTableCoordinates();
+      });
+      return button;
+    }));
+}
+
+function loadTableCoordinates() {
+  const index = tableResources.findIndex(row => row.key === layoutMenu.value);
+  const selected = tableResources[index];
+  layoutX.value = selected?.display?.x ?? 20 + Math.max(index, 0) % 4 * 20;
+  layoutY.value = selected?.display?.y ?? Math.min(95, 20 + Math.floor(Math.max(index, 0) / 4) * 12);
+  renderLayoutPreview();
+}
+
+layoutMenu.addEventListener('change', loadTableCoordinates);
+layoutX.addEventListener('input', renderLayoutPreview);
+layoutY.addEventListener('input', renderLayoutPreview);
 let bookingRequest = 0;
 let tableCategories = new Set();
 let pendingBooking;
@@ -29,6 +79,10 @@ const actionErrors = {
   INVALID_BOOKING_DATE: 'เลือกเวลาในอนาคตและจองล่วงหน้าได้สูงสุด 90 วัน',
   INVALID_TABLE_BOOKING: 'ตรวจจำนวนคนและเบอร์โทรศัพท์',
   INVALID_BOOKING_STATUS: 'เปลี่ยนสถานะไม่ได้ กรุณาตรวจสถานะล่าสุด',
+  INVALID_CHECK_IN: 'เช็กอินได้ตั้งแต่ 30 นาทีก่อนเริ่มจนถึงก่อนหมดเวลาของรายการที่ยืนยันแล้ว',
+  INVALID_TABLE_POSITION: 'ตำแหน่งโต๊ะต้องอยู่ระหว่าง 5 ถึง 95%',
+  INVALID_STAFF_ROLE: 'ตรวจ UID และสิทธิ์ที่เลือก หรือบัญชีนี้อาจเป็นเจ้าของร้าน',
+  INVALID_SHOP_SETTINGS: 'กรุณาตรวจชื่อร้าน',
   MERCHANT_BOOKING_FORBIDDEN: 'บัญชีนี้ไม่มีสิทธิ์จัดการการจองของร้าน'
 };
 
@@ -60,6 +114,16 @@ function showLogin(message = '') {
   pendingBooking = undefined;
   actionStatus.textContent = '';
   bookings.replaceChildren();
+  currentRole = undefined;
+  tableResources = [];
+  displayedBookings = [];
+  layoutsByCategory.clear();
+  layoutMenu.replaceChildren();
+  layoutPreview.replaceChildren();
+  search.value = '';
+  byId('merchantStaffRoleForm').reset();
+  settings.open = false;
+  layout.open = false;
   dashboard.classList.add('hidden');
   login.classList.remove('hidden');
   status.textContent = message;
@@ -85,14 +149,23 @@ function bookingCard(booking, timezone, changeStatus) {
     labels[booking.status] || booking.status,
     amount.format(booking.amount)
   ].join(' · ');
-  card.append(title, details);
-  if (tableCategories.has(booking.category_code) && !['completed', 'cancelled'].includes(booking.status)) {
-    const started = new Date(booking.starts_at) <= new Date();
-    const options = [];
+  const reference = document.createElement('small');
+  reference.textContent = booking.id;
+  card.append(title, details, reference);
+  const start = new Date(booking.starts_at).getTime();
+  const now = Date.now();
+  const options = [];
+  if (booking.status === 'confirmed' && now >= start - 1800000 && now < new Date(booking.ends_at).getTime()) {
+    options.push(['checked_in', 'เช็กอิน']);
+  }
+  if (canManageTables() && tableCategories.has(booking.category_code) && !['completed', 'cancelled'].includes(booking.status)) {
+    const started = start <= now;
     if (!started && booking.status === 'pending_confirm') options.push(['confirmed', 'ยืนยันการจอง']);
     if (started && ['confirmed', 'checked_in'].includes(booking.status)) options.push(['completed', 'ใช้งานเสร็จ · คืนโต๊ะ']);
     options.push(['cancelled', 'ยกเลิกการจอง']);
+  }
 
+  if (options.length) {
     const actions = document.createElement('div');
     actions.className = 'inline-actions';
     for (const [next, label] of options) {
@@ -143,9 +216,22 @@ if (typeof window.supabase?.createClient !== 'function') {
   }
 
   function changeStatus(id, next) {
+    if (next === 'checked_in') return runAction(store => store.checkIn(id), 'เช็กอินแล้ว');
     const message = next === 'confirmed' ? 'ยืนยันการจองแล้ว' : 'คืนโต๊ะแล้ว';
     return runAction(store => store.changeTableStatus(id, next), message);
   }
+
+  function renderBookingList() {
+    const term = search.value.trim().toLowerCase();
+    const rows = displayedBookings.filter(row => !term ||
+      [row.id, row.resource_code].some(value => value.toLowerCase().includes(term)));
+    if (rows.length) {
+      bookings.replaceChildren(...rows.map(row => bookingCard(row, bookingTimezone, changeStatus)));
+    } else {
+      bookings.textContent = term ? 'ไม่พบรายการจองที่ค้นหา' : 'ยังไม่มีรายการจอง';
+    }
+  }
+  search.addEventListener('input', renderBookingList);
 
   async function loadBookings() {
     const request = ++bookingRequest;
@@ -155,11 +241,9 @@ if (typeof window.supabase?.createClient !== 'function') {
     try {
       const rows = await createSupabaseStore(client, shop.value).getBookings();
       if (request !== bookingRequest) return;
-      if (rows.length) {
-        bookings.replaceChildren(...rows.map(row => bookingCard(row, shop.dataset.timezone, changeStatus)));
-      } else {
-        bookings.textContent = 'ยังไม่มีรายการจอง';
-      }
+      displayedBookings = rows;
+      bookingTimezone = shop.dataset.timezone;
+      renderBookingList();
     } catch {
       if (request === bookingRequest) bookings.textContent = 'โหลดรายการจองไม่ได้ กรุณาลองใหม่';
     }
@@ -169,6 +253,20 @@ if (typeof window.supabase?.createClient !== 'function') {
     const shop = shopMenu.selectedOptions[0];
     if (!shop) return;
     const request = ++bookingRequest;
+    currentRole = shop.dataset.role;
+    byId('merchantRole').textContent = roleLabel[currentRole] || '';
+    settings.classList.toggle('hidden', currentRole !== 'owner');
+    tableEditor.classList.toggle('hidden', !canManageTables());
+    layout.classList.toggle('hidden', !canManageTables());
+    byId('merchantStaffRoleForm').reset();
+    byId('merchantShopName').value = shop.textContent;
+    byId('merchantShopOpen').checked = shop.dataset.open === 'true';
+    displayedBookings = [];
+    search.value = '';
+    tableResources = [];
+    layoutsByCategory.clear();
+    layoutMenu.replaceChildren();
+    layoutPreview.replaceChildren();
     tableCategories = new Set();
     pendingBooking = undefined;
     tableMenu.replaceChildren();
@@ -182,14 +280,24 @@ if (typeof window.supabase?.createClient !== 'function') {
 
     try {
       const store = createSupabaseStore(client, shop.value);
-      const [categories, resources] = await Promise.all([store.getCategories(), store.getResources()]);
+      if (!canManageTables()) {
+        await loadBookings();
+        return;
+      }
+      const [categories, resources, layouts] = await Promise.all([store.getCategories(), store.getResources(), store.getLayouts()]);
       if (request !== bookingRequest) return;
       tableCategories = new Set(categories.filter(category => category.template === 'table').map(category => category.code));
-      tableMenu.replaceChildren(...resources.filter(resource => tableCategories.has(resource.category_code)).map(resource => {
-        const option = new Option(resource.name, JSON.stringify([resource.category_code, resource.code]));
+      tableResources = resources.filter(resource => tableCategories.has(resource.category_code)).map(resource => ({
+        ...resource, key: JSON.stringify([resource.category_code, resource.code])
+      }));
+      layoutsByCategory = new Map(layouts.map(item => [item.category_code, item]));
+      tableMenu.replaceChildren(...tableResources.map(resource => {
+        const option = new Option(resource.name, resource.key);
         option.dataset.capacity = resource.capacity || 100;
         return option;
       }));
+      layoutMenu.replaceChildren(...tableResources.map(resource => new Option(resource.name, resource.key)));
+      loadTableCoordinates();
       updateTableCapacity();
       tableSubmit.disabled = saving || !tableMenu.value;
     } catch {
@@ -250,6 +358,8 @@ if (typeof window.supabase?.createClient !== 'function') {
       shopMenu.replaceChildren(...shops.map(shop => {
         const option = new Option(shop.name, shop.id);
         option.dataset.timezone = shop.timezone;
+        option.dataset.role = shop.role;
+        option.dataset.open = String(shop.public_booking_enabled);
         return option;
       }));
       login.classList.add('hidden');
@@ -260,6 +370,7 @@ if (typeof window.supabase?.createClient !== 'function') {
       showLogin('ตรวจสิทธิ์ร้านค้าไม่สำเร็จ กรุณาลองอีกครั้ง');
     } finally {
       signIn.disabled = false;
+      emailSignIn.disabled = false;
     }
   }
 
@@ -277,6 +388,67 @@ if (typeof window.supabase?.createClient !== 'function') {
       showLogin('เปิด LINE Login ไม่ได้ กรุณาลองอีกครั้ง');
       signIn.disabled = false;
     }
+  });
+  emailForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    emailSignIn.disabled = true;
+    signIn.disabled = true;
+    status.textContent = 'กำลังเข้าสู่ระบบ…';
+    try {
+      const { error } = await client.auth.signInWithPassword({
+        email: emailForm.elements.email.value.trim(), password: emailForm.elements.password.value
+      });
+      if (error) throw error;
+      await loadSession();
+    } catch {
+      showLogin('เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจอีเมลและรหัสผ่าน');
+    } finally {
+      emailForm.elements.password.value = '';
+      emailSignIn.disabled = false;
+      signIn.disabled = false;
+    }
+  });
+
+  byId('merchantShopSettingsForm').addEventListener('submit', event => {
+    event.preventDefault();
+    if (currentRole !== 'owner') return;
+    const shop = shopMenu.selectedOptions[0];
+    const name = byId('merchantShopName').value.trim();
+    const enabled = byId('merchantShopOpen').checked;
+    void runAction(async store => {
+      await store.updateShop(name, enabled);
+      shop.textContent = name;
+      shop.dataset.open = String(enabled);
+    }, 'บันทึกการตั้งค่าร้านแล้ว');
+  });
+
+  byId('merchantStaffRoleForm').addEventListener('submit', event => {
+    event.preventDefault();
+    if (currentRole !== 'owner') return;
+    const uid = byId('merchantStaffUid').value.trim();
+    if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(uid)) {
+      actionStatus.textContent = 'กรุณาใส่ User UID จาก Supabase Auth';
+      return;
+    }
+    const role = byId('merchantStaffRole').value;
+    const selectedShop = shopMenu.value;
+    void runAction(async store => {
+      await store.setStaffRole(uid, role);
+      if (shopMenu.value === selectedShop) event.target.reset();
+    }, 'บันทึกสิทธิ์ทีมงานแล้ว');
+  });
+
+  byId('merchantTableLayoutForm').addEventListener('submit', event => {
+    event.preventDefault();
+    if (!canManageTables() || !layoutMenu.value) return;
+    const selected = tableResources.find(row => row.key === layoutMenu.value);
+    const x = Number(layoutX.value);
+    const y = Number(layoutY.value);
+    void runAction(async store => {
+      await store.moveTable(selected.category_code, selected.code, x, y);
+      selected.display = { ...selected.display, x, y };
+      renderLayoutPreview();
+    }, 'บันทึกตำแหน่งโต๊ะแล้ว');
   });
   void loadSession();
 
