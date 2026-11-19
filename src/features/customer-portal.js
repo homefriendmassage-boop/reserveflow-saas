@@ -86,7 +86,11 @@ async function start() {
   categories = data.categories;
   title.textContent = `ส่งคำขอจอง · ${data.name}`;
   fields.category.replaceChildren(...categories.map(category => new Option(category.name, category.code)));
-  fields.hour.replaceChildren(...[10, 12, 14, 16, 18, 20, 22].map(hour => new Option(`${hour}:00`, hour)));
+  fields.hour.replaceChildren(...Array.from({ length: 25 }, (_, index) => {
+    const hour = 10 + Math.floor(index / 2);
+    const label = `${hour}:${index % 2 ? '30' : '00'}`;
+    return new Option(label, label);
+  }));
   fields.date.min = dateAtShop(data.timezone);
   fields.date.value = fields.date.min;
   updateResources();
@@ -102,9 +106,10 @@ async function start() {
     event.preventDefault();
     if (submit.disabled) return;
     const count = field => field.disabled ? null : Number(field.value);
+    const [hour, minute] = fields.hour.value.split(':').map(Number);
     const payload = {
       p_shop_slug: shopSlug, p_category_code: fields.category.value, p_resource_code: fields.resource.value,
-      p_date: fields.date.value, p_hour: Number(fields.hour.value),
+      p_date: fields.date.value, p_hour: hour, p_minute: minute,
       p_hours: count(fields.hours), p_guests: count(fields.guests), p_tickets: count(fields.tickets),
       p_name: fields.customerName.value, p_phone: fields.customerPhone.value, p_note: fields.note.value
     };
