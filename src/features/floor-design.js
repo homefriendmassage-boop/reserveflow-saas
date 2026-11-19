@@ -76,3 +76,30 @@ export function templatePositions(items, template) {
     return { code: item.code, ...floorGeometry(geometry, index) };
   });
 }
+
+export function sampleTableFloor(items, decorations) {
+  const sample = [
+    [19, 25, 2], [50, 30, 4], [81, 25, 4],
+    [19, 62, 6], [50, 63, 6], [81, 62, 8]
+  ];
+  const usedNames = new Set(items.map(row => row.name.trim().toLowerCase()));
+  return {
+    width: 960, height: 540,
+    decorations: decorations.length ? decorations : [
+      { type: 'label', label: 'เคาน์เตอร์ / จุดบริการ', x: 50, y: 8, w: 280, h: 40 },
+      { type: 'entrance', label: 'ทางเข้า', x: 50, y: 92, w: 140, h: 40 }
+    ],
+    items: sample.map(([x, y, capacity], index) => {
+      const code = 'T0' + (index + 1);
+      const existing = items.find(row => row.code === code);
+      const geometry = { ...floorGeometry(existing?.display), x, y };
+      if (existing) return { code, ...geometry };
+      const base = 'โต๊ะ ' + code;
+      let name = base;
+      let suffix = 2;
+      while (usedNames.has(name.toLowerCase())) name = base + ' (' + suffix++ + ')';
+      usedNames.add(name.toLowerCase());
+      return { code, name, capacity, ...geometry };
+    })
+  };
+}

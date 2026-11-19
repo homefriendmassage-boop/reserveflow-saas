@@ -79,19 +79,22 @@
     <section class="panel">
     <h2>รายการจองทั้งหมด</h2>
     <details id="merchantTableEditor" class="merchant-settings-panel hidden">
-      <summary>จองโต๊ะให้ลูกค้า</summary>
+      <summary>จองแทนลูกค้า</summary>
       <form id="merchantTableForm">
         <div class="fields">
-          <div class="field"><label for="merchantTable">โต๊ะ</label><select id="merchantTable" required></select></div>
+          <div class="field"><label for="merchantBookingCategory">หมวดการจอง</label><select id="merchantBookingCategory" required></select></div>
+          <div class="field"><label for="merchantTable">รายการจอง</label><select id="merchantTable" required></select></div>
           <div class="field"><label for="merchantTableGuests">จำนวนคน</label><input id="merchantTableGuests" type="number" min="1" value="1" required></div>
-          <div class="field"><label for="merchantTableMode">เวลาใช้โต๊ะ</label><select id="merchantTableMode"><option value="now">ตอนนี้</option><option value="scheduled">จองล่วงหน้า</option></select></div>
+          <div class="field hidden"><label for="merchantBookingHours">จำนวนชั่วโมง</label><input id="merchantBookingHours" type="number" min="1" value="2" required disabled></div>
+          <div class="field hidden"><label for="merchantBookingTickets">จำนวนบัตร</label><input id="merchantBookingTickets" type="number" min="1" value="1" required disabled></div>
+          <div class="field"><label for="merchantTableMode">ช่วงเวลาจอง</label><select id="merchantTableMode"><option value="now">ตอนนี้</option><option value="scheduled">จองล่วงหน้า</option></select></div>
           <div class="field hidden"><label for="merchantTableDate">วันที่</label><input id="merchantTableDate" type="date" required disabled></div>
           <div class="field hidden"><label for="merchantTableTime">เวลาเริ่ม</label><select id="merchantTableTime" required disabled></select></div>
           <div class="field"><label for="merchantTableName">ชื่อผู้จอง (ไม่บังคับ)</label><input id="merchantTableName" maxlength="100"></div>
           <div class="field"><label for="merchantTablePhone">เบอร์โทรศัพท์ (ไม่บังคับ)</label><input id="merchantTablePhone" type="tel" maxlength="20"></div>
         </div>
-        <p class="sub">จองโต๊ะรอบละ 2 ชั่วโมง กดใช้งานเสร็จเพื่อคืนโต๊ะได้ก่อนหมดเวลา</p>
-        <button type="submit" class="btn primary" disabled>บันทึกการจองโต๊ะ</button>
+        <p class="sub">จองตอนนี้จะบันทึกเป็นเช็กอินแล้ว การจองล่วงหน้าจะบันทึกเป็นยืนยันแล้ว</p>
+        <button type="submit" class="btn primary" disabled>บันทึกการจอง</button>
       </form>
     </details>
     <p id="merchantActionStatus" role="status"></p>

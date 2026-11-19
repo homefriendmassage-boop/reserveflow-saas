@@ -1,5 +1,5 @@
 import { renderListResources } from './merchant-list-resources.js';
-import { decorTypes, floorGeometry, legacyFloor, templatePositions } from './floor-design.js';
+import { decorTypes, floorGeometry, legacyFloor, sampleTableFloor, templatePositions } from './floor-design.js';
 
 function node(tag, text = '') {
   const element = document.createElement(tag);
@@ -80,7 +80,9 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       if (freshMessage) freshMessage.textContent = 'บันทึกแล้ว';
       return true;
     } catch (error) {
-      feedback.textContent = error?.code === '23503' && args.p_design?.remove_item
+      feedback.textContent = error?.message === 'RESOURCE_NAME_EXISTS'
+        ? 'ชื่อนี้มีอยู่แล้วในหมวดนี้ กรุณาใช้ชื่ออื่น'
+        : error?.code === '23503' && args.p_design?.remove_item
         ? 'ลบจุดไม่ได้ เพราะจุดนี้มีประวัติการจอง'
         : error?.code === 'PGRST202' ? 'ต้องอัปเดต SQL ระบบผังก่อนใช้เครื่องมือนี้'
           : 'บันทึกไม่ได้ กรุณาตรวจข้อมูลและสิทธิ์ของบัญชี';
@@ -190,10 +192,11 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     upload.accept = 'image/jpeg,image/png,image/webp';
     const clearBackground = button('ลบภาพพื้นหลัง');
     clearBackground.className = 'btn danger small';
+    const sample = button('ใช้ผังตัวอย่าง 6 โต๊ะ');
     const restore = button('กู้ผังเดิมจากเบราว์เซอร์นี้');
     const restoreHelp = node('p');
     restoreHelp.className = 'sub';
-    categoryArea.append(clearBackground, restore);
+    categoryArea.append(clearBackground, restore, sample);
     const deleteItem = button('ลบจุดนี้');
     deleteItem.className = 'btn danger small';
     editor.append(saveItem, deleteItem);
@@ -345,7 +348,9 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       decor = Array.isArray(data?.decorations) ? [...data.decorations] : [];
       background = data?.background_image;
       items = resources.filter(resource => resource.category_code === category.value);
-      recovery = legacyFloor(floorCategories.find(row => row.code === category.value));
+      const definition = floorCategories.find(row => row.code === category.value);
+      sample.classList.toggle('hidden', definition.template !== 'table');
+      recovery = legacyFloor(definition);
       restore.disabled = !recovery;
       restoreHelp.textContent = recovery
         ? `พบผังเดิมที่เก็บในเบราว์เซอร์นี้ ${recovery.items.length} จุด`
@@ -365,6 +370,11 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     grid.addEventListener('click', () => {
       if (items.length && !saving && confirm('จัดตำแหน่งจุดทั้งหมดตาม Template นี้หรือไม่?')) {
         void saveDesign({ items: templatePositions([...items].sort((a, b) => a.code.localeCompare(b.code)), template.value) });
+      }
+    });
+    sample.addEventListener('click', () => {
+      if (!saving && confirm('ใช้ผังตัวอย่าง 6 โต๊ะ? ระบบจะจัดตำแหน่ง T01–T06 ตามตัวอย่างและเก็บโต๊ะอื่นไว้')) {
+        void saveDesign(sampleTableFloor(items, decor));
       }
     });
     restore.addEventListener('click', () => {
@@ -432,6 +442,11 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
 
     function saveSelectedItem() {
       if (!item.value || !editor.reportValidity() || !name.value.trim()) return;
+      if (items.some(row => row.code !== item.value && row.name.trim().toLowerCase() === name.value.trim().toLowerCase())) {
+        floorPanel.querySelector('[role=status]').textContent = 'ชื่อนี้มีอยู่แล้วในหมวดนี้ กรุณาใช้ชื่ออื่น';
+        name.focus();
+        return;
+      }
       return savePoint(item.value, name.value.trim(), Number(capacity.value), {
         x: Number(x.value), y: Number(y.value), w: Number(itemWidth.value), h: Number(itemHeight.value)
       });
@@ -443,9 +458,13 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       const prefix = ({ table: 'โต๊ะ', seat: 'ที่นั่ง', vip: 'ห้อง' })[kind];
       let sequence = items.length + 1;
       while (items.some(resource => resource.name === prefix + ' ' + sequence)) sequence++;
+      const base = (name.value.slice(0, 85) + ' (สำเนา)').trim();
+      let copyName = base;
+      let copyIndex = 2;
+      while (items.some(row => row.name.trim().toLowerCase() === copyName.toLowerCase())) copyName = base + ' ' + copyIndex++;
       const temp = {
         code: 'F-pending', pending: true,
-        name: copy ? (name.value + ' (สำเนา)').slice(0, 100) : prefix + ' ' + sequence,
+        name: copy ? copyName : prefix + ' ' + sequence,
         capacity: copy ? Number(capacity.value) : kind === 'seat' ? 1 : 4,
         display: copy ? floorGeometry({ x: Number(x.value) + 8, y: Number(y.value) + 5, w: Number(itemWidth.value), h: Number(itemHeight.value) })
           : { x: 50, y: 50, w: 84, h: 72 }

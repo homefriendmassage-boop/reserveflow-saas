@@ -28,6 +28,10 @@ const actionStatus = byId('merchantActionStatus');
 const tableEditor = byId('merchantTableEditor');
 const tableForm = byId('merchantTableForm');
 const tableMenu = byId('merchantTable');
+const categoryMenu = byId('merchantBookingCategory');
+const hoursField = byId('merchantBookingHours');
+const ticketsField = byId('merchantBookingTickets');
+let shopResources = [];
 const tableMode = byId('merchantTableMode');
 const dateField = byId('merchantTableDate');
 const timeField = byId('merchantTableTime');
@@ -48,13 +52,14 @@ let bookingTimezone;
 const canManageTables = () => ['owner', 'admin', 'cashier'].includes(currentRole);
 
 let bookingRequest = 0;
-let tableCategories = new Set();
 let pendingBooking;
 let saving = false;
 
 const actionErrors = {
-  BOOKING_SLOT_TAKEN: 'โต๊ะนี้ถูกจองในช่วงเวลาดังกล่าวแล้ว',
+  BOOKING_SLOT_TAKEN: 'รายการนี้ถูกจองในช่วงเวลาดังกล่าวแล้ว',
   INVALID_BOOKING_DATE: 'เลือกเวลาในอนาคตและจองล่วงหน้าได้สูงสุด 90 วัน',
+  INVALID_CAPACITY: 'จำนวนคนหรือจำนวนบัตรเกินที่กำหนด',
+  INVALID_BOOKING: 'ตรวจจำนวนชั่วโมง จำนวนคน จำนวนบัตร และเบอร์โทรศัพท์',
   INVALID_TABLE_BOOKING: 'ตรวจจำนวนคนและเบอร์โทรศัพท์',
   INVALID_BOOKING_STATUS: 'เปลี่ยนสถานะไม่ได้ กรุณาตรวจสถานะล่าสุด',
   INVALID_CHECK_IN: 'เช็กอินได้ตั้งแต่ 30 นาทีก่อนเริ่มจนถึงก่อนหมดเวลาของรายการที่ยืนยันแล้ว',
@@ -73,9 +78,30 @@ function toggleTableSchedule() {
 }
 
 function updateTableCapacity() {
-  guestField.max = tableMenu.selectedOptions[0]?.dataset.capacity || 100;
-  if (Number(guestField.value) > Number(guestField.max)) guestField.value = guestField.max;
+  const template = categoryMenu.selectedOptions[0]?.dataset.template;
+  const capacity = Number(tableMenu.selectedOptions[0]?.dataset.capacity) || 100;
+  for (const [field, active, max] of [
+    [guestField, ['vip','table'].includes(template), Math.min(capacity, 100)],
+    [hoursField, ['staff','vip','seat'].includes(template), template === 'seat' ? 6 : 5],
+    [ticketsField, template === 'ticket', Math.min(capacity, 10)]
+  ]) {
+    field.disabled = !active;
+    field.max = max;
+    field.parentElement.classList.toggle('hidden', !active);
+    if (Number(field.value) > max) field.value = max;
+  }
 }
+
+function loadMerchantResources() {
+  tableMenu.replaceChildren(...shopResources.filter(resource => resource.category_code === categoryMenu.value).map(resource => {
+    const option = new Option(resource.name, resource.code);
+    option.dataset.capacity = resource.capacity || 100;
+    return option;
+  }));
+  updateTableCapacity();
+  tableSubmit.disabled = saving || !tableMenu.value;
+}
+categoryMenu.addEventListener('change', loadMerchantResources);
 
 timeField.replaceChildren(...bookingTimeOptions());
 tableMode.addEventListener('change', toggleTableSchedule);
@@ -105,7 +131,8 @@ function showLogin(message = '') {
   tableForm.reset();
   toggleTableSchedule();
   tableEditor.open = false;
-  tableCategories.clear();
+  categoryMenu.replaceChildren();
+  shopResources = [];
   pendingBooking = undefined;
   actionStatus.textContent = '';
   bookings.replaceChildren();
@@ -123,7 +150,7 @@ function bookingCard(booking, timezone, changeStatus) {
   const card = document.createElement('article');
   card.className = 'booking';
   const title = document.createElement('h3');
-  title.textContent = booking.resource_code;
+  title.textContent = shopResources.find(row => row.category_code === booking.category_code && row.code === booking.resource_code)?.name || booking.resource_code;
   const details = document.createElement('p');
   const formatDate = new Intl.DateTimeFormat('th-TH', {
     dateStyle: 'medium', timeStyle: 'short', timeZone: timezone
@@ -148,10 +175,10 @@ function bookingCard(booking, timezone, changeStatus) {
   if (booking.status === 'confirmed' && now >= start - 1800000 && now < new Date(booking.ends_at).getTime()) {
     options.push(['checked_in', 'เช็กอิน']);
   }
-  if (canManageTables() && tableCategories.has(booking.category_code) && !['completed', 'cancelled'].includes(booking.status)) {
+  if (canManageTables() && !['completed', 'cancelled'].includes(booking.status)) {
     const started = start <= now;
     if (!started && booking.status === 'pending_confirm') options.push(['confirmed', 'ยืนยันการจอง']);
-    if (started && ['confirmed', 'checked_in'].includes(booking.status)) options.push(['completed', 'ใช้งานเสร็จ · คืนโต๊ะ']);
+    if (started && ['confirmed', 'checked_in'].includes(booking.status)) options.push(['completed', 'ใช้งานเสร็จ']);
     options.push(['cancelled', 'ยกเลิกการจอง']);
   }
 
@@ -196,7 +223,7 @@ if (typeof window.supabase?.createClient !== 'function') {
       await loadBookings();
     } catch (error) {
       if (shopMenu.value === shopId) {
-        actionStatus.textContent = actionErrors[error.message] || 'ยืนยันผลการบันทึกไม่ได้ กรุณาลองอีกครั้ง';
+        actionStatus.textContent = actionErrors[error.message] || (error.code === 'PGRST202' ? 'ต้องอัปเดต SQL ระบบจองก่อนใช้งาน' : 'ยืนยันผลการบันทึกไม่ได้ กรุณาลองอีกครั้ง');
         await loadBookings();
       }
     } finally {
@@ -207,7 +234,7 @@ if (typeof window.supabase?.createClient !== 'function') {
 
   function changeStatus(id, next) {
     if (next === 'checked_in') return runAction(store => store.checkIn(id), 'เช็กอินแล้ว');
-    const message = next === 'confirmed' ? 'ยืนยันการจองแล้ว' : 'คืนโต๊ะแล้ว';
+    const message = next === 'confirmed' ? 'ยืนยันการจองแล้ว' : 'บันทึกว่าใช้งานเสร็จแล้ว';
     return runAction(store => store.changeTableStatus(id, next), message);
   }
 
@@ -311,7 +338,8 @@ if (typeof window.supabase?.createClient !== 'function') {
     categorySettings.replaceChildren();
     statCards.forEach(card => { card.textContent = '—'; });
     search.value = '';
-    tableCategories = new Set();
+    categoryMenu.replaceChildren();
+    shopResources = [];
     pendingBooking = undefined;
     tableMenu.replaceChildren();
     tableSubmit.disabled = true;
@@ -336,15 +364,13 @@ if (typeof window.supabase?.createClient !== 'function') {
       }
       const [categories, resources, layouts] = await Promise.all([store.getCategories(), store.getResources(), store.getLayouts()]);
       if (request !== bookingRequest) return;
-      tableCategories = new Set(categories.filter(category => category.template === 'table').map(category => category.code));
-      const tableResources = resources.filter(resource => tableCategories.has(resource.category_code)).map(resource => ({
-        ...resource, key: JSON.stringify([resource.category_code, resource.code])
-      }));
-      tableMenu.replaceChildren(...tableResources.map(resource => {
-        const option = new Option(resource.name, resource.key);
-        option.dataset.capacity = resource.capacity || 100;
+      shopResources = resources;
+      categoryMenu.replaceChildren(...categories.map(category => {
+        const option = new Option(category.name || category.code, category.code);
+        option.dataset.template = category.template;
         return option;
       }));
+      loadMerchantResources();
       renderMerchantSettings(advancedSettings, { categoryContainer: categorySettings, categories, resources, layouts, owner: currentRole === 'owner',
         save: async (rpc, parameters) => {
           if (shopMenu.value !== shop.value) throw new Error('Shop changed');
@@ -357,7 +383,7 @@ if (typeof window.supabase?.createClient !== 'function') {
       updateTableCapacity();
       tableSubmit.disabled = saving || !tableMenu.value;
     } catch {
-      if (request === bookingRequest) actionStatus.textContent = 'โหลดตัวเลือกโต๊ะไม่ได้';
+      if (request === bookingRequest) actionStatus.textContent = 'โหลดตัวเลือกการจองไม่ได้';
     }
     if (request === bookingRequest) await loadBookings();
   }
@@ -365,14 +391,18 @@ if (typeof window.supabase?.createClient !== 'function') {
   tableForm.addEventListener('submit', event => {
     event.preventDefault();
     if (saving || !tableMenu.value) return;
-    const [category, resource] = JSON.parse(tableMenu.value);
+    const category = categoryMenu.value;
+    const resource = tableMenu.value;
+    const template = categoryMenu.selectedOptions[0]?.dataset.template;
     const scheduled = tableMode.value === 'scheduled';
     const [hour, minute] = timeField.value.split(':').map(Number);
     const payload = {
       p_category_code: category, p_resource_code: resource,
       p_date: scheduled ? dateField.value : null,
       p_hour: scheduled ? hour : null, p_minute: scheduled ? minute : null,
-      p_guests: Number(guestField.value),
+      p_guests: guestField.disabled ? null : Number(guestField.value),
+      p_hours: hoursField.disabled ? null : Number(hoursField.value),
+      p_tickets: ticketsField.disabled ? null : Number(ticketsField.value),
       p_name: byId('merchantTableName').value, p_phone: byId('merchantTablePhone').value
     };
     const fingerprint = JSON.stringify(payload);
@@ -382,12 +412,12 @@ if (typeof window.supabase?.createClient !== 'function') {
     const id = pendingBooking.id;
     const shopId = shopMenu.value;
     void runAction(async store => {
-      await store.createTableBooking({ ...payload, p_request_id: id });
+      await store.createMerchantBooking({ ...payload, p_request_id: id }, template);
       if (shopMenu.value !== shopId) return;
       pendingBooking = undefined;
       byId('merchantTableName').value = '';
       byId('merchantTablePhone').value = '';
-    }, 'บันทึกการจองโต๊ะแล้ว');
+    }, 'บันทึกการจองแล้ว');
   });
 
   client.auth.onAuthStateChange(event => {
