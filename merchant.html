@@ -19,7 +19,7 @@
   <section class="panel" id="merchantLogin">
     <h2>เข้าสู่ระบบร้านค้า</h2>
     <button type="button" id="merchantSignIn" class="btn primary" disabled>เข้าสู่ระบบด้วย LINE</button>
-    <p class="sub">สำหรับเจ้าของร้าน แคชเชียร์ และพนักงานที่ได้รับสิทธิ์</p>
+    <p class="sub">เข้าสู่ระบบเพื่อจัดการร้านหรือสมัครร้านใหม่</p>
     <details>
       <summary>เข้าสู่ระบบด้วยอีเมล</summary>
       <form id="merchantEmailForm" class="fields">
@@ -28,6 +28,17 @@
         <div class="field"><button id="merchantEmailSignIn" type="submit" class="btn soft" disabled>เข้าสู่ระบบ</button></div>
       </form>
     </details>
+  </section>
+  <section class="panel hidden" id="merchantRegister">
+    <h2>สมัครร้านค้าใหม่</h2>
+    <p class="sub">ถ้าคุณเป็นทีมงาน ให้ส่ง UID ด้านล่างให้เจ้าของร้านเพิ่มสิทธิ์</p>
+    <p>UID ของคุณ <code id="merchantRegistrationUid"></code></p>
+    <form id="merchantRegisterForm" class="fields">
+      <div class="field"><label for="merchantRegisterName">ชื่อร้าน</label><input name="shopName" id="merchantRegisterName" maxlength="100" required></div>
+      <div class="field"><label for="merchantRegisterSlug">ชื่อสำหรับลิงก์จอง</label><input name="slug" id="merchantRegisterSlug" minlength="3" maxlength="40" pattern="[a-z0-9][a-z0-9\-]{1,38}[a-z0-9]" title="อักษรอังกฤษตัวเล็ก ตัวเลข และขีดกลาง 3–40 ตัว" autocapitalize="none" required></div>
+      <div class="field"><button id="merchantRegisterSubmit" class="btn primary" type="submit">สร้างร้านค้า</button></div>
+    </form>
+    <button id="merchantRegisterSignOut" class="btn soft" type="button">ออกจากระบบ</button>
   </section>
   <section class="panel hidden" id="merchantDashboard">
     <button type="button" id="merchantSignOut" class="btn soft">ออกจากระบบ</button>
