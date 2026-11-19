@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ReserveFlow | Universal Booking Demo</title>
+  <link rel="stylesheet" href="./assets/css/app.css">
+</head>
+<body>
+<header>
+  <div class="top">
+    <div class="logo"><b>R</b><div>ReserveFlow <small>Universal Booking Demo</small></div></div>
+    <div class="switch">
+      <button id="customerMode" class="active">👤 ลูกค้า</button>
+      <button id="adminMode">🧑‍💼 หลังบ้านแอดมิน</button>
+      <button id="superadminMode">Superadmin</button>
+    </div>
+  </div>
+</header>
+<main>
+  <section class="hero">
+    <div>
+      <h1>เดโมระบบจองที่ปรับใช้ได้หลายธุรกิจ</h1>
+      <p>รองรับการจองโต๊ะ จองพนักงาน จองห้อง VIP จองที่นั่ง และจองบัตร พร้อมหลังบ้านตั้งค่าหมวด ราคา ค่าบริการ รูปแบบชำระเงิน และสถานะเริ่มต้นได้</p>
+    </div>
+    <div class="pill">● Editable Demo</div>
+  </section>
+
+  <section id="customerView">
+    <div class="tabs" id="categoryTabs"></div>
+    <div class="grid">
+      <div>
+        <div class="panel">
+          <h2 id="mainTitle">เลือกทรัพยากร</h2>
+          <p class="sub" id="mainDesc">เลือกรายการที่ต้องการจอง</p>
+          <div class="fields" id="dynamicFields"></div>
+          <div class="chips">
+            <span class="chip"><i class="dot available"></i>ว่าง</span>
+            <span class="chip"><i class="dot pending"></i>จองรอชำระ</span>
+            <span class="chip"><i class="dot booked"></i>จองแล้ว</span>
+            <span class="chip"><i class="dot selected"></i>เลือกแล้ว</span>
+          </div>
+          <div id="resourceArea"></div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <h2>ข้อมูลผู้จอง</h2>
+          <p class="sub">กรอกรายละเอียด แล้วตรวจสอบสรุปก่อนยืนยันคำขอ</p>
+          <div class="customer-field field"><label>ชื่อผู้จอง</label><input id="customerName" placeholder="ชื่อ-นามสกุล"></div>
+          <div class="customer-field field"><label>เบอร์โทรศัพท์</label><input id="customerPhone" placeholder="08xxxxxxxx"></div>
+          <div class="customer-field field"><label>หมายเหตุ (ไม่บังคับ)</label><textarea id="customerNote" placeholder="เช่น ต้องการมุมเงียบ / ฉลองวันเกิด / ขอพนักงานผู้หญิง"></textarea></div>
+          <h2 class="booking-summary-title">สรุปการจอง</h2>
+          <p class="sub">ตรวจสอบรายละเอียดและยอดชำระ</p>
+          <div id="summaryBox" class="summary"></div>
+          <button class="btn primary full" id="submitBooking">ส่งคำขอจอง</button>
+          <div id="paymentStep" class="payment-step hidden"></div>
+          <div class="note">เดโมนี้ยังไม่เชื่อมชำระเงินจริง LINE OA หรือฐานข้อมูลออนไลน์ ข้อมูลถูกเก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น</div>
+        </div>
+
+        <div class="panel">
+          <h2>การจองของฉัน</h2>
+          <p class="sub">ค้นหาจากเบอร์โทรศัพท์ที่ใช้จอง</p>
+          <div class="section-spacing field"><input id="lookupPhone" placeholder="กรอกเบอร์โทรศัพท์"></div>
+          <div id="myBookings"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="adminView" class="hidden">
+    <div class="stats" id="statCards"></div>
+
+    <div class="panel">
+      <h2>ตั้งค่าหมวดการจอง</h2>
+      <p class="sub">แก้ชื่อหมวด ซ่อน/แสดง กำหนดราคา ค่าบริการ ประเภทการชำระ และสถานะเริ่มต้นได้เอง รวมถึงเพิ่มหรือลบหมวดในเดโม</p>
+      <div class="notice">⚠️ เดโมนี้เปิดหน้าแอดมินได้โดยไม่ต้องล็อกอิน และการเพิ่มหมวดใหม่ในเดโมจะอิงจากแม่แบบ 5 แบบ: โต๊ะ / พนักงาน / ห้อง VIP / ที่นั่ง / บัตร</div>
+      <div class="category-table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>ชื่อหมวด</th>
+              <th>แม่แบบ</th>
+              <th>แสดงผล</th>
+              <th>ราคาเริ่มต้น</th>
+              <th>ค่าบริการ</th>
+              <th>รูปแบบชำระ</th>
+              <th>สถานะเริ่มต้น</th>
+              <th>ลำดับ</th>
+              <th>จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="categoryTable"></tbody>
+        </table>
+      </div>
+      <div class="category-create">
+        <div class="fields">
+          <div class="field"><label>ชื่อหมวดใหม่</label><input id="newCatName" placeholder="เช่น จองซุ้มส่วนตัว"></div>
+          <div class="field"><label>เลือกแม่แบบ</label><select id="newCatTemplate"><option value="table">โต๊ะ</option><option value="staff">พนักงาน</option><option value="vip">ห้อง VIP</option><option value="seat">ที่นั่ง</option><option value="ticket">บัตร</option></select></div>
+          <div class="field"><label>ราคาเริ่มต้น</label><input id="newCatPrice" type="number" min="0" placeholder="0"></div>
+          <div class="field"><label>&nbsp;</label><button id="addCategoryButton" class="btn soft full">+ เพิ่มหมวดใหม่</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>🏪 ตั้งค่าร้านค้า / บัญชีรับเงิน</h2>
+      <p class="sub">กำหนดข้อมูลสำหรับแสดงเมื่อส่งคำขอจอง แต่ละร้านในระบบ SaaS จริงต้องมีบัญชีรับเงินและสิทธิ์แยกกัน</p>
+      <div class="fields">
+        <div class="field"><label>ชื่อร้านค้า</label><input id="shopName" placeholder="ชื่อร้าน"></div>
+        <div class="field"><label>รหัสร้าน (จำลอง Tenant ID)</label><input id="shopCode" placeholder="เช่น SHOP_DEMO" readonly></div>
+        <div class="field"><label>ธนาคารรับเงิน</label><input id="bankName" placeholder="เลือก/กรอกชื่อธนาคาร"></div>
+        <div class="field"><label>ชื่อบัญชี</label><input id="bankOwner" placeholder="ชื่อเจ้าของบัญชี"></div>
+        <div class="field"><label>เลขบัญชีรับเงิน</label><input id="bankNumber" inputmode="numeric" placeholder="กรอกบัญชีจริงของร้าน"></div>
+        <div class="field"><label>เลขพร้อมเพย์ (ไม่บังคับ)</label><input id="promptpayId" placeholder="เบอร์/เลขประจำตัวผู้เสียภาษี"></div>
+        <div class="field"><label>แพ็กเกจตัวอย่าง</label><select id="saasPlan"><option>Trial</option><option>Starter</option><option>Basic</option><option>Pro</option></select></div>
+      </div>
+      <div class="note">การตั้งค่าถูกเก็บในเครื่องนี้เท่านั้น ไม่มีการตรวจสอบชื่อบัญชีหรือ PromptPay จริง และยังไม่มีระบบสมาชิกหรือเก็บค่ารายเดือน</div>
+    </div>
+
+    <div class="panel">
+      <h2>🗺️ ออกแบบผังโต๊ะและที่นั่ง</h2>
+      <p class="sub">เลือกหมวดและเทมเพลต แล้วลากกล่องบนผังเพื่อย้ายตำแหน่ง คลิกกล่องเพื่อแก้ชื่อ ขนาด และจำนวนที่นั่ง บันทึกอัตโนมัติ</p>
+      <div class="layout-tools">
+        <div class="field"><label>แก้ผังหมวด</label><select id="layoutCategory"></select></div>
+        <div class="field"><label>รูปแบบ Template</label><select id="layoutTemplate"><option value="grid">ตารางแถวและคอลัมน์</option><option value="rows">เรียงเป็นแถว</option><option value="columns">เรียงเป็นคอลัมน์</option><option value="u">รูปตัว U</option><option value="circle">ครึ่งวงกลม / รอบเวที</option></select></div>
+        <button id="applyLayoutTemplateButton" class="btn soft small">ใช้ Template</button>
+        <button id="addLayoutResource" class="btn soft small">+ เพิ่มจุดจอง</button>
+        <button class="btn soft small" id="copyLayoutButton" title="เลือกโต๊ะหรือที่นั่งบนผังก่อน">📋 คัดลอกจุดที่เลือก</button>
+        <div class="field"><label>ภาพผังพื้นหลัง (JPG/PNG/WebP)</label><input id="layoutBackgroundInput" type="file" accept="image/png,image/jpeg,image/webp"></div>
+        <button id="clearLayoutBackgroundButton" class="btn danger small">ลบภาพพื้นหลัง</button>
+      </div>
+      <div class="layout-size-controls">
+        <div class="field"><label>รูปแบบกรอบผัง</label><select id="layoutAspect"><option value="wide">แนวนอน (16:9)</option><option value="portrait">แนวตั้ง (3:4)</option><option value="square">จัตุรัส (1:1)</option><option value="custom">อิสระ / กำหนดเอง</option></select></div>
+        <div class="field"><label>ความกว้าง (px)</label><input id="layoutWidth" type="number" min="320" max="1600" step="10"></div>
+        <div class="field"><label>ความสูง (px)</label><input id="layoutHeight" type="number" min="280" max="1600" step="10"></div>
+        <div class="field"><label>ชนิดบล็อกประกอบผัง</label><select id="newDecorType"><option value="door">🚪 ประตู</option><option value="stage">🎤 เวที</option><option value="restroom">🚻 ห้องน้ำ</option><option value="entrance">➡️ ทางเข้า</option><option value="exit">⬅️ ทางออก</option><option value="wall">▰ ผนัง</option><option value="label">ข้อความอิสระ</option></select></div>
+        <button id="addLayoutDecor" class="btn soft small">+ เพิ่มบล็อก</button>
+      </div>
+      <div class="section-spacing note">บล็อกประกอบผัง เช่น ประตู เวที ห้องน้ำ ทางเข้า ทางออก ผนัง และข้อความ สามารถลาก ย้าย ปรับขนาดได้ แต่ลูกค้าจะกดจองบล็อกเหล่านี้ไม่ได้</div>
+      <div class="layout-shell"><div id="layoutCanvas" class="editor-plan"></div></div>
+      <div class="editor-settings" id="layoutSettings"></div>
+      <div class="note">รองรับผังร้านเป็นภาพพื้นหลังพร้อมลากวางจุดจองและปรับขนาด ภาพสูงสุด 700 KB ในเดโม (บันทึกในเครื่องนี้ ไม่อัปโหลดขึ้นเซิร์ฟเวอร์)</div>
+    </div>
+
+    <div class="panel">
+      <h2>รายการจองทั้งหมด</h2>
+      <p class="sub">ตรวจสอบ ยืนยัน เปลี่ยนสถานะ และดูข้อมูลการจองทุกหมวด</p>
+      <div class="booking-filters fields">
+        <div class="field"><label>กรองตามหมวด</label><select id="adminCategoryFilter"><option value="all">ทุกหมวด</option></select></div>
+        <div class="field"><label>ค้นหา</label><input id="adminSearch" placeholder="ค้นหาชื่อ เบอร์ เลขจอง หรือรายการ"></div>
+        <div class="field"><label>สถานะ</label><select id="adminStatusFilter"><option value="all">ทุกสถานะ</option><option value="pending_payment">จองรอชำระ</option><option value="slip_review">รอตรวจสลิป</option><option value="pending_confirm">รอลูกค้าคอนเฟิร์ม</option><option value="slip_review">รอตรวจสลิป</option><option value="confirmed">จองแล้ว</option><option value="checked_in">เช็กอินแล้ว</option><option value="completed">เสร็จสิ้น</option><option value="cancelled">ยกเลิก</option></select></div>
+        <div class="field"><label>เครื่องมือเดโม</label><button id="resetDemoButton" class="btn soft full">รีเซ็ตข้อมูลทั้งหมด</button></div>
+      </div>
+      <div id="adminBookings"></div>
+    </div>
+  </section>
+  <section id="superadminView" class="hidden">
+    <div class="panel">
+      <h2>จัดการร้านค้า</h2>
+      <p class="sub">ภาพรวมร้านค้าในข้อมูลจำลอง</p>
+      <div id="superadminShops"></div>
+    </div>
+  </section>
+</main>
+<div class="footer">ReserveFlow Demo • Local Prototype • ไม่มีระบบรับเงินจริง / ไม่มี LINE API / ไม่มีหลายผู้ใช้พร้อมกัน</div>
+
+<script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
+<script defer src="./src/data/demo-fixtures.js"></script>
+<script defer src="./src/data/local-store.js"></script>
+<script defer src="./src/features/customer-booking.js"></script>
+<script defer src="./src/features/booking-card.js"></script>
+<script defer src="./src/features/merchant-admin.js"></script>
+<script defer src="./src/features/layout-editor.js"></script>
+<script defer src="./src/features/demo-payment.js"></script>
+<script defer src="./src/features/superadmin.js"></script>
+<script defer src="./src/app.js"></script>
+</body>
+</html>
