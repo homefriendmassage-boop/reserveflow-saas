@@ -1,3 +1,4 @@
+import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 
 const form = document.getElementById('publicBookingForm');
@@ -60,13 +61,6 @@ function updateResources() {
   updateEstimate();
 }
 
-function dateAtShop(timezone) {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
-    timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit'
-  }).formatToParts(new Date()).map(part => [part.type, part.value]));
-  return `${parts.year}-${parts.month}-${parts.day}`;
-}
-
 async function start() {
   if (!shopSlug || shopSlug.length > 100) {
     status.textContent = 'เปิดลิงก์จองที่ได้รับจากร้านค้า';
@@ -86,7 +80,7 @@ async function start() {
   categories = data.categories;
   title.textContent = `ส่งคำขอจอง · ${data.name}`;
   fields.category.replaceChildren(...categories.map(category => new Option(category.name, category.code)));
-  fields.hour.replaceChildren(...[10, 12, 14, 16, 18, 20, 22].map(hour => new Option(`${hour}:00`, hour)));
+  fields.hour.replaceChildren(...bookingTimeOptions());
   fields.date.min = dateAtShop(data.timezone);
   fields.date.value = fields.date.min;
   updateResources();
@@ -102,9 +96,10 @@ async function start() {
     event.preventDefault();
     if (submit.disabled) return;
     const count = field => field.disabled ? null : Number(field.value);
+    const [hour, minute] = fields.hour.value.split(':').map(Number);
     const payload = {
       p_shop_slug: shopSlug, p_category_code: fields.category.value, p_resource_code: fields.resource.value,
-      p_date: fields.date.value, p_hour: Number(fields.hour.value),
+      p_date: fields.date.value, p_hour: hour, p_minute: minute,
       p_hours: count(fields.hours), p_guests: count(fields.guests), p_tickets: count(fields.tickets),
       p_name: fields.customerName.value, p_phone: fields.customerPhone.value, p_note: fields.note.value
     };
