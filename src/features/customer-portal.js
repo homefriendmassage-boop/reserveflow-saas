@@ -1,3 +1,4 @@
+import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 
 const form = document.getElementById('publicBookingForm');
@@ -60,13 +61,6 @@ function updateResources() {
   updateEstimate();
 }
 
-function dateAtShop(timezone) {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
-    timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit'
-  }).formatToParts(new Date()).map(part => [part.type, part.value]));
-  return `${parts.year}-${parts.month}-${parts.day}`;
-}
-
 async function start() {
   if (!shopSlug || shopSlug.length > 100) {
     status.textContent = 'เปิดลิงก์จองที่ได้รับจากร้านค้า';
@@ -86,11 +80,7 @@ async function start() {
   categories = data.categories;
   title.textContent = `ส่งคำขอจอง · ${data.name}`;
   fields.category.replaceChildren(...categories.map(category => new Option(category.name, category.code)));
-  fields.hour.replaceChildren(...Array.from({ length: 25 }, (_, index) => {
-    const hour = 10 + Math.floor(index / 2);
-    const label = `${hour}:${index % 2 ? '30' : '00'}`;
-    return new Option(label, label);
-  }));
+  fields.hour.replaceChildren(...bookingTimeOptions());
   fields.date.min = dateAtShop(data.timezone);
   fields.date.value = fields.date.min;
   updateResources();
