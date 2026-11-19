@@ -1,3 +1,5 @@
+import { decorTypes, floorGeometry, legacyFloor, templatePositions } from './floor-design.js';
+
 function node(tag, text = '') {
   const element = document.createElement(tag);
   element.textContent = text;
@@ -49,14 +51,17 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
   message.setAttribute('role', 'status');
   let saving = false;
 
-  async function persist(rpc, args, section, categoryCode, resourceCode) {
+  async function persist(rpc, args, section, categoryCode, resourceCode, blockIndex) {
     if (saving) return;
+    const floorPicker = container.querySelector('[data-floor-category]');
+    if (floorPicker) floorPicker.disabled = true;
     const feedbackArea = section === 'categories' ? categoryContainer : container;
     const feedback = feedbackArea.querySelector('[role=status]');
     saving = true;
     feedback.textContent = 'กำลังบันทึก…';
     try {
-      await save(rpc, args);
+      const result = await save(rpc, args);
+      const selectedCode = rpc === 'save_merchant_floor_item' ? result || resourceCode : resourceCode;
       await reload();
       const replacement = (section === 'categories' ? categoryContainer : container).querySelector(`[data-section="${section}"]`);
       const categorySelect = replacement?.querySelector('[data-floor-category]');
@@ -64,17 +69,23 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
         categorySelect.value = categoryCode;
         categorySelect.dispatchEvent(new Event('change'));
         const resourceSelect = replacement.querySelector('[data-floor-item]');
-        if (resourceCode && [...resourceSelect.options].some(option => option.value === resourceCode)) {
-          resourceSelect.value = resourceCode;
+        if (selectedCode && [...resourceSelect.options].some(option => option.value === selectedCode)) {
+          resourceSelect.value = selectedCode;
           resourceSelect.dispatchEvent(new Event('change'));
         }
+        if (blockIndex != null) replacement.querySelectorAll('.editor-decor')[blockIndex]?.click();
       }
       const freshMessage = feedbackArea.querySelector('[role=status]');
       if (freshMessage) freshMessage.textContent = 'บันทึกแล้ว';
-    } catch {
-      feedback.textContent = 'บันทึกไม่ได้ กรุณาตรวจข้อมูลและสิทธิ์ของบัญชี';
+      return true;
+    } catch (error) {
+      feedback.textContent = error?.code === '23503' && args.p_design?.remove_item
+        ? 'ลบจุดไม่ได้ เพราะจุดนี้มีประวัติการจอง'
+        : error?.code === 'PGRST202' ? 'ต้องอัปเดต SQL ระบบผังก่อนใช้เครื่องมือนี้'
+          : 'บันทึกไม่ได้ กรุณาตรวจข้อมูลและสิทธิ์ของบัญชี';
     } finally {
       saving = false;
+      if (floorPicker) floorPicker.disabled = false;
     }
   }
 
@@ -150,7 +161,11 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     const width = field(frame, 'ความกว้าง (px)', input('number', 960, 320, 1600));
     const height = field(frame, 'ความสูง (px)', input('number', 540, 280, 1600));
     const saveFrame = button('บันทึกผัง');
-    const grid = button('ใช้ Template ตาราง');
+    const template = field(categoryArea, 'รูปแบบ Template', select([
+      ['grid','ตารางแถวและคอลัมน์'], ['rows','เรียงเป็นแถว'], ['columns','เรียงเป็นคอลัมน์'],
+      ['u','รูปตัว U'], ['circle','ครึ่งวงกลม / รอบเวที']
+    ]));
+    const grid = button('ใช้ Template');
     const canvas = node('div');
     canvas.className = 'plan customer-plan merchant-floor-canvas';
 
@@ -169,16 +184,37 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     const clone = button('คัดลอกจุดที่เลือก');
     const saveItem = button('บันทึกจุดจอง');
     categoryArea.append(grid, addItem, clone);
-    editor.append(saveItem);
-    const decorType = field(frame, 'ชนิดบล็อกประกอบผัง', select([
-      ['', 'ข้อความอิสระ'], ['เวที', '🎤 เวที'], ['ประตู', '🚪 ประตู'], ['ห้องน้ำ', '🚻 ห้องน้ำ'],
-      ['ทางเข้า', '➡️ ทางเข้า'], ['ทางออก', '⬅️ ทางออก'], ['ผนัง', '▰ ผนัง']
-    ]));
-    const decorName = field(frame, 'ชื่อบล็อกผัง', input('text', ''));
-    decorName.maxLength = 80;
+    const upload = field(categoryArea, 'ภาพผังพื้นหลัง (JPG/PNG/WebP)', node('input'));
+    upload.type = 'file';
+    upload.accept = 'image/jpeg,image/png,image/webp';
+    const clearBackground = button('ลบภาพพื้นหลัง');
+    clearBackground.className = 'btn danger small';
+    const restore = button('กู้ผังเดิมจากเบราว์เซอร์นี้');
+    const restoreHelp = node('p');
+    restoreHelp.className = 'sub';
+    categoryArea.append(clearBackground, restore);
+    const deleteItem = button('ลบจุดนี้');
+    deleteItem.className = 'btn danger small';
+    editor.append(saveItem, deleteItem);
+    const decorType = field(frame, 'ชนิดบล็อกประกอบผัง', select(decorTypes));
     const addDecor = button('+ เพิ่มบล็อก');
-    const removeDecor = button('นำบล็อกสุดท้ายออก');
-    frame.append(addDecor, removeDecor, saveFrame);
+    frame.append(addDecor, saveFrame);
+    const blockEditor = node('form');
+    blockEditor.className = 'fields merchant-block-editor hidden';
+    const blockType = field(blockEditor, 'ประเภทบล็อก', select(decorTypes));
+    const blockName = field(blockEditor, 'ข้อความบนบล็อก', input('text', ''));
+    blockName.maxLength = 80;
+    const blockWidth = field(blockEditor, 'กว้าง (px)', input('number', 130, 20, 800));
+    const blockHeight = field(blockEditor, 'สูง (px)', input('number', 58, 20, 800));
+    const blockX = field(blockEditor, 'ตำแหน่ง X (%)', input('number', 50, 1, 99));
+    const blockY = field(blockEditor, 'ตำแหน่ง Y (%)', input('number', 50, 1, 99));
+    for (const control of [blockX, blockY, blockWidth, blockHeight, x, y, itemWidth, itemHeight]) control.step = 'any';
+    const removeDecor = button('ลบบล็อกนี้');
+    removeDecor.className = 'btn danger small';
+    blockEditor.append(button('บันทึกบล็อก', 'submit'), removeDecor);
+    let activeBlock = -1;
+    let background;
+    let recovery;
     let items = [];
     let decor = [];
     let dragging;
@@ -196,60 +232,107 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       canvas.style.setProperty('--floor-width', columns);
       canvas.style.setProperty('--floor-height', rows);
       canvas.style.setProperty('--floor-max-width', columns + 'px');
-      const blocks = decor.map(block => {
-        const label = node('span', block.label);
-        label.className = 'merchant-floor-label';
+      canvas.style.backgroundImage = background ? `url("${background}")` : '';
+      const blocks = decor.map((block, index) => {
+        const label = button(block.label);
+        label.className = 'decor-block editor-decor kind-' + (decorTypes.some(([key]) => key === block.type) ? block.type : 'label');
+        label.classList.toggle('active', index === activeBlock);
         place(label, block, columns, rows);
+        label.addEventListener('click', () => selectBlock(index));
+        bindDrag(label, block, 1, (next, moved) => {
+          decor[index] = next;
+          selectBlock(index);
+          if (moved) void saveDesign({ decorations: decor }, index);
+        });
         return label;
       });
       const tiles = items.map((resource, index) => {
         const selected = resource.code === item.value;
-        const tile = button(resource.name);
+        const tile = button('');
+        tile.append(node('strong', resource.code.startsWith('F-') ? '' : resource.code), node('small', resource.name));
+        tile.setAttribute('aria-label', resource.name);
         tile.className = 'resource' + (selected ? ' selected' : '');
-        const defaults = { x: 17 + (index % 3) * 33, y: 20 + Math.floor(index / 3) * 14, w: 84, h: 72 };
-        place(tile, selected ? { x: x.value, y: y.value, w: itemWidth.value, h: itemHeight.value }
-          : { ...defaults, ...resource.display }, columns, rows);
+        const geometry = selected ? { x: Number(x.value), y: Number(y.value), w: Number(itemWidth.value), h: Number(itemHeight.value) }
+          : floorGeometry(resource.display, index);
+        place(tile, geometry, columns, rows);
         tile.addEventListener('click', () => {
-          if (resource.code === item.value) return;
           item.value = resource.code;
           loadItem();
         });
-        tile.addEventListener('pointerdown', event => {
-          if (event.button !== 0 || dragging) return;
+        if (!resource.pending) bindDrag(tile, geometry, 5, (next, moved) => {
           item.value = resource.code;
-          loadItem(false);
-          dragging = { id: event.pointerId, left: event.clientX, top: event.clientY, x: Number(x.value), y: Number(y.value) };
-          tile.setPointerCapture(event.pointerId);
-        });
-        tile.addEventListener('pointermove', event => {
-          if (dragging?.id !== event.pointerId) return;
-          const bounds = canvas.getBoundingClientRect();
-          const clamp = value => Math.max(5, Math.min(95, Math.round(value)));
-          x.value = clamp(dragging.x + (event.clientX - dragging.left) * 100 / bounds.width);
-          y.value = clamp(dragging.y + (event.clientY - dragging.top) * 100 / bounds.height);
-          place(tile, { x: x.value, y: y.value, w: itemWidth.value, h: itemHeight.value }, columns, rows);
-        });
-        for (const event of ['pointerup','pointercancel']) tile.addEventListener(event, pointer => {
-          if (dragging?.id !== pointer.pointerId) return;
-          dragging = undefined;
-          draw();
+          if (moved) resource.display = next;
+          loadItem();
+          if (moved) void saveSelectedItem();
         });
         return tile;
       });
       canvas.replaceChildren(...blocks, ...tiles);
     }
 
-    function loadItem(redraw = true) {
+    function bindDrag(element, geometry, minimum, finish) {
+      let next = geometry;
+      element.addEventListener('pointerdown', event => {
+        if (event.button !== 0 || dragging || saving) return;
+        dragging = { id: event.pointerId, left: event.clientX, top: event.clientY, moved: false };
+        element.setPointerCapture(event.pointerId);
+      });
+      element.addEventListener('pointermove', event => {
+        if (dragging?.id !== event.pointerId) return;
+        const dx = event.clientX - dragging.left;
+        const dy = event.clientY - dragging.top;
+        if (Math.abs(dx) + Math.abs(dy) < 4 && !dragging.moved) return;
+        dragging.moved = true;
+        const bounds = canvas.getBoundingClientRect();
+        const clamp = value => Math.max(minimum, Math.min(100 - minimum, Math.round(value * 10) / 10));
+        next = { ...geometry, x: clamp(Number(geometry.x) + dx * 100 / bounds.width),
+          y: clamp(Number(geometry.y) + dy * 100 / bounds.height) };
+        place(element, next, Number(width.value), Number(height.value));
+      });
+      element.addEventListener('pointerup', event => {
+        if (dragging?.id !== event.pointerId) return;
+        const moved = dragging.moved;
+        dragging = undefined;
+        if (moved) finish(next, true);
+      });
+      element.addEventListener('pointercancel', event => {
+        if (dragging?.id !== event.pointerId) return;
+        dragging = undefined;
+        draw();
+      });
+    }
+
+    function selectBlock(index) {
+      activeBlock = index;
+      item.value = '';
+      editor.classList.add('hidden');
+      blockEditor.classList.remove('hidden');
+      const block = decor[index];
+      blockType.value = decorTypes.some(([key]) => key === block.type) ? block.type : 'label';
+      blockName.value = block.label;
+      [blockX.value, blockY.value, blockWidth.value, blockHeight.value] = [block.x, block.y, block.w, block.h];
+      clone.disabled = true;
+      draw();
+    }
+
+    function loadItem() {
+      activeBlock = -1;
+      blockEditor.classList.add('hidden');
       const resource = items.find(row => row.code === item.value);
-      const index = Math.max(0, items.indexOf(resource));
+      const geometry = floorGeometry(resource?.display, items.indexOf(resource));
+      editor.classList.toggle('hidden', !resource || Boolean(resource.pending));
       name.value = resource?.name ?? '';
       capacity.value = resource?.capacity ?? 1;
-      x.value = resource?.display?.x == null ? (resource ? 17 + (index % 3) * 33 : 50) : Math.round(resource.display.x);
-      y.value = resource?.display?.y == null ? (resource ? Math.min(95, 20 + Math.floor(index / 3) * 14) : 50) : Math.round(resource.display.y);
-      itemWidth.value = resource?.display?.w ?? 84;
-      itemHeight.value = resource?.display?.h ?? 72;
-      clone.disabled = !resource;
-      if (redraw) draw();
+      [x.value, y.value, itemWidth.value, itemHeight.value] = [geometry.x, geometry.y, geometry.w, geometry.h];
+      clone.disabled = !resource || Boolean(resource.pending);
+      draw();
+    }
+
+    function setItemOptions(selected = '') {
+      item.replaceChildren(new Option('เลือกจุดบนผัง', ''),
+        ...items.map(resource => new Option(resource.name, resource.code)));
+      item.value = selected;
+      loadItem();
     }
 
     function loadFloor() {
@@ -259,62 +342,133 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       const dimensions = width.value + '×' + height.value;
       aspect.value = { '540×720': 'portrait', '960×540': 'wide', '700×700': 'square' }[dimensions] || 'custom';
       decor = Array.isArray(data?.decorations) ? [...data.decorations] : [];
+      background = data?.background_image;
       items = resources.filter(resource => resource.category_code === category.value);
-      item.replaceChildren(...items.map(resource => new Option(resource.name, resource.code)), new Option('+ เพิ่มจุดจอง', ''));
-      loadItem();
+      recovery = legacyFloor(floorCategories.find(row => row.code === category.value));
+      restore.disabled = !recovery;
+      restoreHelp.textContent = recovery
+        ? `พบผังเดิมที่เก็บในเบราว์เซอร์นี้ ${recovery.items.length} จุด`
+        : 'หากผังเดิมสร้างในหน้าเดโม ให้เปิดหน้านี้ด้วยเบราว์เซอร์และโปรไฟล์เดิมเพื่อกู้ผัง';
+      setItemOptions();
     }
 
-    const saveFloor = applyGrid => {
-      if (!width.reportValidity() || !height.reportValidity()) return;
-      void persist('save_merchant_floor', {
-        p_category_code: category.value, p_width: Number(width.value), p_height: Number(height.value),
-        p_grid: applyGrid, p_decorations: decor
-      }, 'floor', category.value, item.value);
-    };
-    saveFrame.addEventListener('click', () => saveFloor(false));
-    grid.addEventListener('click', () => saveFloor(true));
+    const saveDesign = (design, blockIndex) => persist('update_merchant_floor_design', {
+      p_category_code: category.value, p_design: design
+    }, 'floor', category.value, item.value, blockIndex);
+
+    function saveFrameSize() {
+      if (saving || !width.reportValidity() || !height.reportValidity()) return;
+      void saveDesign({ width: Number(width.value), height: Number(height.value) });
+    }
+    saveFrame.addEventListener('click', saveFrameSize);
+    grid.addEventListener('click', () => {
+      if (items.length && !saving && confirm('จัดตำแหน่งจุดทั้งหมดตาม Template นี้หรือไม่?')) {
+        void saveDesign({ items: templatePositions([...items].sort((a, b) => a.code.localeCompare(b.code)), template.value) });
+      }
+    });
+    restore.addEventListener('click', () => {
+      if (recovery && !saving && confirm('กู้ผังเดิมลงหมวดนี้? จุดรหัสเดียวกันจะใช้ตำแหน่งและข้อมูลจากผังเดิม')) {
+        void saveDesign(recovery);
+      }
+    });
+    upload.addEventListener('change', () => {
+      const file = upload.files[0];
+      if (!file || saving) return;
+      if (file.size > 700 * 1024 || !['image/jpeg','image/png','image/webp'].includes(file.type)) {
+        floorPanel.querySelector('[role=status]').textContent = 'ใช้ภาพ JPG, PNG หรือ WebP ขนาดไม่เกิน 700 KB';
+        upload.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      const target = category.value;
+      reader.onload = () => {
+        if (target === category.value && floorPanel.isConnected) void saveDesign({ background: reader.result });
+      };
+      reader.readAsDataURL(file);
+    });
+    clearBackground.addEventListener('click', () => { if (background && !saving) void saveDesign({ background: null }); });
     aspect.addEventListener('change', () => {
       const size = { portrait: [540,720], wide: [960,540], square: [700,700] }[aspect.value];
       if (size) [width.value, height.value] = size;
       draw();
+      if (size) saveFrameSize();
     });
-    decorType.addEventListener('change', () => { decorName.value = decorType.value; });
-    addDecor.addEventListener('click', () => {
-      if (!decorName.reportValidity() || !decorName.value.trim() || decor.length >= 30) return;
-      decor.push({ label: decorName.value.trim(), x: 50, y: 12 + (decor.length % 5) * 10, w: 140, h: 36 });
-      decorName.value = '';
-      decorType.value = '';
-      draw();
+    addDecor.addEventListener('click', async () => {
+      if (saving || decor.length >= 100) return;
+      const type = decorType.value;
+      const block = { type, label: decorType.selectedOptions[0].text, x: 50, y: 50, w: 130, h: 58 };
+      decor.push(block);
+      selectBlock(decor.length - 1);
+      if (!await saveDesign({ decorations: decor }, activeBlock)) {
+        decor.pop();
+        loadItem();
+      }
     });
-    removeDecor.addEventListener('click', () => { decor.pop(); draw(); });
+    removeDecor.addEventListener('click', async () => {
+      if (activeBlock < 0 || saving) return;
+      const index = activeBlock;
+      const remaining = decor.filter((_, i) => i !== index);
+      await saveDesign({ decorations: remaining });
+    });
+    blockEditor.addEventListener('submit', event => {
+      event.preventDefault();
+      if (activeBlock < 0 || saving || !blockName.value.trim()) return;
+      const updated = { ...decor[activeBlock], type: blockType.value, label: blockName.value.trim(),
+        x: Number(blockX.value), y: Number(blockY.value), w: Number(blockWidth.value), h: Number(blockHeight.value) };
+      void saveDesign({ decorations: decor.map((block, index) => index === activeBlock ? updated : block) }, activeBlock);
+    });
     item.addEventListener('change', loadItem);
     category.addEventListener('change', loadFloor);
     for (const control of [width, height, x, y, itemWidth, itemHeight]) control.addEventListener('input', draw);
-    addItem.addEventListener('click', () => {
-      item.value = '';
-      loadItem();
-      name.focus();
+
+    function savePoint(code, label, seats, geometry) {
+      return persist('save_merchant_floor_item', {
+        p_category_code: category.value, p_code: code, p_name: label, p_capacity: seats,
+        p_x: Math.round(geometry.x), p_y: Math.round(geometry.y),
+        p_width: Math.round(geometry.w), p_height: Math.round(geometry.h)
+      }, 'floor', category.value, code);
+    }
+
+    function saveSelectedItem() {
+      if (!item.value || !editor.reportValidity() || !name.value.trim()) return;
+      return savePoint(item.value, name.value.trim(), Number(capacity.value), {
+        x: Number(x.value), y: Number(y.value), w: Number(itemWidth.value), h: Number(itemHeight.value)
+      });
+    }
+
+    async function addPoint(copy) {
+      if (saving) return;
+      const table = floorCategories.find(row => row.code === category.value).template === 'table';
+      const prefix = table ? 'โต๊ะ' : 'ที่นั่ง';
+      let sequence = items.length + 1;
+      while (items.some(resource => resource.name === prefix + ' ' + sequence)) sequence++;
+      const temp = {
+        code: 'F-pending', pending: true,
+        name: copy ? (name.value + ' (สำเนา)').slice(0, 100) : prefix + ' ' + sequence,
+        capacity: copy ? Number(capacity.value) : table ? 4 : 1,
+        display: copy ? floorGeometry({ x: Number(x.value) + 8, y: Number(y.value) + 5, w: Number(itemWidth.value), h: Number(itemHeight.value) })
+          : { x: 50, y: 50, w: 84, h: 72 }
+      };
+      items.push(temp);
+      setItemOptions(temp.code);
+      if (!await savePoint(null, temp.name, temp.capacity, temp.display)) {
+        items = items.filter(resource => resource !== temp);
+        setItemOptions();
+      }
+    }
+    addItem.addEventListener('click', () => void addPoint(false));
+    clone.addEventListener('click', () => void addPoint(true));
+    deleteItem.addEventListener('click', () => {
+      if (item.value && !saving && confirm('ลบจุดจองที่เลือกหรือไม่?')) void saveDesign({ remove_item: item.value });
     });
     saveItem.addEventListener('click', () => editor.requestSubmit());
-    clone.addEventListener('click', () => {
-      item.value = '';
-      name.value = (name.value + ' (สำเนา)').slice(0, 100);
-      name.focus();
-      x.value = Math.min(95, Number(x.value) + 8);
-      clone.disabled = true;
-      draw();
-    });
     editor.addEventListener('submit', event => {
       event.preventDefault();
-      void persist('save_merchant_floor_item', {
-        p_category_code: category.value, p_code: item.value || null, p_name: name.value.trim(),
-        p_capacity: Number(capacity.value), p_x: Number(x.value), p_y: Number(y.value),
-        p_width: Number(itemWidth.value), p_height: Number(itemHeight.value)
-      }, 'floor', category.value, item.value);
+      void saveSelectedItem();
     });
-    const hint = node('p', 'เลือกหรือลากโต๊ะบนผัง แล้วกดบันทึกจุดจอง');
+    const hint = node('p', 'กดเพิ่มจุดจองแล้วลากไปวางได้เลย คลิกจุดหรือบล็อกบนผังเพื่อแก้ไข');
     hint.className = 'sub';
-    floorPanel.append(hint, categoryArea, frame, canvas, editor);
+    floorPanel.append(hint, categoryArea, restoreHelp, frame, canvas, editor, blockEditor);
     loadFloor();
   } else {
     floorPanel.append(node('p', 'เพิ่มหมวดโต๊ะหรือที่นั่งเพื่อเริ่มสร้างผัง'));

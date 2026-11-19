@@ -137,7 +137,7 @@
 
 .plan .anchor,
 .plan .entrance,
-.plan .decor-block { pointer-events: none; }
+.plan:not(.merchant-floor-canvas) .decor-block { pointer-events: none; }
 
 .customer-plan {
   width: 100%;
@@ -379,3 +379,17 @@
   .merchant-editor .layout-tools .field,
   .merchant-editor .layout-size-controls .field { min-width: min(125px, 100%); }
 }
+
+.merchant-floor-canvas,
+.customer-plan { background-position: center; }
+.merchant-floor-canvas {
+  background-size: cover;
+  aspect-ratio: var(--floor-width, 960) / var(--floor-height, 540);
+}
+.merchant-floor-canvas .resource,
+.customer-plan .resource { z-index: 2; }
+.merchant-floor-canvas .editor-decor.active { z-index: 3; }
+.merchant-block-editor { align-items: end; }
+.merchant-floor-canvas .decor-block,
+.customer-plan .decor-block { left: var(--table-x); top: var(--table-y); }
+

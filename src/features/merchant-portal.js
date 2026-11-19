@@ -348,8 +348,9 @@ if (typeof window.supabase?.createClient !== 'function') {
       renderMerchantSettings(advancedSettings, { categoryContainer: categorySettings, categories, resources, layouts, owner: currentRole === 'owner',
         save: async (rpc, parameters) => {
           if (shopMenu.value !== shop.value) throw new Error('Shop changed');
-          const { error } = await client.rpc(rpc, { ...parameters, p_shop_id: shop.value });
+          const { data, error } = await client.rpc(rpc, { ...parameters, p_shop_id: shop.value });
           if (error) throw error;
+          return data;
         },
         reload: loadShop
       });

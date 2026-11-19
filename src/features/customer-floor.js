@@ -1,3 +1,5 @@
+import { decorTypes } from './floor-design.js';
+
 const floor = document.getElementById('bookingFloor');
 const section = document.getElementById('bookingFloorSection');
 const status = document.getElementById('floorStatus');
@@ -7,11 +9,11 @@ function bounded(value, fallback, min, max) {
   return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback;
 }
 
-function position(element, item, height, width, index = 0) {
-  element.style.setProperty('--table-x', bounded(item.x, 15 + index % 4 * 23, 5, 95) + '%');
-  element.style.setProperty('--table-y', bounded(item.y, 16 + Math.floor(index / 4) * 13, 5, 95) + '%');
-  element.style.width = bounded(item.w, 84, 25, width) / width * 100 + '%';
-  element.style.height = bounded(item.h, 60, 25, height) / height * 100 + '%';
+function position(element, item, height, width, index = 0, edge = 5) {
+  element.style.setProperty('--table-x', bounded(item.x, 15 + index % 4 * 23, edge, 100 - edge) + '%');
+  element.style.setProperty('--table-y', bounded(item.y, 16 + Math.floor(index / 4) * 13, edge, 100 - edge) + '%');
+  element.style.width = bounded(item.w, 84, 20, width) / width * 100 + '%';
+  element.style.height = bounded(item.h, 60, 20, height) / height * 100 + '%';
 }
 
 export function showFloorMessage(message, visible = true) {
@@ -28,11 +30,13 @@ export function renderFloor(plan, resources, resourceField, template) {
   floor.style.setProperty('--floor-width', width);
   floor.style.setProperty('--floor-max-width', width + 'px');
   floor.style.setProperty('--floor-height', height);
+  floor.style.backgroundImage = plan.background ? 'url(' + JSON.stringify(plan.background) + ')' : '';
+  floor.style.backgroundSize = plan.background ? 'cover' : '';
   const labels = plan.decorations.map(item => {
     const label = document.createElement('span');
-    label.className = 'floor-label';
+    label.className = 'decor-block kind-' + (decorTypes.some(([key]) => key === item.type) ? item.type : 'label');
     label.textContent = item.label;
-    position(label, item, height, width);
+    position(label, item, height, width, 0, 1);
     return label;
   });
   const tables = new Map(plan.tables.map(table => [table.code, table]));
@@ -45,7 +49,7 @@ export function renderFloor(plan, resources, resourceField, template) {
     button.className = 'resource';
     button.disabled = table.occupied;
     const name = document.createElement('strong');
-    name.textContent = resource.code;
+    name.textContent = resource.code.startsWith('F-') ? resource.name : resource.code;
     const availability = document.createElement('small');
     availability.textContent = table.occupied ? 'จองแล้ว' : 'ว่าง';
     button.append(name, availability);
