@@ -130,3 +130,11 @@
   .top { flex-wrap: wrap; }
   .switch { flex-wrap: wrap; }
 }
+
+@media (max-width: 980px) {
+  .grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.plan .anchor,
+.plan .entrance,
+.plan .decor-block { pointer-events: none; }
