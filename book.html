@@ -21,26 +21,39 @@
     <a href="./merchant.html">หลังบ้านแอดมิน</a>
     <p id="bookingStatus" role="status">กำลังโหลดข้อมูลร้าน…</p>
     <form id="publicBookingForm" class="hidden">
-      <div class="fields">
-        <div class="field"><label for="category">หมวด</label><select id="category" name="category" required></select></div>
-        <div class="field"><label for="resource">รายการ</label><select id="resource" name="resource" required></select></div>
-        <div class="field"><label for="date">วันที่ใช้บริการ</label><input id="date" name="date" type="date" required></div>
-        <div class="field"><label for="hour">เวลาเริ่ม</label><select id="hour" name="hour" required></select></div>
-        <div class="field"><label for="hours">จำนวนชั่วโมง</label><input id="hours" name="hours" type="number" min="1" value="1" required></div>
-        <div class="field"><label for="guests">จำนวนคน</label><input id="guests" name="guests" type="number" min="1" value="1" required></div>
-        <div class="field"><label for="tickets">จำนวนบัตร</label><input id="tickets" name="tickets" type="number" min="1" value="1" required></div>
-        <div class="field"><label for="customerName">ชื่อผู้จอง</label><input id="customerName" name="customerName" autocomplete="name" maxlength="100" required></div>
-        <div class="field"><label for="customerPhone">เบอร์โทรศัพท์</label><input id="customerPhone" name="customerPhone" type="tel" autocomplete="tel" maxlength="20" required></div>
-        <div class="field"><label for="note">หมายเหตุ</label><textarea id="note" name="note" maxlength="500"></textarea></div>
-      </div>
-      <section id="bookingFloorSection" class="hidden">
-        <h2>เลือกโต๊ะจากผังร้าน</h2>
-        <p id="floorStatus" role="status"></p>
-        <div class="layout-shell"><div class="plan customer-plan live-booking-plan" id="bookingFloor"></div></div>
+      <section id="bookingSelection">
+        <h2>เลือกวัน เวลา และรายการ</h2>
+        <div class="fields">
+          <div class="field"><label for="category">หมวด</label><select id="category" name="category" required></select></div>
+          <div class="field"><label for="resource">รายการ</label><select id="resource" name="resource" required></select></div>
+          <div class="field"><label for="date">วันที่ใช้บริการ</label><input id="date" name="date" type="date" required></div>
+          <div class="field"><label for="hour">เวลาเริ่ม</label><select id="hour" name="hour" required></select></div>
+          <div class="field"><label for="hours">จำนวนชั่วโมง</label><input id="hours" name="hours" type="number" min="1" value="1" required></div>
+          <div class="field"><label for="guests">จำนวนคน</label><input id="guests" name="guests" type="number" min="1" value="1" required></div>
+          <div class="field"><label for="tickets">จำนวนบัตร</label><input id="tickets" name="tickets" type="number" min="1" value="1" required></div>
+        </div>
+        <section id="bookingFloorSection" class="hidden">
+          <h2>เลือกโต๊ะจากผังร้าน</h2>
+          <p id="floorStatus" role="status"></p>
+          <div class="layout-shell"><div class="plan customer-plan live-booking-plan" id="bookingFloor"></div></div>
+        </section>
+        <p id="bookingEstimate" aria-live="polite"></p>
+        <button id="bookingContinue" type="button" class="btn primary" disabled>ถัดไป · กรอกข้อมูลผู้จอง</button>
       </section>
-      <p id="bookingEstimate"></p>
-      <p class="sub">ส่งคำขอให้ร้านยืนยัน เวลาใช้ตามเขตเวลาของร้าน ขั้นตอนนี้ไม่มีการชำระเงิน</p>
-      <button id="sendBooking" type="submit" class="btn primary">ส่งคำขอจอง</button>
+      <fieldset id="bookingContact" class="booking-contact hidden" disabled>
+        <legend id="bookingContactTitle" tabindex="-1">ข้อมูลผู้จอง</legend>
+        <p id="bookingSelectionSummary"></p>
+        <div class="fields">
+          <div class="field"><label for="customerName">ชื่อผู้จอง</label><input id="customerName" name="customerName" autocomplete="name" maxlength="100" required></div>
+          <div class="field"><label for="customerPhone">เบอร์โทรศัพท์</label><input id="customerPhone" name="customerPhone" type="tel" autocomplete="tel" maxlength="20" required></div>
+          <div class="field"><label for="note">หมายเหตุ</label><textarea id="note" name="note" maxlength="500"></textarea></div>
+        </div>
+        <p class="sub">ส่งคำขอให้ร้านยืนยัน เวลาใช้ตามเขตเวลาของร้าน</p>
+        <div class="inline-actions">
+          <button id="bookingBack" type="button" class="btn soft">กลับไปแก้ไขรายการ</button>
+          <button id="sendBooking" type="submit" class="btn primary">ส่งคำขอจอง</button>
+        </div>
+      </fieldset>
     </form>
   </section>
 </main>

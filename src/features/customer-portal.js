@@ -8,6 +8,12 @@ const status = document.getElementById('bookingStatus');
 const estimate = document.getElementById('bookingEstimate');
 const submit = document.getElementById('sendBooking');
 const fields = form.elements;
+const selection = document.getElementById('bookingSelection');
+const contact = document.getElementById('bookingContact');
+const continueButton = document.getElementById('bookingContinue');
+const backButton = document.getElementById('bookingBack');
+const summary = document.getElementById('bookingSelectionSummary');
+let floorLoading = false;
 const shopSlug = new URLSearchParams(location.search).get('shop');
 const money = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' });
 let categories = [];
@@ -50,13 +56,13 @@ function updateEstimate() {
   const duration = fields.hours.disabled ? 2 : Number(fields.hours.value);
   estimate.textContent = resource
     ? `ระยะเวลา ${duration} ชม. · ยอดโดยประมาณ ${money.format(Number(category.price) * Number(units) + Number(category.service_fee))}`
-    : 'ไม่มีรายการว่างให้จองในรอบที่เลือก';
-  submit.disabled = !resource;
+    : 'เลือกรายการว่างเพื่อดูยอดโดยประมาณ';
+  continueButton.disabled = !resource || floorLoading;
   highlightTable(fields.resource.value);
 }
 
 function updateResources() {
-  fields.resource.replaceChildren(...selectedCategory().resources.map(resource => {
+  fields.resource.replaceChildren(new Option('เลือกรายการ', ''), ...selectedCategory().resources.map(resource => {
     const label = [resource.name, resource.description].filter(Boolean).join(' · ');
     return new Option(label, resource.code);
   }));
@@ -89,15 +95,40 @@ async function start() {
   status.textContent = '';
   form.classList.remove('hidden');
 
+  const selectionInputs = [fields.category, fields.date, fields.hour, fields.resource, fields.guests, fields.hours, fields.tickets];
+
+  function showSelection() {
+    contact.disabled = true;
+    contact.classList.add('hidden');
+    selection.classList.remove('hidden');
+    continueButton.focus();
+  }
+
+  continueButton.addEventListener('click', () => {
+    if (!selectionInputs.every(input => input.reportValidity()) || floorLoading) return;
+    summary.textContent = [
+      fields.resource.selectedOptions[0].text, fields.date.value, fields.hour.value, estimate.textContent
+    ].join(' · ');
+    selection.classList.add('hidden');
+    contact.classList.remove('hidden');
+    contact.disabled = false;
+    document.getElementById('bookingContactTitle').focus();
+  });
+  backButton.addEventListener('click', showSelection);
+
   let planRequest = 0;
   async function loadFloor() {
     const request = ++planRequest;
     const category = selectedCategory();
+    floorLoading = false;
     if (category.template !== 'table' || !fields.date.value || !fields.date.checkValidity()) {
       showFloorMessage('', false);
+      updateEstimate();
       return;
     }
     for (const option of fields.resource.options) option.disabled = false;
+    floorLoading = true;
+    updateEstimate();
     showFloorMessage('กำลังตรวจโต๊ะว่าง…');
     const [hour, minute] = fields.hour.value.split(':').map(Number);
     try {
@@ -112,13 +143,15 @@ async function start() {
       }
       const occupied = new Set(plan.tables.filter(table => table.occupied).map(table => table.code));
       for (const option of fields.resource.options) option.disabled = occupied.has(option.value);
-      if (occupied.has(fields.resource.value)) {
-        fields.resource.value = Array.from(fields.resource.options).find(option => !option.disabled)?.value || '';
-      }
+      if (occupied.has(fields.resource.value)) fields.resource.value = '';
       renderFloor(plan, category.resources, fields.resource);
-      updateEstimate();
     } catch {
       if (request === planRequest) showFloorMessage('โหลดผังร้านไม่สำเร็จ');
+    } finally {
+      if (request === planRequest) {
+        floorLoading = false;
+        updateEstimate();
+      }
     }
   }
 
@@ -135,7 +168,7 @@ async function start() {
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
-    if (submit.disabled) return;
+    if (contact.disabled || submit.disabled || !fields.resource.value) return;
     const count = field => field.disabled ? null : Number(field.value);
     const [hour, minute] = fields.hour.value.split(':').map(Number);
     const payload = {
@@ -148,7 +181,7 @@ async function start() {
     if (pendingRequest?.fingerprint !== fingerprint) {
       pendingRequest = { fingerprint, id: crypto.randomUUID() };
     }
-    const editable = Array.from(fields).filter(field => !field.disabled);
+    const editable = Array.from(fields).filter(field => field !== contact && !field.disabled);
     editable.forEach(field => { field.disabled = true; });
     status.textContent = 'กำลังส่งคำขอ…';
 
@@ -162,7 +195,10 @@ async function start() {
       pendingRequest = undefined;
       status.textContent = `ส่งคำขอแล้ว · รอร้านยืนยัน · ${money.format(data.amount)} · เลขจอง ${data.id}`;
     } catch (error) {
-      if (error.message === 'BOOKING_SLOT_TAKEN') void loadFloor();
+      if (error.message === 'BOOKING_SLOT_TAKEN') {
+        showSelection();
+        void loadFloor();
+      }
       status.textContent = errorMessages[error.message]
         || 'ยืนยันผลการส่งไม่ได้ ลองส่งข้อมูลเดิมอีกครั้งเพื่อป้องกันการจองซ้ำ';
     } finally {

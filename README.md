@@ -132,4 +132,6 @@ returning slug, public_booking_enabled;
 ใส่ URL หน้าจองของร้านในช่อง **Endpoint URL** ของ LINE LIFF เช่น
 `https://homefriendmassage-boop.github.io/reserveflow-saas/book.html?shop=demo-one`
 ลิงก์ `https://liff.line.me/...` ที่ LINE สร้างให้ใช้ส่งให้ลูกค้าหรือใส่ Rich Menu
+ตัวอย่าง LIFF ของร้าน DEMO คือ `https://liff.line.me/2012454809-4MUC6MtP`
+หน้าจองให้เลือกวัน เวลา และโต๊ะจากผังก่อน แล้วจึงกรอกข้อมูลผู้จอง
 หน้าจองใช้งานเป็นเว็บปกติใน LIFF และไม่อ่านโปรไฟล์ LINE ของลูกค้า
