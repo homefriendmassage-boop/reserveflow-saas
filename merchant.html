@@ -31,13 +31,22 @@
   </section>
   <section class="panel hidden" id="merchantRegister">
     <h2>สมัครร้านค้าใหม่</h2>
-    <p class="sub">ถ้าคุณเป็นทีมงาน ให้ส่ง UID ด้านล่างให้เจ้าของร้านเพิ่มสิทธิ์</p>
+    <p class="sub">ถ้าคุณเป็นทีมงาน ให้ส่งคำขอเข้าร้านแทนการสร้างร้านใหม่</p>
     <p>UID ของคุณ <code id="merchantRegistrationUid"></code></p>
     <form id="merchantRegisterForm" class="fields">
       <div class="field"><label for="merchantRegisterName">ชื่อร้าน</label><input name="shopName" id="merchantRegisterName" maxlength="100" required></div>
       <div class="field"><label for="merchantRegisterSlug">ชื่อสำหรับลิงก์จอง</label><input name="slug" id="merchantRegisterSlug" minlength="3" maxlength="40" pattern="[a-z0-9][a-z0-9\-]{1,38}[a-z0-9]" title="อักษรอังกฤษตัวเล็ก ตัวเลข และขีดกลาง 3–40 ตัว" autocapitalize="none" required></div>
       <div class="field"><button id="merchantRegisterSubmit" class="btn primary" type="submit">สร้างร้านค้า</button></div>
     </form>
+    <details class="merchant-settings-panel" id="merchantJoinPanel">
+      <summary>ขอเข้าร้านในฐานะทีมงาน</summary>
+      <form id="merchantJoinForm" class="fields">
+        <div class="field"><label for="merchantJoinShop">ลิงก์จองหรือชื่อร้านในลิงก์</label><input id="merchantJoinShop" name="slug" maxlength="250" required></div>
+        <div class="field"><label for="merchantJoinName">ชื่อที่เจ้าของร้านรู้จัก</label><input id="merchantJoinName" name="teamName" maxlength="80" required></div>
+        <div class="field"><button id="merchantJoinSubmit" class="btn primary" type="submit">ส่งคำขอเข้าร้าน</button></div>
+      </form>
+      <p id="merchantJoinStatus" role="status"></p>
+    </details>
     <button id="merchantRegisterSignOut" class="btn soft" type="button">ออกจากระบบ</button>
   </section>
   <section class="panel hidden" id="merchantDashboard">
@@ -49,6 +58,7 @@
       <a id="merchantPublicLink" class="hidden">ดูหน้าจองของร้านนี้</a>
     </div>
     <p id="merchantRole"></p>
+    <details><summary>UID บัญชีของฉัน</summary><p><code id="merchantAccountUid"></code></p></details>
     <details id="merchantShopSettings" class="merchant-settings-panel hidden">
       <summary>ตั้งค่าร้าน</summary>
       <form id="merchantShopSettingsForm" class="fields">
@@ -57,11 +67,9 @@
         <div class="field"><button class="btn soft" type="submit">บันทึกการตั้งค่า</button></div>
       </form>
       <h3>กำหนดสิทธิ์ทีมงาน</h3>
-      <form id="merchantStaffRoleForm" class="fields">
-        <div class="field"><label for="merchantStaffUid">User UID จาก Supabase Auth</label><input id="merchantStaffUid" required maxlength="36"></div>
-        <div class="field"><label for="merchantStaffRole">สิทธิ์</label><select id="merchantStaffRole"><option value="cashier">แคชเชียร์</option><option value="staff">พนักงาน</option><option value="remove">นำสิทธิ์ออก</option></select></div>
-        <div class="field"><button class="btn soft" type="submit">บันทึกสิทธิ์ทีมงาน</button></div>
-      </form>
+      <div class="field"><label for="merchantTeamSearch">ค้นหาชื่อทีมงานหรือ UID</label><input id="merchantTeamSearch" type="search"></div>
+      <p id="merchantTeamStatus" role="status"></p>
+      <div id="merchantTeamList" aria-live="polite"></div>
     </details>
     <div id="merchantAdvancedSettings"></div>
     <details id="merchantTableEditor" class="merchant-settings-panel hidden">

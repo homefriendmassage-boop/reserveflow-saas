@@ -1,3 +1,4 @@
+import { renderMerchantTeam } from './merchant-team.js';
 import { renderMerchantSettings } from './merchant-settings.js';
 import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
@@ -8,6 +9,14 @@ const login = byId('merchantLogin');
 const registration = byId('merchantRegister');
 const registerForm = byId('merchantRegisterForm');
 const registerSubmit = byId('merchantRegisterSubmit');
+const joinForm = byId('merchantJoinForm');
+const joinStatus = byId('merchantJoinStatus');
+const teamList = byId('merchantTeamList');
+const teamStatus = byId('merchantTeamStatus');
+const teamSearch = byId('merchantTeamSearch');
+let teamRows = [];
+let teamRequest = 0;
+let teamBusy = false;
 const signIn = byId('merchantSignIn');
 const signOut = byId('merchantSignOut');
 const dashboard = byId('merchantDashboard');
@@ -72,7 +81,16 @@ tableMenu.addEventListener('change', updateTableCapacity);
 function showLogin(message = '') {
   registration.classList.add('hidden');
   registerForm.reset();
+  joinForm.reset();
+  joinStatus.textContent = '';
+  byId('merchantJoinPanel').open = false;
   byId('merchantRegistrationUid').textContent = '';
+  byId('merchantAccountUid').textContent = '';
+  ++teamRequest;
+  teamRows = [];
+  teamList.replaceChildren();
+  teamSearch.value = '';
+  teamStatus.textContent = '';
   bookingRequest++;
   shopMenu.replaceChildren();
   publicLink.classList.add('hidden');
@@ -88,7 +106,6 @@ function showLogin(message = '') {
   displayedBookings = [];
   advancedSettings.replaceChildren();
   search.value = '';
-  byId('merchantStaffRoleForm').reset();
   settings.open = false;
   dashboard.classList.add('hidden');
   login.classList.remove('hidden');
@@ -215,6 +232,53 @@ if (typeof window.supabase?.createClient !== 'function') {
     }
   }
 
+  function renderTeam() {
+    if (currentRole === 'owner') renderMerchantTeam(teamList, teamRows, teamSearch.value, applyTeamAction);
+  }
+
+  async function loadTeam() {
+    const request = ++teamRequest;
+    const shopId = shopMenu.value;
+    teamRows = [];
+    teamList.replaceChildren();
+    if (currentRole !== 'owner') return;
+    teamList.textContent = 'กำลังโหลดรายชื่อทีมงาน…';
+    try {
+      const { data, error } = await client.rpc('list_merchant_team', { p_shop_id: shopId });
+      if (error) throw error;
+      if (request !== teamRequest) return;
+      teamRows = data;
+      renderTeam();
+    } catch {
+      if (request === teamRequest) teamList.textContent = 'โหลดรายชื่อทีมงานไม่ได้';
+    }
+  }
+
+  async function applyTeamAction(member, role) {
+    if (teamBusy || currentRole !== 'owner') return;
+    const shopId = shopMenu.value;
+    teamBusy = true;
+    try {
+      if (member.role === 'pending') {
+        const { error } = await client.rpc('review_merchant_team_request', {
+          p_shop_id: shopId, p_user_id: member.user_id, p_action: role
+        });
+        if (error) throw error;
+      } else {
+        await createSupabaseStore(client, shopId).setStaffRole(member.user_id, role);
+      }
+      if (shopMenu.value !== shopId) return;
+      teamStatus.textContent = 'อัปเดตสิทธิ์ทีมงานแล้ว';
+      await loadTeam();
+    } catch {
+      if (shopMenu.value === shopId) teamStatus.textContent = 'อัปเดตสิทธิ์ไม่สำเร็จ กรุณาตรวจรายชื่อแล้วลองอีกครั้ง';
+    } finally {
+      teamBusy = false;
+    }
+  }
+
+  teamSearch.addEventListener('input', renderTeam);
+
   async function loadShop() {
     const shop = shopMenu.selectedOptions[0];
     if (!shop) return;
@@ -225,7 +289,6 @@ if (typeof window.supabase?.createClient !== 'function') {
     byId('merchantRole').textContent = roleLabel[currentRole] || '';
     settings.classList.toggle('hidden', currentRole !== 'owner');
     tableEditor.classList.toggle('hidden', !canManageTables());
-    byId('merchantStaffRoleForm').reset();
     byId('merchantShopName').value = shop.textContent;
     byId('merchantShopOpen').checked = shop.dataset.open === 'true';
     displayedBookings = [];
@@ -241,6 +304,9 @@ if (typeof window.supabase?.createClient !== 'function') {
     dateField.value = dateField.min;
     actionStatus.textContent = '';
     bookings.textContent = 'กำลังโหลดข้อมูลร้าน…';
+    teamSearch.value = '';
+    teamStatus.textContent = '';
+    void loadTeam();
 
     try {
       const store = createSupabaseStore(client, shop.value);
@@ -318,6 +384,7 @@ if (typeof window.supabase?.createClient !== 'function') {
         }
         return;
       }
+      byId('merchantAccountUid').textContent = data.session.user.id;
       const shops = await listMerchantShops(client);
       if (!shops.length) {
         login.classList.add('hidden');
@@ -397,20 +464,35 @@ if (typeof window.supabase?.createClient !== 'function') {
     }, 'บันทึกการตั้งค่าร้านแล้ว');
   });
 
-  byId('merchantStaffRoleForm').addEventListener('submit', event => {
+  joinForm.addEventListener('submit', async event => {
     event.preventDefault();
-    if (currentRole !== 'owner') return;
-    const uid = byId('merchantStaffUid').value.trim();
-    if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(uid)) {
-      actionStatus.textContent = 'กรุณาใส่ User UID จาก Supabase Auth';
-      return;
+    const button = byId('merchantJoinSubmit');
+    if (button.disabled) return;
+    const raw = joinForm.elements.slug.value.trim();
+    let slug = raw;
+    if (raw.startsWith('https://')) {
+      try { slug = new URL(raw).searchParams.get('shop') || ''; }
+      catch { slug = ''; }
     }
-    const role = byId('merchantStaffRole').value;
-    const selectedShop = shopMenu.value;
-    void runAction(async store => {
-      await store.setStaffRole(uid, role);
-      if (shopMenu.value === selectedShop) event.target.reset();
-    }, 'บันทึกสิทธิ์ทีมงานแล้ว');
+    button.disabled = true;
+    joinStatus.textContent = 'กำลังส่งคำขอ…';
+    try {
+      const { error } = await client.rpc('request_merchant_team_access', {
+        p_slug: slug, p_name: joinForm.elements.teamName.value.trim()
+      });
+      if (error) throw error;
+      joinForm.reset();
+      joinStatus.textContent = 'ส่งคำขอแล้ว รอเจ้าของร้านอนุมัติ แล้วรีเฟรชหน้านี้';
+    } catch (error) {
+      const errors = {
+        INVALID_TEAM_REQUEST: 'ตรวจชื่อร้านและชื่อที่แจ้งเจ้าของร้าน',
+        TEAM_ALREADY_MEMBER: 'บัญชีนี้อยู่ในร้านแล้ว กรุณารีเฟรชหน้า',
+        TEAM_REQUEST_LIMIT: 'ส่งคำขอครบจำนวนที่กำหนดแล้ว'
+      };
+      joinStatus.textContent = errors[error.message] || 'ส่งคำขอไม่ได้ กรุณาลองอีกครั้ง';
+    } finally {
+      button.disabled = false;
+    }
   });
 
   registerForm.addEventListener('submit', async event => {
