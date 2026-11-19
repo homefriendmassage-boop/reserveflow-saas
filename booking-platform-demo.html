@@ -273,7 +273,7 @@
 const BOOKING_KEY='reserveflow_bookings_v2';
 const CONFIG_KEY='reserveflow_config_v2';
 let currentMode='customer';
-let currentCategory='table';
+let currentCategory='';
 let selectedResourceId='';
 
 const STATUS_LABEL={
@@ -364,6 +364,11 @@ function getCategory(id){return getConfig().categories.find(c=>c.id===id)}
 function visibleCategories(){return getConfig().categories.filter(c=>c.visible)}
 function getResources(catId){const cat=getCategory(catId);if(!cat)return[];const cfg=getConfig();return cfg.resources[catId]||cfg.resources[cat.template]||[]}
 function setMode(mode){
+  if(mode==='customer' && currentMode==='admin'){
+    currentCategory='';
+    selectedResourceId='';
+    ensureCurrentCategory();
+  }
   currentMode=mode;
   $('customerView').classList.toggle('hidden',mode!=='customer');
   $('adminView').classList.toggle('hidden',mode!=='admin');
