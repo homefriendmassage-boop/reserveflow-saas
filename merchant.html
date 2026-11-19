@@ -51,18 +51,7 @@
         <div class="field"><button class="btn soft" type="submit">บันทึกสิทธิ์ทีมงาน</button></div>
       </form>
     </details>
-    <details id="merchantTableLayout" class="hidden">
-      <summary>จัดตำแหน่งโต๊ะบนผัง</summary>
-      <form id="merchantTableLayoutForm">
-        <div class="fields">
-          <div class="field"><label for="merchantLayoutTable">โต๊ะ</label><select id="merchantLayoutTable" required></select></div>
-          <div class="field"><label for="merchantLayoutX">ซ้าย → ขวา (%)</label><input id="merchantLayoutX" type="number" min="5" max="95" required></div>
-          <div class="field"><label for="merchantLayoutY">บน → ล่าง (%)</label><input id="merchantLayoutY" type="number" min="5" max="95" required></div>
-        </div>
-        <div id="merchantLayoutPreview" class="plan customer-plan live-booking-plan" aria-label="ตัวอย่างตำแหน่งโต๊ะ"></div>
-        <button type="submit" class="btn soft">บันทึกตำแหน่งโต๊ะ</button>
-      </form>
-    </details>
+    <div id="merchantAdvancedSettings"></div>
     <details id="merchantTableEditor" class="hidden">
       <summary>จองโต๊ะให้ลูกค้า</summary>
       <form id="merchantTableForm">

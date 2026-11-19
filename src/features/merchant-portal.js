@@ -1,3 +1,4 @@
+import { renderMerchantSettings } from './merchant-settings.js';
 import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js';
@@ -20,55 +21,16 @@ const timeField = byId('merchantTableTime');
 const guestField = byId('merchantTableGuests');
 const tableSubmit = tableForm.querySelector('button[type="submit"]');
 const settings = byId('merchantShopSettings');
-const layout = byId('merchantTableLayout');
-const layoutMenu = byId('merchantLayoutTable');
-const layoutX = byId('merchantLayoutX');
-const layoutY = byId('merchantLayoutY');
-const layoutPreview = byId('merchantLayoutPreview');
+const advancedSettings = byId('merchantAdvancedSettings');
 const search = byId('merchantBookingSearch');
 const emailForm = byId('merchantEmailForm');
 const emailSignIn = byId('merchantEmailSignIn');
 const roleLabel = { owner: 'เจ้าของร้าน', admin: 'แคชเชียร์ (แอดมินเดิม)', cashier: 'แคชเชียร์', staff: 'พนักงาน' };
 let currentRole;
-let tableResources = [];
-let layoutsByCategory = new Map();
 let displayedBookings = [];
 let bookingTimezone;
 const canManageTables = () => ['owner', 'admin', 'cashier'].includes(currentRole);
 
-function renderLayoutPreview() {
-  const selected = tableResources.find(row => row.key === layoutMenu.value);
-  const size = layoutsByCategory.get(selected?.category_code);
-  layoutPreview.style.setProperty('--floor-width', size?.width || 960);
-  layoutPreview.style.setProperty('--floor-height', size?.height || 540);
-  layoutPreview.replaceChildren(...tableResources
-    .filter(table => table.category_code === selected?.category_code)
-    .map((table, index) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'resource' + (table === selected ? ' selected' : '');
-      button.textContent = table.code;
-      button.style.setProperty('--table-x', (table === selected && layoutX.validity.valid ? layoutX.value : table.display?.x ?? 20 + index % 4 * 20) + '%');
-      button.style.setProperty('--table-y', (table === selected && layoutY.validity.valid ? layoutY.value : table.display?.y ?? 20 + Math.floor(index / 4) * 12) + '%');
-      button.addEventListener('click', () => {
-        layoutMenu.value = table.key;
-        loadTableCoordinates();
-      });
-      return button;
-    }));
-}
-
-function loadTableCoordinates() {
-  const index = tableResources.findIndex(row => row.key === layoutMenu.value);
-  const selected = tableResources[index];
-  layoutX.value = selected?.display?.x ?? 20 + Math.max(index, 0) % 4 * 20;
-  layoutY.value = selected?.display?.y ?? Math.min(95, 20 + Math.floor(Math.max(index, 0) / 4) * 12);
-  renderLayoutPreview();
-}
-
-layoutMenu.addEventListener('change', loadTableCoordinates);
-layoutX.addEventListener('input', renderLayoutPreview);
-layoutY.addEventListener('input', renderLayoutPreview);
 let bookingRequest = 0;
 let tableCategories = new Set();
 let pendingBooking;
@@ -115,15 +77,11 @@ function showLogin(message = '') {
   actionStatus.textContent = '';
   bookings.replaceChildren();
   currentRole = undefined;
-  tableResources = [];
   displayedBookings = [];
-  layoutsByCategory.clear();
-  layoutMenu.replaceChildren();
-  layoutPreview.replaceChildren();
+  advancedSettings.replaceChildren();
   search.value = '';
   byId('merchantStaffRoleForm').reset();
   settings.open = false;
-  layout.open = false;
   dashboard.classList.add('hidden');
   login.classList.remove('hidden');
   status.textContent = message;
@@ -257,17 +215,13 @@ if (typeof window.supabase?.createClient !== 'function') {
     byId('merchantRole').textContent = roleLabel[currentRole] || '';
     settings.classList.toggle('hidden', currentRole !== 'owner');
     tableEditor.classList.toggle('hidden', !canManageTables());
-    layout.classList.toggle('hidden', !canManageTables());
     byId('merchantStaffRoleForm').reset();
     byId('merchantShopName').value = shop.textContent;
     byId('merchantShopOpen').checked = shop.dataset.open === 'true';
     displayedBookings = [];
+    advancedSettings.replaceChildren();
     search.value = '';
-    tableResources = [];
-    layoutsByCategory.clear();
-    layoutMenu.replaceChildren();
-    layoutPreview.replaceChildren();
-    tableCategories = new Set();
+      tableCategories = new Set();
     pendingBooking = undefined;
     tableMenu.replaceChildren();
     tableSubmit.disabled = true;
@@ -287,17 +241,22 @@ if (typeof window.supabase?.createClient !== 'function') {
       const [categories, resources, layouts] = await Promise.all([store.getCategories(), store.getResources(), store.getLayouts()]);
       if (request !== bookingRequest) return;
       tableCategories = new Set(categories.filter(category => category.template === 'table').map(category => category.code));
-      tableResources = resources.filter(resource => tableCategories.has(resource.category_code)).map(resource => ({
+      const tableResources = resources.filter(resource => tableCategories.has(resource.category_code)).map(resource => ({
         ...resource, key: JSON.stringify([resource.category_code, resource.code])
       }));
-      layoutsByCategory = new Map(layouts.map(item => [item.category_code, item]));
       tableMenu.replaceChildren(...tableResources.map(resource => {
         const option = new Option(resource.name, resource.key);
         option.dataset.capacity = resource.capacity || 100;
         return option;
       }));
-      layoutMenu.replaceChildren(...tableResources.map(resource => new Option(resource.name, resource.key)));
-      loadTableCoordinates();
+      renderMerchantSettings(advancedSettings, { categories, resources, layouts, owner: currentRole === 'owner',
+        save: async (rpc, parameters) => {
+          if (shopMenu.value !== shop.value) throw new Error('Shop changed');
+          const { error } = await client.rpc(rpc, { ...parameters, p_shop_id: shop.value });
+          if (error) throw error;
+        },
+        reload: loadShop
+      });
       updateTableCapacity();
       tableSubmit.disabled = saving || !tableMenu.value;
     } catch {
@@ -438,18 +397,6 @@ if (typeof window.supabase?.createClient !== 'function') {
     }, 'บันทึกสิทธิ์ทีมงานแล้ว');
   });
 
-  byId('merchantTableLayoutForm').addEventListener('submit', event => {
-    event.preventDefault();
-    if (!canManageTables() || !layoutMenu.value) return;
-    const selected = tableResources.find(row => row.key === layoutMenu.value);
-    const x = Number(layoutX.value);
-    const y = Number(layoutY.value);
-    void runAction(async store => {
-      await store.moveTable(selected.category_code, selected.code, x, y);
-      selected.display = { ...selected.display, x, y };
-      renderLayoutPreview();
-    }, 'บันทึกตำแหน่งโต๊ะแล้ว');
-  });
   void loadSession();
 
   shopMenu.addEventListener('change', loadShop);

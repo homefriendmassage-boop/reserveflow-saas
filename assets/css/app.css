@@ -205,3 +205,45 @@
   font-size: 1.25rem;
   font-weight: 600;
 }
+
+.merchant-settings-panel {
+  margin-block: 16px;
+  border: 1px solid #dbe3f2;
+  border-radius: 16px;
+  background: #fff;
+  padding: 16px;
+}
+
+.merchant-settings-panel summary {
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.merchant-settings-panel .fields {
+  margin-block: 14px;
+  align-items: end;
+}
+
+.merchant-category-row + .merchant-category-row {
+  border-top: 1px solid #e5ebf6;
+  padding-top: 12px;
+}
+
+.merchant-floor-canvas {
+  background-image: repeating-linear-gradient(90deg, transparent 0 39px, #e5ebf6 39px 40px),
+    repeating-linear-gradient(0deg, #f9fbff 0 39px, #e5ebf6 39px 40px);
+}
+.merchant-floor-canvas .resource { touch-action: none; overflow: hidden; }
+.merchant-floor-label {
+  position: absolute;
+  left: var(--table-x);
+  top: var(--table-y);
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  background: #e5ebf6;
+  border-radius: 8px;
+  overflow: hidden;
+  pointer-events: none;
+}
