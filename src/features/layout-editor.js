@@ -9,7 +9,7 @@ function getLayoutSize(id){
   return value&&value.width&&value.height?value:{aspect:'wide',...ASPECTS.wide};
 }
 function layoutDecorations(id){return getConfig().layoutDecor?.[id]||[]}
-function decorHtml(d){return `<div class="decor-block kind-${esc(d.type)}" style="left:${Number(d.x)}%;top:${Number(d.y)}%;width:${Number(d.w)}px;height:${Number(d.h)}px">${esc(d.label)}</div>`}
+function decorHtml(d,dims){return `<div class="decor-block kind-${esc(d.type)}" style="left:${Number(d.x)}%;top:${Number(d.y)}%;width:${Number(d.w)/dims.width*100}%;height:${Number(d.h)/dims.height*100}%">${esc(d.label)}</div>`}
 function changeLayoutAspect(aspect){
   if(!layoutCategoryId)return;
   const cfg=getConfig();cfg.layoutSizes=cfg.layoutSizes||{};

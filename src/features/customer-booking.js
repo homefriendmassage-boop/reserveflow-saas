@@ -101,12 +101,12 @@ function renderResourceArea(cat){
     const bg=background?`background-image:linear-gradient(rgba(255,255,255,.27),rgba(255,255,255,.27)),url('${background}');background-size:cover;background-position:center;`:'';
     const dims=getLayoutSize(cat.id);
     const decor=layoutDecorations(cat.id);
-    const html=`<div class="layout-shell"><div class="plan" style="${bg}width:${dims.width}px;height:${dims.height}px"><div class="anchor" style="${decor.length?'display:none':''}">${title}</div>${decor.map(decorHtml).join('')}${list.map(r=>{
+    const html=`<div class="layout-shell"><div class="plan customer-plan" style="${bg}--floor-width:${dims.width};--floor-height:${dims.height};--floor-max-width:${dims.width}px"><div class="anchor" style="${decor.length?'display:none':''}">${title}</div>${decor.map(item=>decorHtml(item,dims)).join('')}${list.map(r=>{
       const s=resourceBookingState(r.id);
       const disabled=(s!=='available')||(template==='table' && r.capacity && people>r.capacity);
       const cls=['resource',s,selectedResourceId===r.id?'selected':''].filter(Boolean).join(' ');
       const note=template==='table'?`${r.capacity} ที่นั่ง`:'เลือกได้';
-      return `<button class="${cls}" style="left:${r.x}%;top:${r.y}%;width:${r.w||84}px;height:${r.h||72}px" ${disabled?'disabled':''} onclick="chooseResource('${r.id}')"><b>${esc(r.id)}</b><small>${esc(note)}</small></button>`;
+      return `<button class="${cls}" style="--table-x:${r.x}%;--table-y:${r.y}%;width:${(r.w||84)/dims.width*100}%;height:${(r.h||72)/dims.height*100}%" ${disabled?'disabled':''} onclick="chooseResource('${r.id}')"><b>${esc(r.id)}</b><small>${esc(note)}</small></button>`;
     }).join('')}<div class="entrance" style="${decor.length?'display:none':''}">${template==='table'?'ทางเข้า':'ทางออก'}</div></div></div>`;
     $('resourceArea').innerHTML=html;
     return;

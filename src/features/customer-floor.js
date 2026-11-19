@@ -8,8 +8,8 @@ function bounded(value, fallback, min, max) {
 }
 
 function position(element, item, height, width, index = 0) {
-  element.style.left = bounded(item.x, 15 + index % 4 * 23, 5, 95) + '%';
-  element.style.top = bounded(item.y, 16 + Math.floor(index / 4) * 13, 5, 95) + '%';
+  element.style.setProperty('--table-x', bounded(item.x, 15 + index % 4 * 23, 5, 95) + '%');
+  element.style.setProperty('--table-y', bounded(item.y, 16 + Math.floor(index / 4) * 13, 5, 95) + '%');
   element.style.width = bounded(item.w, 84, 25, width) / width * 100 + '%';
   element.style.height = bounded(item.h, 60, 25, height) / height * 100 + '%';
 }
@@ -26,6 +26,7 @@ export function renderFloor(plan, resources, resourceField) {
   const rows = Math.ceil(plan.tables.filter(table => table.x == null || table.y == null).length / 4);
   const height = Math.max(bounded(plan.height, 540, 280, 1600), rows * 70 + 80);
   floor.style.setProperty('--floor-width', width);
+  floor.style.setProperty('--floor-max-width', width + 'px');
   floor.style.setProperty('--floor-height', height);
   const labels = plan.decorations.map(item => {
     const label = document.createElement('span');

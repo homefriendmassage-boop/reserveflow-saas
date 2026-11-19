@@ -139,16 +139,47 @@
 .plan .entrance,
 .plan .decor-block { pointer-events: none; }
 
-.live-booking-plan {
+.customer-plan {
   width: 100%;
-  min-width: 560px;
+  max-width: var(--floor-max-width);
   height: auto;
   aspect-ratio: var(--floor-width, 960) / var(--floor-height, 540);
 }
 
-.live-booking-plan .resource {
-  min-width: 54px;
+.customer-plan .resource,
+.live-booking-plan .floor-label {
+  left: var(--table-x);
+  top: var(--table-y);
+}
+
+.customer-plan .resource {
+  min-width: 44px;
   min-height: 44px;
+  max-width: 28%;
+  padding: 3px;
+}
+
+@media (max-width: 640px) {
+  .customer-plan {
+    aspect-ratio: min(calc(var(--floor-width, 960) / var(--floor-height, 540)), 0.75);
+  }
+
+  .customer-plan .resource {
+    max-width: min(84px, 28%);
+    max-height: 84px;
+    left: clamp(min(42px, 14%), var(--table-x), max(calc(100% - 42px), 86%));
+    top: clamp(42px, var(--table-y), calc(100% - 42px));
+    font-size: 12px;
+  }
+
+  .customer-plan .anchor,
+  .customer-plan .entrance {
+    width: fit-content;
+    max-width: 90%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding-inline: 10px;
+  }
 }
 
 .live-booking-plan .resource:disabled { cursor: default; }
