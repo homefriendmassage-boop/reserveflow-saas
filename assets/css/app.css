@@ -311,3 +311,18 @@
 
 .live-category-tabs { flex-wrap: wrap; overflow: visible; }
 .merchant-settings-panel > .inline-actions { margin-block: 12px; }
+
+.live-booking-grid .fields { margin-bottom: 14px; }
+.live-booking-grid .summary > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+  padding-block: 5px;
+}
+.live-booking-grid .summary > div span { text-align: right; }
+.live-booking-contact { display: grid; gap: 12px; }
+.live-booking-contact textarea { min-height: 72px; }
+.live-floor-legend { margin-block: 14px 8px; }
+#sendBooking { margin-top: 14px; }
+#bookingStatus:empty, #bookingSubmitStatus:empty { display: none; }

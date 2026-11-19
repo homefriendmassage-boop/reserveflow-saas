@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ส่งคำขอจอง | ReserveFlow</title>
+  <title>จองคิว | ReserveFlow</title>
   <link rel="stylesheet" href="./assets/css/app.css">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script type="module" src="./src/features/customer-portal.js"></script>
@@ -11,52 +11,58 @@
 <body>
 <header>
   <div class="top">
-    <div class="logo"><b>R</b>ReserveFlow</div>
-    <a href="./booking-platform-demo.html">ดูหน้าตัวอย่าง</a>
+    <div class="logo"><b>R</b><div>ReserveFlow <small id="bookingTitle">จองคิวออนไลน์</small></div></div>
+    <div class="inline-actions"><a href="./merchant.html" class="btn soft small">หลังบ้านร้านค้า</a></div>
   </div>
 </header>
 <main>
-  <section class="panel">
-    <h1 id="bookingTitle">ส่งคำขอจอง</h1>
-    <a href="./merchant.html">หลังบ้านร้านค้า / สมัครร้านใหม่</a>
-    <p id="bookingStatus" role="status">กำลังโหลดข้อมูลร้าน…</p>
-    <form id="publicBookingForm" class="hidden">
-      <section id="bookingSelection">
-        <h2>เลือกวัน เวลา และรายการ</h2>
-        <div class="tabs live-category-tabs" id="liveCategoryTabs" role="group" aria-label="หมวดการจอง"></div>
+  <p id="bookingStatus" role="status">กำลังโหลดข้อมูลร้าน…</p>
+  <form id="publicBookingForm" class="hidden">
+    <div class="tabs live-category-tabs" id="liveCategoryTabs" role="group" aria-label="หมวดการจอง"></div>
+    <div class="grid live-booking-grid">
+      <section class="panel" id="bookingSelection">
+        <h2 id="bookingSelectionTitle">เลือกวัน เวลา และรายการ</h2>
+        <p id="bookingSelectionHint" class="sub"></p>
         <div class="fields">
           <div class="field hidden"><label for="category">หมวด</label><select id="category" name="category" required></select></div>
-          <div class="field"><label for="resource">รายการ</label><select id="resource" name="resource" required></select></div>
           <div class="field"><label for="date">วันที่ใช้บริการ</label><input id="date" name="date" type="date" required></div>
           <div class="field"><label for="hour">เวลาเริ่ม</label><select id="hour" name="hour" required></select></div>
-          <div class="field"><label for="hours">จำนวนชั่วโมง</label><input id="hours" name="hours" type="number" min="1" value="1" required></div>
-          <div class="field"><label for="guests">จำนวนคน</label><input id="guests" name="guests" type="number" min="1" value="1" required></div>
+          <div class="field"><label for="hours">จำนวนชั่วโมง</label><input id="hours" name="hours" type="number" min="1" value="2" required></div>
+          <div class="field"><label for="guests">จำนวนคน</label><input id="guests" name="guests" type="number" min="1" value="2" required></div>
           <div class="field"><label for="tickets">จำนวนบัตร</label><input id="tickets" name="tickets" type="number" min="1" value="1" required></div>
+          <div class="field"><label for="bookingEnd">ถึงเวลา</label><input id="bookingEnd" readonly></div>
         </div>
-        <section id="bookingFloorSection" class="hidden">
-          <h2>เลือกโต๊ะจากผังร้าน</h2>
-          <p id="floorStatus" role="status"></p>
+        <div class="field" id="bookingResourceField"><label for="resource">เลือกรายการ</label><select id="resource" name="resource" required></select></div>
+        <section id="bookingFloorSection" class="hidden" aria-label="ผังร้าน">
+          <div class="chips live-floor-legend">
+            <span class="chip"><i class="dot available"></i>ว่าง</span>
+            <span class="chip"><i class="dot booked"></i>จองแล้ว</span>
+            <span class="chip"><i class="dot selected"></i>เลือกแล้ว</span>
+          </div>
+          <p id="floorStatus" class="sub" role="status"></p>
           <div class="layout-shell"><div class="plan customer-plan live-booking-plan" id="bookingFloor"></div></div>
         </section>
-        <p id="bookingEstimate" aria-live="polite"></p>
-        <button id="bookingContinue" type="button" class="btn primary" disabled>ถัดไป · กรอกข้อมูลผู้จอง</button>
       </section>
-      <fieldset id="bookingContact" class="booking-contact hidden" disabled>
-        <legend id="bookingContactTitle" tabindex="-1">ข้อมูลผู้จอง</legend>
-        <p id="bookingSelectionSummary"></p>
-        <div class="fields">
-          <div class="field"><label for="customerName">ชื่อผู้จอง</label><input id="customerName" name="customerName" autocomplete="name" maxlength="100" required></div>
-          <div class="field"><label for="customerPhone">เบอร์โทรศัพท์</label><input id="customerPhone" name="customerPhone" type="tel" autocomplete="tel" maxlength="20" required></div>
-          <div class="field"><label for="note">หมายเหตุ</label><textarea id="note" name="note" maxlength="500"></textarea></div>
+      <section class="panel" id="bookingContact">
+        <h2>ข้อมูลผู้จอง</h2>
+        <p class="sub">กรอกรายละเอียดและตรวจสรุปก่อนส่งคำขอ</p>
+        <div class="live-booking-contact">
+          <div class="field"><label for="customerName">ชื่อผู้จอง</label><input id="customerName" name="customerName" autocomplete="name" placeholder="ชื่อ-นามสกุล" maxlength="100" required></div>
+          <div class="field"><label for="customerPhone">เบอร์โทรศัพท์</label><input id="customerPhone" name="customerPhone" type="tel" autocomplete="tel" placeholder="08xxxxxxxx" maxlength="20" required></div>
+          <div class="field"><label for="note">หมายเหตุ (ไม่บังคับ)</label><textarea id="note" name="note" maxlength="500"></textarea></div>
         </div>
-        <p class="sub">ส่งคำขอให้ร้านยืนยัน เวลาใช้ตามเขตเวลาของร้าน</p>
-        <div class="inline-actions">
-          <button id="bookingBack" type="button" class="btn soft">กลับไปแก้ไขรายการ</button>
-          <button id="sendBooking" type="submit" class="btn primary">ส่งคำขอจอง</button>
+        <h2 class="booking-summary-title">สรุปการจอง</h2>
+        <div class="summary" aria-live="polite">
+          <div><strong>หมวด</strong><span id="bookingSummaryCategory"></span></div>
+          <div><strong>รายการที่เลือก</strong><span id="bookingSummaryResource">ยังไม่ได้เลือก</span></div>
+          <div><strong>วันที่ / เวลา</strong><span id="bookingSummaryDate"></span></div>
+          <div><strong>ยอดโดยประมาณ</strong><span id="bookingEstimate">—</span></div>
         </div>
-      </fieldset>
-    </form>
-  </section>
+        <button id="sendBooking" type="submit" class="btn primary full" disabled>ส่งคำขอจอง</button>
+        <p id="bookingSubmitStatus" role="status" tabindex="-1"></p>
+      </section>
+    </div>
+  </form>
 </main>
 </body>
 </html>

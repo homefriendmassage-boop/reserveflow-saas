@@ -21,7 +21,7 @@ export function showFloorMessage(message, visible = true) {
   status.textContent = message;
 }
 
-export function renderFloor(plan, resources, resourceField) {
+export function renderFloor(plan, resources, resourceField, template) {
   const width = bounded(plan.width, 960, 320, 1600);
   const rows = Math.ceil(plan.tables.filter(table => table.x == null || table.y == null).length / 4);
   const height = Math.max(bounded(plan.height, 540, 280, 1600), rows * 70 + 80);
@@ -65,7 +65,7 @@ export function renderFloor(plan, resources, resourceField) {
   });
   floor.replaceChildren(...labels, ...buttons);
   floor.classList.remove('hidden');
-  status.textContent = 'เลือกโต๊ะว่างสำหรับวันและเวลาที่ระบุ';
+  status.textContent = template === 'seat' ? 'เลือกที่นั่งว่างจากผัง' : 'เลือกโต๊ะว่างจากผัง';
   highlightTable(resourceField.value);
 }
 
