@@ -1,3 +1,4 @@
+import { loadPlatformAdmin, renderLineSettings } from './line-settings.js';
 import { renderMerchantTeam } from './merchant-team.js';
 import { renderMerchantSettings } from './merchant-settings.js';
 import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
@@ -79,6 +80,10 @@ tableMode.addEventListener('change', toggleTableSchedule);
 tableMenu.addEventListener('change', updateTableCapacity);
 
 function showLogin(message = '') {
+  byId('platformAdmin').classList.add('hidden');
+  byId('platformShopList').replaceChildren();
+  byId('platformLineSettings').replaceChildren();
+  byId('merchantLineSettings').replaceChildren();
   registration.classList.add('hidden');
   registerForm.reset();
   joinForm.reset();
@@ -307,6 +312,9 @@ if (typeof window.supabase?.createClient !== 'function') {
     teamSearch.value = '';
     teamStatus.textContent = '';
     void loadTeam();
+    const lineSettings = byId('merchantLineSettings');
+    lineSettings.replaceChildren();
+    if (currentRole === 'owner') renderLineSettings(client, lineSettings, shop.value);
 
     try {
       const store = createSupabaseStore(client, shop.value);
@@ -385,11 +393,12 @@ if (typeof window.supabase?.createClient !== 'function') {
         return;
       }
       byId('merchantAccountUid').textContent = data.session.user.id;
+      await loadPlatformAdmin(client);
       const shops = await listMerchantShops(client);
       if (!shops.length) {
         login.classList.add('hidden');
         dashboard.classList.add('hidden');
-        registration.classList.remove('hidden');
+        registration.classList.toggle('hidden', !byId('platformAdmin').classList.contains('hidden'));
         byId('merchantRegistrationUid').textContent = data.session.user.id;
         status.textContent = '';
         return;
@@ -524,6 +533,7 @@ if (typeof window.supabase?.createClient !== 'function') {
       logoutButton.disabled = false;
     }
   });
+  byId('platformSignOut').addEventListener('click', () => signOut.click());
   byId('merchantRegisterSignOut').addEventListener('click', () => signOut.click());
   void loadSession();
 

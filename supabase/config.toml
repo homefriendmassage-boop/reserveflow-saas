@@ -3,3 +3,9 @@ project_id = "reserveflow-saas"
 [db.seed]
 enabled = true
 sql_paths = ["./seed.sql"]
+
+[functions.line-webhook]
+verify_jwt = false
+
+[functions.line-notification-worker]
+verify_jwt = false

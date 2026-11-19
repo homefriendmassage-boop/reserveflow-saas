@@ -49,6 +49,12 @@
     </details>
     <button id="merchantRegisterSignOut" class="btn soft" type="button">ออกจากระบบ</button>
   </section>
+  <section class="panel hidden" id="platformAdmin">
+    <h2>Superadmin · ร้านค้าบนแพลตฟอร์ม</h2>
+    <button type="button" class="btn soft small" id="platformSignOut">ออกจากระบบ</button>
+    <div id="platformShopList"></div>
+    <div id="platformLineSettings"></div>
+  </section>
   <section class="panel hidden" id="merchantDashboard">
     <button type="button" id="merchantSignOut" class="btn soft">ออกจากระบบ</button>
     <h2>รายการจองของร้าน</h2>
@@ -66,6 +72,7 @@
         <label class="merchant-switch"><input id="merchantShopOpen" type="checkbox"> เปิดรับจองออนไลน์</label>
         <div class="field"><button class="btn soft" type="submit">บันทึกการตั้งค่า</button></div>
       </form>
+      <div id="merchantLineSettings"></div>
       <h3>กำหนดสิทธิ์ทีมงาน</h3>
       <div class="field"><label for="merchantTeamSearch">ค้นหาชื่อทีมงานหรือ UID</label><input id="merchantTeamSearch" type="search"></div>
       <p id="merchantTeamStatus" role="status"></p>

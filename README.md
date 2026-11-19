@@ -175,3 +175,27 @@ returning slug, public_booking_enabled;
 เจ้าของเปิด **ตั้งค่าร้าน → กำหนดสิทธิ์ทีมงาน** ค้นหาชื่อหรือ UID แล้วอนุมัติเป็นพนักงานหรือแคชเชียร์
 คอยเทียบชื่อและ UID กับบัญชีที่ทีมงานยืนยัน เนื่องจากชื่อแสดงตั้งซ้ำกันได้
 รายชื่อเดิมและคำขอแสดงเฉพาะเจ้าของร้าน และคำขอไม่ให้สิทธิ์จนกว่าเจ้าของจะอนุมัติ
+
+### Superadmin and LINE notifications
+
+Apply `20261120000010_superadmin_line_notifications.sql` after the booking migrations. The LINE login account with Supabase Auth UID `70900f9a-8a21-425f-95ba-ddac9b4e4612` gets the Superadmin panel in `merchant.html` if that account exists when the migration runs.
+
+1. In Supabase Edge Function Secrets, set `LINE_CHANNEL_SECRET` and `LINE_CHANNEL_ACCESS_TOKEN` from the LINE Official Account's **Messaging API** channel. Set `LINE_WORKER_SECRET` to a separate strong random value.
+2. Deploy `line-webhook` and `line-notification-worker` from this repository using `supabase functions deploy <function> --project-ref zotgxsimkrofqxkhjjak --no-verify-jwt`. The functions check their own credentials.
+3. In LINE Developers, set the Messaging API webhook URL to `https://zotgxsimkrofqxkhjjak.supabase.co/functions/v1/line-webhook` and enable **Use webhook**. Enable group joins for group notifications. If the channel already serves another app's webhook, integrate the handlers or use a dedicated Official Account.
+4. Enable Supabase Cron and `pg_net`. In Supabase Vault, create `reserveflow_line_worker_secret` with the same value as `LINE_WORKER_SECRET`. Schedule the worker in the SQL Editor.
+
+```sql
+select cron.schedule('reserveflow-line-notify','* * * * *',$$
+  select net.http_post(
+    url := 'https://zotgxsimkrofqxkhjjak.supabase.co/functions/v1/line-notification-worker',
+    headers := jsonb_build_object('Content-Type','application/json','x-rf-worker-secret',
+      (select decrypted_secret from vault.decrypted_secrets where name = 'reserveflow_line_worker_secret')),
+    body := '{}'::jsonb
+  );
+$$);
+```
+
+5. In Superadmin, generate a pairing code and send it in a private chat with the Official Account. Shop owners can generate a code under shop settings and send it to the Official Account or in a LINE group the Official Account has joined. Generate a fresh code for each destination and refresh the destination list after sending.
+
+New registrations send a Flex message to the Superadmin destination. New bookings send a text message to the destinations linked to the booking's shop. Test with a fresh registration and booking after pairing.
