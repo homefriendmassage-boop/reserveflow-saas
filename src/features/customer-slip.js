@@ -19,6 +19,7 @@ export function prepareSlipAttachment(client, booking, phone, mobile, onComplete
   qr.replaceChildren();
   amount.textContent = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(booking.amount);
   if (mobile) {
+    qr.setAttribute('aria-describedby', 'bookingPaymentNote');
     try {
       new window.QRCode(qr, { text: promptPayPayload(mobile, Number(booking.amount)), width: 192, height: 192 });
     } catch {

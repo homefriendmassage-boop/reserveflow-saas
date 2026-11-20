@@ -40,11 +40,11 @@ export function renderFloor(plan, resources, resourceField, template) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'resource';
-    button.disabled = table.occupied;
+    button.disabled = Boolean(table.occupied);
     const name = document.createElement('strong');
     name.textContent = resource.name;
     const availability = document.createElement('small');
-    availability.textContent = table.occupied ? 'จองแล้ว' : 'ว่าง';
+    availability.className = 'floor-availability';
     button.append(name, availability);
     position(button, floorGeometry(table, index), height, width);
     button.addEventListener('click', () => {
@@ -52,13 +52,30 @@ export function renderFloor(plan, resources, resourceField, template) {
       resourceField.dispatchEvent(new Event('input'));
     });
     button.dataset.code = resource.code;
-    button.classList.toggle('booked', table.occupied);
+    paintAvailability(button, table);
     return [button];
   });
   floor.replaceChildren(...labels, ...buttons);
   floor.classList.remove('hidden');
   status.textContent = ({ seat: 'เลือกที่นั่งว่างจากผัง', vip: 'เลือกห้องว่างจากผัง', table: 'เลือกโต๊ะว่างจากผัง' })[template];
   highlightTable(resourceField.value);
+}
+
+function paintAvailability(button, table) {
+  const state = table.availability || (table.occupied ? 'booked' : 'available');
+  button.disabled = Boolean(table.occupied);
+  for (const name of ['booked', 'review', 'unpaid', 'selecting']) button.classList.toggle(name, state === name);
+  button.querySelector('.floor-availability').textContent = ({
+    booked: 'จองแล้ว', review: 'รอตรวจสลิป', unpaid: 'รอชำระ', selecting: 'กำลังเลือก'
+  })[state] || 'ว่าง';
+}
+
+export function refreshFloorAvailability(plan) {
+  const states = new Map(plan.tables.map(table => [table.code, table]));
+  for (const button of floor.querySelectorAll('button[data-code]')) {
+    const table = states.get(button.dataset.code);
+    if (table) paintAvailability(button, table);
+  }
 }
 
 export function highlightTable(code) {

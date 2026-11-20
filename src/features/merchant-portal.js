@@ -222,7 +222,7 @@ function bookingCard(booking, timezone, changeStatus, readSlip, client, refresh)
       button.className = next === 'cancelled' ? 'btn danger small' : 'btn soft small';
       button.textContent = label;
       button.addEventListener('click', () => {
-        if (next !== 'cancelled' || window.confirm('ยกเลิกการจองและคืนโต๊ะใช่ไหม?')) {
+        if (next !== 'cancelled' || window.confirm('ปฏิเสธหรือยกเลิกรายการและเปิดให้จองช่วงเวลานี้อีกครั้งใช่ไหม?')) {
           changeStatus(booking.id, next);
         }
       });
@@ -254,7 +254,7 @@ if (typeof window.supabase?.createClient !== 'function') {
       await loadBookings();
     } catch (error) {
       if (shopMenu.value === shopId) {
-        actionStatus.textContent = actionErrors[error.message] || (error.code === 'PGRST202' ? 'ต้องอัปเดต SQL ระบบจองก่อนใช้งาน' : 'ยืนยันผลการบันทึกไม่ได้ กรุณาลองอีกครั้ง');
+        actionStatus.textContent = actionErrors[error.message] || (error.code === '23P01' ? actionErrors.BOOKING_SLOT_TAKEN : '') || (error.code === 'PGRST202' ? 'ต้องอัปเดต SQL ระบบจองก่อนใช้งาน' : 'ยืนยันผลการบันทึกไม่ได้ กรุณาลองอีกครั้ง');
         await loadBookings();
       }
     } finally {

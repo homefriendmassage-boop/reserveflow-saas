@@ -456,3 +456,11 @@
   height: auto;
 }
 .inline-booking-payment .field { width: 100%; }
+
+.resource.selecting,.dot.selecting { background:#eaf2ff; border-color:#7fa6e7; color:#234d91; }
+.resource.unpaid,.dot.unpaid { background:#fff2d9; border-color:#e9b769; color:#7a4c0f; }
+.resource.review,.dot.review { background:#f5e7ff; border-color:#ba8be3; color:#6d358d; }
+.resource.selected.selecting,.resource.selected.unpaid { background:var(--blue); color:#fff; }
+.dot.selecting { background:#6295de; }
+.dot.unpaid { background:#dea341; }
+.dot.review { background:#aa72dc; }

@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>จองคิว | ReserveFlow</title>
-  <link rel="stylesheet" href="./assets/css/app.css?v=inline-pay-1">
+  <link rel="stylesheet" href="./assets/css/app.css?v=booking-holds-1">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/customer-portal.js?v=thunder-decisions-1"></script>
+  <script type="module" src="./src/features/customer-portal.js?v=booking-holds-1"></script>
 </head>
 <body>
 <header>
@@ -33,6 +33,9 @@
         <section id="bookingFloorSection" class="hidden" aria-label="ผังร้าน">
           <div class="chips live-floor-legend">
             <span class="chip"><i class="dot available"></i>ว่าง</span>
+            <span class="chip live-hold-legend hidden"><i class="dot selecting"></i>กำลังเลือก</span>
+            <span class="chip live-hold-legend hidden"><i class="dot unpaid"></i>รอชำระ · ยังจองได้</span>
+            <span class="chip live-hold-legend hidden"><i class="dot review"></i>รอตรวจสลิป</span>
             <span class="chip"><i class="dot booked"></i>จองแล้ว</span>
             <span class="chip"><i class="dot selected"></i>เลือกแล้ว</span>
           </div>
@@ -68,7 +71,7 @@
           <h2>ชำระเงินและส่งสลิป</h2>
           <strong id="bookingPaymentAmount"></strong>
           <div id="bookingPaymentQr" aria-label="QR ชำระเงินพร้อมเพย์"></div>
-          <p class="sub">ตรวจชื่อผู้รับในแอปธนาคารให้ตรงกับร้าน แล้วแนบรูปสลิป JPG, PNG หรือ WebP ไม่เกิน 1 MB</p>
+          <p class="sub" id="bookingPaymentNote">คนอื่นยังเลือกเวลาเดียวกันได้จนกว่าจะมีผู้แนบสลิปหรือแอดมินยืนยัน กรุณาแนบสลิปทันทีหลังโอน ตรวจชื่อผู้รับในแอปธนาคารให้ตรงกับร้าน แล้วแนบรูปสลิป JPG, PNG หรือ WebP ไม่เกิน 1 MB</p>
           <div class="field"><label for="bookingSlipFile">รูปสลิป</label><input id="bookingSlipFile" type="file" accept="image/jpeg,image/png,image/webp"></div>
           <img class="booking-slip-image hidden" id="bookingSlipPreview" alt="ตัวอย่างรูปสลิป">
           <button class="btn primary" id="bookingSlipSubmit" type="button" disabled>ยืนยันและส่งสลิปตรวจ</button>

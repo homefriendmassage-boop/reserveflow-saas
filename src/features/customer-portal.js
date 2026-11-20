@@ -1,5 +1,5 @@
 import { prepareSlipAttachment } from './customer-slip.js?v=thunder-decisions-1';
-import { highlightTable, renderFloor, showFloorMessage } from './customer-floor.js?v=floor-line-2';
+import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=booking-holds-1';
 import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 
@@ -173,7 +173,45 @@ async function start() {
   form.classList.remove('hidden');
 
   let planRequest = 0;
-  async function loadFloor() {
+  let liveAvailability = false;
+  let refreshing = false;
+  let floorLoadingCount = 0;
+  const selectionSession = crypto.randomUUID();
+
+  function slotArguments(category) {
+    const [hour, minute] = fields.hour.value.split(':').map(Number);
+    return { p_shop_slug: shopSlug, p_category_code: category.code,
+      p_date: fields.date.value, p_hour: hour, p_minute: minute };
+  }
+
+  let presenceUpdate = Promise.resolve();
+  function syncSelection() {
+    if (!liveAvailability) return presenceUpdate;
+    presenceUpdate = presenceUpdate.catch(() => {}).then(async () => {
+      const category = selectedCategory();
+      const mapped = ['table', 'seat', 'vip'].includes(category.template);
+      await client.rpc('mark_booking_selection', {
+        ...slotArguments(category), p_session: selectionSession,
+        p_resource_code: mapped && !sending && !awaitingSlip && !document.hidden ? fields.resource.value || null : null,
+        p_hours: category.template === 'table' ? 2 : Number(fields.hours.value)
+      });
+    });
+    return presenceUpdate;
+  }
+
+  async function loadFloor(quiet = false) {
+    if (quiet && (refreshing || floorLoadingCount || sending || awaitingSlip || document.hidden)) return;
+    if (quiet) refreshing = true;
+    else floorLoadingCount++;
+    try {
+      await updateFloor(quiet);
+    } finally {
+      if (quiet) refreshing = false;
+      else floorLoadingCount--;
+    }
+  }
+
+  async function updateFloor(quiet) {
     const request = ++planRequest;
     const category = selectedCategory();
     floorLoading = false;
@@ -181,38 +219,44 @@ async function start() {
     const itemLabel = ({ seat: 'ที่นั่ง', vip: 'ห้อง', table: 'โต๊ะ' })[category.template];
     selectionTitle.textContent = mapped ? `เลือก${itemLabel}จากผัง` : `เลือก${category.name.replace(/^จอง/, '')}`;
     selectionHint.textContent = mapped ? 'เลือกวันและจุดบนผัง แล้วกำหนดเวลา ระบบจะตรวจว่าจุดที่เลือกยังว่าง' : 'เลือกวัน เวลา และรายการที่ต้องการจอง';
-    resourceField.classList.toggle('hidden', !resourceCards.classList.contains('hidden'));
+    if (!quiet) resourceField.classList.toggle('hidden', !resourceCards.classList.contains('hidden'));
     if (!mapped || !fields.date.value || !fields.date.checkValidity()
       || (['seat', 'vip'].includes(category.template) && !fields.hours.checkValidity())) {
       showFloorMessage('', false);
       updateEstimate();
       return;
     }
-    for (const option of fields.resource.options) option.disabled = false;
-    floorLoading = true;
-    updateEstimate();
-    showFloorMessage(`กำลังตรวจ${itemLabel}ว่าง…`);
-    const [hour, minute] = fields.hour.value.split(':').map(Number);
-    const args = {
-      p_shop_slug: shopSlug, p_category_code: category.code,
-      p_date: fields.date.value, p_hour: hour, p_minute: minute
-    };
+    if (!quiet) {
+      for (const option of fields.resource.options) option.disabled = false;
+      floorLoading = true;
+      updateEstimate();
+      showFloorMessage(`กำลังตรวจ${itemLabel}ว่าง…`);
+    }
+    const args = slotArguments(category);
     try {
       const { data: plan, error } = category.template === 'table'
         ? await client.rpc('booking_table_plan', args)
         : await client.rpc('booking_resource_plan', { ...args, p_hours: Number(fields.hours.value) });
-      if (request !== planRequest) return;
+      if (request !== planRequest || (quiet && (sending || awaitingSlip))) return;
       if (error || !plan?.tables?.length) {
-        showFloorMessage('ผังยังไม่พร้อม เลือกรายการจากช่องด้านบนได้');
+        if (!quiet) showFloorMessage('ผังยังไม่พร้อม เลือกรายการจากช่องด้านบนได้');
         return;
       }
       const occupied = new Set(plan.tables.filter(table => table.occupied).map(table => table.code));
       for (const option of fields.resource.options) option.disabled = occupied.has(option.value);
-      if (occupied.has(fields.resource.value)) fields.resource.value = '';
-      renderFloor(plan, category.resources, fields.resource, category.template);
+      if (plan.tables.some(table => typeof table.availability === 'string')) {
+        liveAvailability = true;
+        document.querySelectorAll('.live-hold-legend').forEach(node => node.classList.remove('hidden'));
+      }
+      if (occupied.has(fields.resource.value)) {
+        fields.resource.value = '';
+        void syncSelection();
+      }
+      if (quiet) refreshFloorAvailability(plan);
+      else renderFloor(plan, category.resources, fields.resource, category.template);
       resourceField.classList.add('hidden');
     } catch {
-      if (request === planRequest) showFloorMessage('โหลดผังร้านไม่สำเร็จ');
+      if (!quiet && request === planRequest) showFloorMessage('โหลดผังร้านไม่สำเร็จ');
     } finally {
       if (request === planRequest) {
         floorLoading = false;
@@ -224,14 +268,27 @@ async function start() {
   fields.category.addEventListener('change', () => {
     markCategory();
     updateResources();
+    void syncSelection();
     void loadFloor();
   });
-  fields.date.addEventListener('change', loadFloor);
-  fields.hour.addEventListener('change', loadFloor);
+  for (const input of [fields.date, fields.hour]) input.addEventListener('change', () => {
+    void syncSelection();
+    void loadFloor();
+  });
   fields.hours.addEventListener('change', () => {
-    if (['seat', 'vip'].includes(selectedCategory().template)) void loadFloor();
+    if (['seat', 'vip'].includes(selectedCategory().template)) {
+      void syncSelection();
+      void loadFloor();
+    }
   });
   void loadFloor();
+  fields.resource.addEventListener('input', () => void syncSelection());
+  document.addEventListener('visibilitychange', () => void syncSelection());
+  setInterval(() => {
+    if (!liveAvailability || document.hidden) return;
+    void syncSelection();
+    void loadFloor(true);
+  }, 4000);
   for (const field of [fields.resource, fields.hours, fields.guests, fields.tickets]) {
     field.addEventListener('input', updateEstimate);
   }
@@ -252,6 +309,7 @@ async function start() {
       pendingRequest = { fingerprint, id: crypto.randomUUID() };
     }
     sending = true;
+    void syncSelection();
     let completed = false;
     const editable = [...fields, ...categoryTabs.children, ...document.querySelectorAll('#bookingFloor button, #bookingResourceCards button')].filter(field => !field.disabled && !field.closest('#bookingSlip'));
     editable.forEach(field => { field.disabled = true; });
