@@ -39,7 +39,7 @@ function serviceClient(url: string) {
   return createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 }
 
-async function configure(request: Request, admin: ReturnType<typeof serviceClient>, url: string, linkGroup: boolean) {
+async function configure(request: Request, admin: ReturnType<typeof serviceClient>, url: string, linkKind: 'group' | 'user' | null) {
   const reply = (result: string) => Response.json({ result }, { headers: cors });
   const authorization = request.headers.get('Authorization');
   if (!authorization?.startsWith('Bearer ')) return reply('unauthorized');
@@ -50,28 +50,33 @@ async function configure(request: Request, admin: ReturnType<typeof serviceClien
     });
     const { data: session, error: authError } = await caller.auth.getUser(authorization.slice(7));
     if (authError || !session.user) return reply('unauthorized');
-    const { shop_id, secret, token, group_id } = await request.json();
+    const { shop_id, secret, token, group_id, user_id } = await request.json();
     if (typeof shop_id !== 'string' || !uuid.test(shop_id)) return reply('invalid_credentials');
     const { error: scopeError } = await caller.rpc('shop_line_channel_status', { p_shop_id: shop_id });
     if (scopeError) return reply('unauthorized');
-    if (linkGroup) {
-      if (typeof group_id !== 'string' || !/^C[0-9a-f]{32}$/.test(group_id)) return reply('invalid_group');
+    if (linkKind) {
+      const group = linkKind === 'group';
+      const target = group ? group_id : user_id;
+      const pattern = group ? /^C[0-9a-f]{32}$/ : /^U[0-9a-f]{32}$/;
+      if (typeof target !== 'string' || !pattern.test(target)) return reply('invalid_target');
       const { data, error } = await admin.rpc('shop_line_group_credentials', {
         p_shop_id: shop_id, p_owner: session.user.id
       }).maybeSingle();
       const credentials = data as { bot_id: string; access_token: string } | null;
       if (error || !credentials?.access_token) return reply('group_not_configured');
-      const response = await fetch('https://api.line.me/v2/bot/group/' + group_id + '/summary', {
+      const path = group ? '/group/' + target + '/summary' : '/profile/' + target;
+      const response = await fetch('https://api.line.me/v2/bot' + path, {
         headers: { Authorization: 'Bearer ' + credentials.access_token },
         redirect: 'error', signal: AbortSignal.timeout(10000)
       });
       if (!response.ok) return reply(response.status === 404 ? 'group_not_found'
         : [401,403].includes(response.status) ? 'group_access_denied' : 'line_unavailable');
-      const group = await response.json();
-      if (group.groupId !== group_id) return reply('group_not_found');
-      const linked = await admin.rpc('link_verified_shop_line_group', {
-        p_shop_id: shop_id, p_owner: session.user.id, p_bot_id: credentials.bot_id, p_group_id: group_id
-      });
+      const result = await response.json();
+      if ((group ? result.groupId : result.userId) !== target) return reply('group_not_found');
+      const args = { p_shop_id: shop_id, p_owner: session.user.id, p_bot_id: credentials.bot_id };
+      const linked = group
+        ? await admin.rpc('link_verified_shop_line_group', { ...args, p_group_id: target })
+        : await admin.rpc('link_verified_shop_line_user', { ...args, p_user_id: target });
       return reply(linked.error ? 'save_failed' : 'linked');
     }
     if (typeof secret !== 'string' || !/^[0-9a-f]{32}$/i.test(secret) ||
@@ -99,8 +104,8 @@ Deno.serve(async request => {
   const params = new URL(request.url).searchParams;
   const url = Deno.env.get('SUPABASE_URL')!;
   const client = serviceClient(url);
-  const linkGroup = params.get('link-group') === '1';
-  if (linkGroup || params.get('configure') === '1') return configure(request, client, url, linkGroup);
+  const linkKind = params.get('link-group') === '1' ? 'group' : params.get('link-user') === '1' ? 'user' : null;
+  if (linkKind || params.get('configure') === '1') return configure(request, client, url, linkKind);
 
   let shopId: string | null = null;
   let botId: string | null = null;

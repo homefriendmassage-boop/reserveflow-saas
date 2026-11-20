@@ -27,8 +27,9 @@ export function createSupabaseStore(client, shopId) {
       p_shop_id: shopId, p_category_code: category, p_resource_code: resource, p_x: x, p_y: y
     })),
     checkIn: id => read(client.rpc('check_in_merchant_booking', { p_shop_id: shopId, p_booking_id: id })),
-    async createMerchantBooking(payload, template) {
+    async createMerchantBooking(payload, template, actual = false) {
       const args = { ...payload, p_shop_id: shopId };
+      if (actual) return read(client.rpc('create_merchant_actual_booking', args));
       const { data, error } = await client.rpc('create_merchant_booking', args);
       if (!error) return data;
       if (error.code !== 'PGRST202' || template !== 'table') throw error;

@@ -48,62 +48,69 @@ function shopChannelSettings(client, shopId, refresh) {
   section.append(element('h3','LINE OA ของร้านนี้'),
     element('p','ใช้ Channel secret และ Channel access token จาก Messaging API ของ OA ร้านเดียวกัน'),
     form,label('Webhook URL สำหรับใส่ใน LINE Developers',webhook),copy,status,
-    element('p','ถ้า OA มี Webhook ใช้งานอยู่ ให้ใช้ช่องเชื่อมกลุ่มด้วย Group ID ด้านล่าง ถ้าจะเชื่อมด้วย RF ให้วาง Webhook URL ของร้านใน LINE Developers แล้วกด Verify'));
-  const direct = element('details');
-  const groupForm = element('form');
-  groupForm.className = 'fields';
-  const group = element('input');
-  group.required = true;
-  group.spellcheck = false;
-  group.maxLength = 33;
-  group.placeholder = 'C…';
-  const connect = action('ตรวจและเชื่อมกลุ่ม');
-  connect.type = 'submit';
-  connect.disabled = true;
-  const groupStatus = element('p');
-  groupStatus.setAttribute('role','status');
-  groupStatus.textContent = 'บันทึก Channel secret และ Channel access token ของ OA ร้านด้านบนก่อน';
-  groupForm.append(label('LINE Group ID (source.groupId)',group),connect);
-  direct.append(element('summary','ใช้ Webhook เดิม · เชื่อมกลุ่มด้วย Group ID'),
-    element('p','เชิญ OA ร้านเข้ากลุ่ม แล้วใช้ source.groupId จากระบบเดิม'),groupForm,groupStatus);
-  section.append(direct);
-  groupForm.addEventListener('submit',async event=>{
-    event.preventDefault();
-    const id = group.value.trim();
-    if (!/^C[a-f0-9]{32}$/.test(id)) {
-      groupStatus.textContent = 'ใช้เฉพาะค่า source.groupId ที่ขึ้นต้นด้วย C จากบอทเดิม';
-      return;
-    }
+    element('p','ถ้า OA มี Webhook ใช้งานอยู่ ให้ใช้ช่องเชื่อมกลุ่มหรือ LINE ส่วนตัวด้วย ID ด้านล่าง ถ้าจะเชื่อมด้วย RF ให้วาง Webhook URL ของร้านใน LINE Developers แล้วกด Verify'));
+  function directConnection(isGroup) {
+    const direct = element('details');
+    const targetForm = element('form');
+    targetForm.className = 'fields';
+    const target = element('input');
+    target.required = true;
+    target.spellcheck = false;
+    target.maxLength = 33;
+    const prefix = isGroup ? 'C' : 'U';
+    target.placeholder = prefix + '…';
+    const connect = action(isGroup ? 'ตรวจและเชื่อมกลุ่ม' : 'ตรวจและเชื่อม LINE ส่วนตัว');
+    connect.type = 'submit';
     connect.disabled = true;
-    groupStatus.textContent = 'กำลังตรวจกลุ่มจาก LINE…';
-    try {
-      const {data,error}=await client.functions.invoke('line-webhook?link-group=1',{
-        body:{shop_id:shopId,group_id:id}
-      });
-      if (error) throw error;
-      if (data.result === 'linked') {
-        groupForm.reset();
-        groupStatus.textContent = 'เชื่อมกลุ่มแล้ว';
-        await refresh();
-      } else {
-        groupStatus.textContent = ({
-          invalid_group:'ใช้ Group ID ที่ขึ้นต้นด้วย C ตามด้วย 32 ตัวอักษร',
-          group_not_found:'ไม่พบกลุ่ม ให้ตรวจ Group ID และเชิญ OA ร้านเข้ากลุ่ม',
-          group_access_denied:'LINE ไม่อนุญาต ให้ตรวจ Token และเช็กว่า OA ยังอยู่ในกลุ่ม',
-          group_not_configured:'บันทึก OA ร้านและติดตั้ง SQL ไฟล์ 22 ก่อน'
-        })[data.result] || 'ยังเชื่อมกลุ่มไม่ได้';
+    const feedback = element('p');
+    feedback.setAttribute('role','status');
+    feedback.textContent = 'บันทึก Channel secret และ Channel access token ของ OA ร้านด้านบนก่อน';
+    targetForm.append(label(isGroup ? 'LINE Group ID (source.groupId)' : 'LINE User ID (source.userId)',target),connect);
+    direct.append(element('summary',isGroup ? 'ใช้ Webhook เดิม · เชื่อมกลุ่มด้วย Group ID' : 'ใช้ Webhook เดิม · เชื่อม LINE ส่วนตัว'),
+      element('p',isGroup ? 'เชิญ OA ร้านเข้ากลุ่ม แล้วใช้ source.groupId จากระบบเดิม'
+        : 'เพิ่มเพื่อน OA ร้าน ส่งข้อความในแชตส่วนตัว แล้วใช้ source.userId จาก Log บอทเดิม'),targetForm,feedback);
+    section.append(direct);
+    targetForm.addEventListener('submit',async event=>{
+      event.preventDefault();
+      const id = target.value.trim();
+      if (!new RegExp('^'+prefix+'[a-f0-9]{32}$').test(id)) {
+        feedback.textContent = 'ใส่รหัสที่ขึ้นต้นด้วย '+prefix+' ตามด้วย 32 ตัวอักษร';
+        return;
       }
-    } catch {groupStatus.textContent = 'อัปเดต line-webhook ใน Supabase แล้วลองอีกครั้ง';}
-    finally {connect.disabled = false;}
-  });
+      connect.disabled = true;
+      feedback.textContent = 'กำลังตรวจปลายทางจาก LINE…';
+      try {
+        const method = isGroup ? 'link-group' : 'link-user';
+        const {data,error}=await client.functions.invoke('line-webhook?'+method+'=1',{
+          body:{shop_id:shopId,[isGroup?'group_id':'user_id']:id}
+        });
+        if (error) throw error;
+        if (data.result === 'linked') {
+          targetForm.reset();
+          feedback.textContent = isGroup ? 'เชื่อมกลุ่มแล้ว' : 'เชื่อม LINE ส่วนตัวแล้ว';
+          await refresh();
+        } else {
+          feedback.textContent = ({
+            invalid_target:'ตรวจรหัส LINE ที่กรอก',
+            group_not_found:isGroup ? 'ไม่พบกลุ่ม ให้เชิญ OA ร้านเข้ากลุ่ม' : 'ไม่พบบัญชี ให้เพิ่มเพื่อน OA ร้านแล้วส่งข้อความในแชตส่วนตัว',
+            group_access_denied:'LINE ไม่อนุญาต ให้ตรวจ Token ของ OA ร้าน',
+            group_not_configured:'บันทึก OA ร้านและติดตั้ง SQL ไฟล์ 25 ก่อน'
+          })[data.result] || 'ยังเชื่อมปลายทางไม่ได้';
+        }
+      } catch {feedback.textContent = 'อัปเดต line-webhook ใน Supabase แล้วลองอีกครั้ง';}
+      finally {connect.disabled = false;}
+    });
+    return {connect,feedback};
+  }
+  const connections = [directConnection(true),directConnection(false)];
   async function load() {
     const { data,error } = await client.rpc('shop_line_channel_status',{p_shop_id:shopId});
     const configured = !error && Boolean(data?.bot_name);
     status.textContent = error ? 'เปิด SQL ไฟล์ 21 เพื่อใช้ LINE OA รายร้าน'
       : configured ? 'OA ที่บันทึกไว้ · '+data.bot_name : 'ยังไม่ได้บันทึก LINE OA ของร้าน';
-    connect.disabled = !configured;
-    if (configured && groupStatus.textContent.startsWith('บันทึก Channel')) {
-      groupStatus.textContent = 'พร้อมเชื่อมกลุ่มจาก Webhook เดิม';
+    for (const {connect,feedback} of connections) {
+      connect.disabled = !configured;
+      if (configured && feedback.textContent.startsWith('บันทึก Channel')) feedback.textContent = 'พร้อมเชื่อมจาก Webhook เดิม';
     }
     return configured;
   }

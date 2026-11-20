@@ -1,6 +1,6 @@
 import { prepareSlipAttachment } from './customer-slip.js?v=promptpay-id-1';
 import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=platform-onboarding-1';
-import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
+import { bookingTimeOptions, dateAtShop, nextBookingDate, timeAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 
 const form = document.getElementById('publicBookingForm');
@@ -166,9 +166,28 @@ async function start() {
   }
   markCategory();
   fields.hour.replaceChildren(...bookingTimeOptions());
-  fields.date.min = dateAtShop(data.timezone);
-  fields.date.value = fields.date.min;
-  fields.hour.value = '18:00';
+  function refreshCustomerSlot() {
+    const initial = fields.date.value + ' ' + fields.hour.value;
+    const now = new Date();
+    const today = dateAtShop(dataCatalogTimezone, now);
+    const time = timeAtShop(dataCatalogTimezone, now);
+    fields.date.min = today;
+    const resetTime = !fields.date.value || fields.date.value < today;
+    if (resetTime) fields.date.value = today;
+    for (const option of fields.hour.options) {
+      option.disabled = fields.date.value === today && option.value <= time;
+    }
+    let first = [...fields.hour.options].find(option => !option.disabled);
+    if (!first) {
+      fields.date.value = nextBookingDate(today);
+      for (const option of fields.hour.options) option.disabled = false;
+      first = fields.hour.options[0];
+      fields.hour.value = first.value;
+    }
+    if (resetTime || !fields.hour.value || fields.hour.selectedOptions[0]?.disabled) fields.hour.value = first.value;
+    return initial !== fields.date.value + ' ' + fields.hour.value;
+  }
+  refreshCustomerSlot();
   updateResources();
   status.textContent = '';
   form.classList.remove('hidden');
@@ -273,6 +292,7 @@ async function start() {
     void loadFloor();
   });
   for (const input of [fields.date, fields.hour]) input.addEventListener('change', () => {
+    refreshCustomerSlot();
     void syncSelection();
     void loadFloor();
   });
@@ -286,7 +306,13 @@ async function start() {
   fields.resource.addEventListener('input', () => void syncSelection());
   document.addEventListener('visibilitychange', () => void syncSelection());
   setInterval(() => {
-    if (!liveAvailability || document.hidden) return;
+    if (document.hidden || sending || awaitingSlip) return;
+    if (refreshCustomerSlot()) {
+      void syncSelection();
+      void loadFloor();
+      return;
+    }
+    if (!liveAvailability) return;
     void syncSelection();
     void loadFloor(true);
   }, 4000);
@@ -297,6 +323,12 @@ async function start() {
   form.addEventListener('submit', async event => {
     event.preventDefault();
     if (awaitingSlip || sending || submit.disabled || !fields.resource.value) return;
+    if (refreshCustomerSlot()) {
+      submitStatus.textContent = 'เวลาเดิมผ่านไปแล้ว กรุณาตรวจรอบใหม่ก่อนส่ง';
+      void syncSelection();
+      void loadFloor();
+      return;
+    }
     const count = field => field.disabled ? null : Number(field.value);
     const [hour, minute] = fields.hour.value.split(':').map(Number);
     const payload = {
@@ -330,9 +362,8 @@ async function start() {
         submit.classList.remove('hidden');
         fields.category.selectedIndex = 0;
         markCategory();
-        fields.date.min = dateAtShop(dataCatalogTimezone);
-        fields.date.value = fields.date.min;
-        fields.hour.value = '18:00';
+        fields.hour.value = '';
+        refreshCustomerSlot();
         updateResources();
         void loadFloor();
         submitStatus.textContent = message + ' · เลขจอง ' + data.id;

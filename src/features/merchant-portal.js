@@ -1,12 +1,12 @@
 import { renderDailyReport } from './daily-report.js?v=delivery-1';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js';
 import { addThunderCheck } from './thunder-slip.js?v=thunder-decisions-1';
-import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=promptpay-id-1';
+import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=personal-actual-1';
 import { renderMerchantTeam } from './merchant-team.js';
 import { renderMerchantSettings } from './merchant-settings.js?v=category-buttons-1';
-import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
+import { bookingTimeOptions, dateAtShop, timeAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
-import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=platform-onboarding-1';
+import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=personal-actual-1';
 
 const byId = id => document.getElementById(id);
 const login = byId('merchantLogin');
@@ -38,6 +38,7 @@ let shopResources = [];
 const tableMode = byId('merchantTableMode');
 const dateField = byId('merchantTableDate');
 const timeField = byId('merchantTableTime');
+const actualTimeField = byId('merchantTableActualTime');
 const guestField = byId('merchantTableGuests');
 const tableSubmit = tableForm.querySelector('button[type="submit"]');
 const categorySettings = byId('merchantCategorySettings');
@@ -64,6 +65,7 @@ const actionErrors = {
   INVALID_CAPACITY: 'จำนวนคนหรือจำนวนบัตรเกินที่กำหนด',
   INVALID_BOOKING: 'ตรวจจำนวนชั่วโมง จำนวนคน จำนวนบัตร และเบอร์โทรศัพท์',
   INVALID_TABLE_BOOKING: 'ตรวจจำนวนคนและเบอร์โทรศัพท์',
+  INVALID_ACTUAL_BOOKING_DATE: 'เวลาเริ่มจริงต้องเป็นเวลาปัจจุบันหรือย้อนหลัง',
   INVALID_BOOKING_STATUS: 'เปลี่ยนสถานะไม่ได้ กรุณาตรวจสถานะล่าสุด',
   INVALID_CHECK_IN: 'เช็กอินได้ตั้งแต่ 30 นาทีก่อนเริ่มจนถึงก่อนหมดเวลาของรายการที่ยืนยันแล้ว',
   INVALID_TABLE_POSITION: 'ตำแหน่งโต๊ะต้องอยู่ระหว่าง 5 ถึง 95%',
@@ -74,9 +76,18 @@ const actionErrors = {
 
 function toggleTableSchedule() {
   const scheduled = tableMode.value === 'scheduled';
-  for (const field of [dateField, timeField]) {
-    field.disabled = !scheduled;
-    field.parentElement.classList.toggle('hidden', !scheduled);
+  const actual = tableMode.value === 'actual';
+  const timezone = shopMenu.selectedOptions[0]?.dataset.timezone;
+  if (timezone) {
+    const today = dateAtShop(timezone);
+    dateField.min = scheduled ? today : '';
+    dateField.max = actual ? today : '';
+    if (scheduled && dateField.value < today) dateField.value = today;
+    if (actual && !actualTimeField.value) actualTimeField.value = timeAtShop(timezone);
+  }
+  for (const [field, enabled] of [[dateField,scheduled || actual],[timeField,scheduled],[actualTimeField,actual]]) {
+    field.disabled = !enabled;
+    field.parentElement.classList.toggle('hidden', !enabled);
   }
 }
 
@@ -423,7 +434,7 @@ if (typeof window.supabase?.createClient !== 'function') {
     settings.classList.toggle('hidden', currentRole !== 'owner');
     tableEditor.classList.toggle('hidden', !canManageTables() && currentRole !== 'staff');
     tableEditor.querySelector('summary').textContent = currentRole === 'staff' ? 'เปิดโต๊ะให้ลูกค้า' : 'จองแทนลูกค้า';
-    tableMode.disabled = currentRole === 'staff';
+    tableMode.querySelector('[value=scheduled]').disabled = currentRole === 'staff';
     const tools = byId('merchantBusinessTools');
     tools.replaceChildren();
     if (currentRole === 'owner') renderShopBusinessTools(client, tools, shop.value);
@@ -442,8 +453,7 @@ if (typeof window.supabase?.createClient !== 'function') {
     tableSubmit.disabled = true;
     tableForm.reset();
     toggleTableSchedule();
-    dateField.min = dateAtShop(shop.dataset.timezone);
-    dateField.value = dateField.min;
+    dateField.value = dateAtShop(shop.dataset.timezone);
     actionStatus.textContent = '';
     bookings.textContent = 'กำลังโหลดข้อมูลร้าน…';
     teamSearch.value = '';
@@ -492,24 +502,25 @@ if (typeof window.supabase?.createClient !== 'function') {
     const resource = tableMenu.value;
     const template = categoryMenu.selectedOptions[0]?.dataset.template;
     const scheduled = tableMode.value === 'scheduled';
-    const [hour, minute] = timeField.value.split(':').map(Number);
+    const actual = tableMode.value === 'actual';
+    const [hour, minute] = (actual ? actualTimeField : timeField).value.split(':').map(Number);
     const payload = {
       p_category_code: category, p_resource_code: resource,
-      p_date: scheduled ? dateField.value : null,
-      p_hour: scheduled ? hour : null, p_minute: scheduled ? minute : null,
+      p_date: scheduled || actual ? dateField.value : null,
+      p_hour: scheduled || actual ? hour : null, p_minute: scheduled || actual ? minute : null,
       p_guests: guestField.disabled ? null : Number(guestField.value),
       p_hours: hoursField.disabled ? null : Number(hoursField.value),
       p_tickets: ticketsField.disabled ? null : Number(ticketsField.value),
       p_name: byId('merchantTableName').value, p_phone: byId('merchantTablePhone').value
     };
-    const fingerprint = JSON.stringify(payload);
+    const fingerprint = JSON.stringify([tableMode.value,payload]);
     if (pendingBooking?.fingerprint !== fingerprint) {
       pendingBooking = { fingerprint, id: crypto.randomUUID() };
     }
     const id = pendingBooking.id;
     const shopId = shopMenu.value;
     void runAction(async store => {
-      await store.createMerchantBooking({ ...payload, p_request_id: id }, template);
+      await store.createMerchantBooking({ ...payload, p_request_id: id }, template, actual);
       if (shopMenu.value !== shopId) return;
       pendingBooking = undefined;
       byId('merchantTableName').value = '';
