@@ -440,4 +440,19 @@
   object-fit: contain;
   margin-block: 12px;
 }
-#bookingSlipForm button { margin-top: 10px; }
+
+.inline-booking-payment {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.inline-booking-payment .sub { margin: 0; }
+#bookingPaymentQr canvas, #bookingPaymentQr img {
+  border: 10px solid #fff;
+  box-sizing: content-box;
+  max-width: calc(100% - 20px);
+  height: auto;
+}
+.inline-booking-payment .field { width: 100%; }

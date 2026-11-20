@@ -4,9 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>จองคิว | ReserveFlow</title>
-  <link rel="stylesheet" href="./assets/css/app.css?v=slips-1">
+  <link rel="stylesheet" href="./assets/css/app.css?v=inline-pay-1">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
-  <script type="module" src="./src/features/customer-portal.js?v=slips-1"></script>
+  <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
+  <script type="module" src="./src/features/customer-portal.js?v=inline-pay-1"></script>
 </head>
 <body>
 <header>
@@ -63,19 +64,21 @@
         </div>
         <button id="sendBooking" type="submit" class="btn primary full" disabled>ส่งคำขอจอง</button>
         <p id="bookingSubmitStatus" role="status" tabindex="-1"></p>
+        <section class="inline-booking-payment hidden" id="bookingSlip" tabindex="-1">
+          <h2>ชำระเงินและส่งสลิป</h2>
+          <strong id="bookingPaymentAmount"></strong>
+          <div id="bookingPaymentQr" aria-label="QR ชำระเงินพร้อมเพย์"></div>
+          <p class="sub">ตรวจชื่อผู้รับในแอปธนาคารให้ตรงกับร้าน แล้วแนบรูปสลิป JPG, PNG หรือ WebP ไม่เกิน 1 MB</p>
+          <div class="field"><label for="bookingSlipFile">รูปสลิป</label><input id="bookingSlipFile" type="file" accept="image/jpeg,image/png,image/webp"></div>
+          <img class="booking-slip-image hidden" id="bookingSlipPreview" alt="ตัวอย่างรูปสลิป">
+          <button class="btn primary" id="bookingSlipSubmit" type="button" disabled>ยืนยันและส่งสลิปตรวจ</button>
+          <button class="btn soft" id="bookingSlipSkip" type="button">เริ่มจองใหม่โดยยังไม่ส่งสลิป</button>
+          <p id="bookingSlipStatus" role="status"></p>
+        </section>
       </section>
     </div>
   </form>
-  <section class="panel hidden" id="bookingSlip">
-    <h2>แนบสลิป</h2>
-    <p class="sub">หากชำระเงินกับร้านแล้ว แนบรูปสลิป JPG, PNG หรือ WebP ขนาดไม่เกิน 1 MB ได้ที่นี่</p>
-    <form id="bookingSlipForm">
-      <div class="field"><label for="bookingSlipFile">รูปสลิป</label><input id="bookingSlipFile" type="file" accept="image/jpeg,image/png,image/webp" required></div>
-      <img class="booking-slip-image hidden" id="bookingSlipPreview" alt="ตัวอย่างรูปสลิป">
-      <button class="btn primary" type="submit" disabled>ส่งสลิปให้ร้าน</button>
-      <p id="bookingSlipStatus" role="status"></p>
-    </form>
-  </section>
+
 </main>
 </body>
 </html>

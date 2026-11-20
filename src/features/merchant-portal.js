@@ -352,6 +352,44 @@ if (typeof window.supabase?.createClient !== 'function') {
 
   teamSearch.addEventListener('input', renderTeam);
 
+  const promptPayForm = byId('merchantPromptPayForm');
+  const promptPayMobile = byId('merchantPromptPayMobile');
+  const promptPayStatus = byId('merchantPromptPayStatus');
+  const savePromptPay = promptPayForm.querySelector('button');
+
+  async function loadPromptPay(shopId) {
+    savePromptPay.disabled = true;
+    promptPayMobile.value = '';
+    promptPayStatus.textContent = '';
+    if (currentRole !== 'owner') return;
+    const { data, error } = await client.from('shop_promptpay').select('mobile').eq('shop_id', shopId).maybeSingle();
+    if (shopMenu.value !== shopId) return;
+    if (error) {
+      promptPayStatus.textContent = error.code === 'PGRST205' ? 'รัน SQL ไฟล์ 16 เพื่อเปิดการตั้งค่าพร้อมเพย์' : 'โหลดข้อมูลพร้อมเพย์ไม่ได้';
+      return;
+    }
+    promptPayMobile.value = data?.mobile || '';
+    savePromptPay.disabled = false;
+  }
+
+  promptPayForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (savePromptPay.disabled || currentRole !== 'owner') return;
+    const shopId = shopMenu.value;
+    const mobile = promptPayMobile.value.replace(/[\s-]/g, '');
+    savePromptPay.disabled = true;
+    const { error } = await client.rpc('save_shop_promptpay', { p_shop_id: shopId, p_mobile: mobile });
+    if (shopMenu.value !== shopId) return;
+    savePromptPay.disabled = false;
+    if (error) {
+      promptPayStatus.textContent = error.message === 'INVALID_PROMPTPAY_MOBILE'
+        ? 'ใช้เบอร์มือถือไทยที่ผูกพร้อมเพย์ 10 หลัก' : 'บันทึกพร้อมเพย์ไม่ได้ กรุณาลองอีกครั้ง';
+      return;
+    }
+    promptPayMobile.value = mobile;
+    promptPayStatus.textContent = mobile ? 'บันทึกพร้อมเพย์แล้ว' : 'ปิด QR พร้อมเพย์แล้ว';
+  });
+
   async function loadShop() {
     const shop = shopMenu.selectedOptions[0];
     if (!shop) return;
@@ -387,6 +425,7 @@ if (typeof window.supabase?.createClient !== 'function') {
     const lineSettings = byId('merchantLineSettings');
     lineSettings.replaceChildren();
     if (currentRole === 'owner') renderLineSettings(client, lineSettings, shop.value);
+    void loadPromptPay(shop.value);
 
     try {
       const store = createSupabaseStore(client, shop.value);

@@ -1,4 +1,4 @@
-import { enableSlipAttachment } from './customer-slip.js';
+import { prepareSlipAttachment } from './customer-slip.js';
 import { highlightTable, renderFloor, showFloorMessage } from './customer-floor.js?v=floor-line-2';
 import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
@@ -138,8 +138,12 @@ async function start() {
 
   categories = data.categories;
   const slipAttachmentsEnabled = data.slip_attachments_enabled === true;
+  const dataCatalogTimezone = data.timezone;
+  const promptPayMobile = data.promptpay_mobile;
+  let awaitingSlip = false;
   title.textContent = `ส่งคำขอจอง · ${data.name}`;
   fields.category.replaceChildren(...categories.map(category => new Option(category.name, category.code)));
+  if (promptPayMobile) submit.textContent = 'จองและแสดง QR ชำระเงิน';
   categoryTabs.replaceChildren(...categories.map(category => {
     const tab = document.createElement('button');
     tab.type = 'button';
@@ -234,7 +238,7 @@ async function start() {
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
-    if (sending || submit.disabled || !fields.resource.value) return;
+    if (awaitingSlip || sending || submit.disabled || !fields.resource.value) return;
     const count = field => field.disabled ? null : Number(field.value);
     const [hour, minute] = fields.hour.value.split(':').map(Number);
     const payload = {
@@ -248,7 +252,8 @@ async function start() {
       pendingRequest = { fingerprint, id: crypto.randomUUID() };
     }
     sending = true;
-    const editable = [...fields, ...categoryTabs.children, ...document.querySelectorAll('#bookingFloor button, #bookingResourceCards button')].filter(field => !field.disabled);
+    let completed = false;
+    const editable = [...fields, ...categoryTabs.children, ...document.querySelectorAll('#bookingFloor button, #bookingResourceCards button')].filter(field => !field.disabled && !field.closest('#bookingSlip'));
     editable.forEach(field => { field.disabled = true; });
     submitStatus.textContent = 'กำลังส่งคำขอ…';
 
@@ -257,18 +262,38 @@ async function start() {
         p_request_id: pendingRequest.id, ...payload
       });
       if (error) throw error;
-      form.reset();
-      form.classList.add('hidden');
       pendingRequest = undefined;
-      status.textContent = `ส่งคำขอแล้ว · รอร้านยืนยัน · ${money.format(data.amount)} · เลขจอง ${data.id}`;
-      if (slipAttachmentsEnabled && Number(data.amount) > 0) enableSlipAttachment(client, data.id, payload.p_phone);
+      const complete = message => {
+        completed = true;
+        awaitingSlip = false;
+        form.reset();
+        editable.forEach(field => { field.disabled = false; });
+        submit.classList.remove('hidden');
+        fields.category.selectedIndex = 0;
+        markCategory();
+        fields.date.min = dateAtShop(dataCatalogTimezone);
+        fields.date.value = fields.date.min;
+        fields.hour.value = '18:00';
+        updateResources();
+        void loadFloor();
+        submitStatus.textContent = message + ' · เลขจอง ' + data.id;
+        submitStatus.focus();
+      };
+      if (slipAttachmentsEnabled && Number(data.amount) > 0) {
+        awaitingSlip = true;
+        submit.classList.add('hidden');
+        submitStatus.textContent = 'จองเวลาแล้ว · เลขจอง ' + data.id;
+        prepareSlipAttachment(client, data, payload.p_phone, promptPayMobile, complete);
+      } else {
+        complete('ส่งคำขอจองแล้ว · รอร้านยืนยัน');
+      }
     } catch (error) {
       submitStatus.textContent = errorMessages[error.message]
         || 'ยืนยันผลการส่งไม่ได้ ลองส่งข้อมูลเดิมอีกครั้งเพื่อป้องกันการจองซ้ำ';
     } finally {
-      editable.forEach(field => { field.disabled = false; });
       sending = false;
-      if (!form.classList.contains('hidden')) {
+      if (!awaitingSlip && !completed) {
+        editable.forEach(field => { field.disabled = false; });
         updateEstimate();
         if (submitStatus.textContent === errorMessages.BOOKING_SLOT_TAKEN) void loadFloor();
       }

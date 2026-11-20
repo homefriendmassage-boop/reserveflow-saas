@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="./assets/css/app.css?v=slips-1">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/jsqr/jsQR.js"></script>
-  <script type="module" src="./src/features/merchant-portal.js?v=thunder-1"></script>
+  <script type="module" src="./src/features/merchant-portal.js?v=inline-pay-1"></script>
 </head>
 <body>
 <header>
@@ -70,6 +70,15 @@
         <div class="field"><label for="merchantShopSlug">ชื่อในลิงก์จอง</label><input id="merchantShopSlug" readonly></div>
         <div class="field"><button class="btn soft" type="submit">บันทึกการตั้งค่า</button></div>
       </form>
+      <details class="merchant-settings-panel">
+        <summary>QR รับเงินพร้อมเพย์</summary>
+        <p class="sub">ใช้เบอร์มือถือที่ผูกพร้อมเพย์กับบัญชีร้าน เบอร์นี้จะใช้สร้าง QR ให้ลูกค้าชำระตามยอดจอง เว้นว่างแล้วบันทึกเพื่อปิด QR</p>
+        <form class="fields" id="merchantPromptPayForm">
+          <div class="field"><label for="merchantPromptPayMobile">เบอร์มือถือพร้อมเพย์ของร้าน</label><input id="merchantPromptPayMobile" type="tel" inputmode="tel" maxlength="16"></div>
+          <button class="btn soft" type="submit" disabled>บันทึกพร้อมเพย์</button>
+        </form>
+        <p id="merchantPromptPayStatus" role="status"></p>
+      </details>
       <div id="merchantLineSettings"></div>
       <h3>กำหนดสิทธิ์ทีมงาน</h3>
       <div class="field"><label for="merchantTeamSearch">ค้นหาชื่อทีมงานหรือ UID</label><input id="merchantTeamSearch" type="search"></div>
