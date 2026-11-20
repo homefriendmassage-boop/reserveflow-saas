@@ -48,7 +48,47 @@ function shopChannelSettings(client, shopId, refresh) {
   section.append(element('h3','LINE OA ของร้านนี้'),
     element('p','ใช้ Channel secret และ Channel access token จาก Messaging API ของ OA ร้านเดียวกัน'),
     form,label('Webhook URL สำหรับใส่ใน LINE Developers',webhook),copy,status,
-    element('p','หลังบันทึก ให้วาง Webhook URL นี้ใน Messaging API ของร้าน กด Verify และเปิด Use webhook แล้วจึงสร้างรหัส RF เพื่อเชื่อมปลายทาง'));
+    element('p','ถ้า OA มี Webhook ใช้งานอยู่ ให้ใช้ช่องเชื่อมกลุ่มด้วย Group ID ด้านล่าง ถ้าจะเชื่อมด้วย RF ให้วาง Webhook URL ของร้านใน LINE Developers แล้วกด Verify'));
+  const direct = element('details');
+  const groupForm = element('form');
+  groupForm.className = 'fields';
+  const group = element('input');
+  group.required = true;
+  group.spellcheck = false;
+  group.maxLength = 33;
+  group.placeholder = 'C…';
+  const connect = action('ตรวจและเชื่อมกลุ่ม');
+  connect.type = 'submit';
+  const groupStatus = element('p');
+  groupStatus.setAttribute('role','status');
+  groupForm.append(label('LINE Group ID (source.groupId)',group),connect);
+  direct.append(element('summary','ใช้ Webhook เดิม · เชื่อมกลุ่มด้วย Group ID'),
+    element('p','เชิญ OA ร้านเข้ากลุ่ม แล้วใช้ source.groupId จากระบบเดิม'),groupForm,groupStatus);
+  section.append(direct);
+  groupForm.addEventListener('submit',async event=>{
+    event.preventDefault();
+    connect.disabled = true;
+    groupStatus.textContent = 'กำลังตรวจกลุ่มจาก LINE…';
+    try {
+      const {data,error}=await client.functions.invoke('line-webhook?link-group=1',{
+        body:{shop_id:shopId,group_id:group.value.trim()}
+      });
+      if (error) throw error;
+      if (data.result === 'linked') {
+        groupForm.reset();
+        groupStatus.textContent = 'เชื่อมกลุ่มแล้ว';
+        await refresh();
+      } else {
+        groupStatus.textContent = ({
+          invalid_group:'ใช้ Group ID ที่ขึ้นต้นด้วย C ตามด้วย 32 ตัวอักษร',
+          group_not_found:'ไม่พบกลุ่ม ให้ตรวจ Group ID และเชิญ OA ร้านเข้ากลุ่ม',
+          group_access_denied:'LINE ไม่อนุญาต ให้ตรวจ Token และเช็กว่า OA ยังอยู่ในกลุ่ม',
+          group_not_configured:'บันทึก OA ร้านและติดตั้ง SQL ไฟล์ 22 ก่อน'
+        })[data.result] || 'ยังเชื่อมกลุ่มไม่ได้';
+      }
+    } catch {groupStatus.textContent = 'อัปเดต line-webhook ใน Supabase แล้วลองอีกครั้ง';}
+    finally {connect.disabled = false;}
+  });
   async function load() {
     const { data,error } = await client.rpc('shop_line_channel_status',{p_shop_id:shopId});
     status.textContent = error ? 'เปิด SQL ไฟล์ 21 เพื่อใช้ LINE OA รายร้าน'
