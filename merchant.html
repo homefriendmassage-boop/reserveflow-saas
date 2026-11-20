@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>จัดการร้าน | ReserveFlow</title>
-  <link rel="stylesheet" href="./assets/css/app.css?v=business-day-1">
+  <link rel="stylesheet" href="./assets/css/app.css?v=scan-checkin-status-1">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/merchant-portal.js?v=business-day-scan-fast-1"></script>
+  <script type="module" src="./src/features/merchant-portal.js?v=scan-checkin-status-1"></script>
 </head>
 <body>
 <header>
@@ -61,7 +61,8 @@
       <p id="merchantPassStatus" role="status"></p>
       <dl id="merchantPassDetails" class="booking-pass-details"></dl>
       <div class="inline-actions">
-        <button class="btn primary hidden" id="merchantPassConfirm" type="button">ยืนยันเช็กอิน</button>
+        <button class="btn primary hidden" id="merchantPassConfirm" type="button" aria-describedby="merchantPassStatus" disabled>ยืนยันเช็กอิน</button>
+        <button class="btn soft hidden" id="merchantPassRefresh" type="button">อัปเดตสถานะบัตร</button>
         <button class="btn soft" id="merchantPassClose" type="button">ไปหลังบ้านร้านค้า</button>
       </div>
     </section>

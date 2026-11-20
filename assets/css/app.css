@@ -528,3 +528,5 @@
 
 #lastCustomerBookingPass { display: inline-flex; margin-bottom: 12px; }
 .card-btn .staff-hourly-price { margin-top: 4px; font-weight: 650; color: #303c80; }
+
+#merchantPassConfirm:disabled { opacity: .55; cursor: not-allowed; }

@@ -308,6 +308,8 @@ if (typeof window.supabase?.createClient !== 'function') {
   const passFeedback = byId('merchantPassStatus');
   const passDetails = byId('merchantPassDetails');
   const passConfirm = byId('merchantPassConfirm');
+  const passRefresh = byId('merchantPassRefresh');
+  passRefresh.onclick = openScannedPass;
   byId('merchantPassClose').onclick = () => {
     scanToken = null;
     try { sessionStorage.removeItem(scanKey); } catch {}
@@ -321,7 +323,9 @@ if (typeof window.supabase?.createClient !== 'function') {
     passPanel.classList.remove('hidden');
     passPanel.focus();
     passDetails.replaceChildren();
+    passConfirm.disabled = true;
     passConfirm.classList.add('hidden');
+    passRefresh.classList.add('hidden');
     passFeedback.textContent = 'กำลังตรวจบัตร…';
     const { data, error } = await client.rpc('get_merchant_booking_pass', { p_token: token });
     if (scanToken !== token) return;
@@ -330,9 +334,24 @@ if (typeof window.supabase?.createClient !== 'function') {
       return;
     }
     renderPassDetails(passDetails, data);
-    passFeedback.textContent = data.shop + ' · ' + (data.status === 'confirmed' && !data.can_check_in
-      ? 'เช็กอินได้ตั้งแต่ 30 นาทีก่อนเริ่มจนถึงเวลาสิ้นสุด' : passStatus(data));
-    passConfirm.classList.toggle('hidden', !data.can_check_in);
+    const pending = ['pending_payment', 'pending_confirm', 'slip_review'].includes(data.status);
+    let message = passStatus(data);
+    if (pending) message = 'รอร้านยืนยันการจองก่อนเช็กอิน';
+    if (data.status === 'confirmed' && !data.can_check_in) {
+      const [start, end] = data.period?.match(/\d{2}:\d{2}/g) || [];
+      if (start && end) {
+        const [hour, minute] = start.split(':').map(Number);
+        const opening = (hour * 60 + minute + 1410) % 1440;
+        const from = [Math.floor(opening / 60), opening % 60].map(part => String(part).padStart(2, '0')).join(':');
+        message = 'เช็กอินได้ช่วง ' + from + '–' + end + ' น.';
+      } else {
+        message = 'เช็กอินได้ตั้งแต่ 30 นาทีก่อนเริ่มจนถึงเวลาสิ้นสุด';
+      }
+    }
+    passFeedback.textContent = data.shop + ' · ' + message;
+    passConfirm.classList.toggle('hidden', !pending && data.status !== 'confirmed');
+    passConfirm.disabled = !data.can_check_in;
+    passRefresh.classList.toggle('hidden', !pending && (data.status !== 'confirmed' || data.can_check_in));
     passConfirm.onclick = async () => {
       passConfirm.disabled = true;
       try {
@@ -340,9 +359,10 @@ if (typeof window.supabase?.createClient !== 'function') {
         if (result.error) throw result.error;
         await openScannedPass();
       } catch {
-        if (scanToken === token) passFeedback.textContent = 'ยืนยันเช็กอินไม่ได้ กรุณาตรวจสถานะบัตรและช่วงเวลา';
-      } finally {
-        passConfirm.disabled = false;
+        if (scanToken === token) {
+          passFeedback.textContent = 'ยืนยันเช็กอินไม่ได้ กรุณาอัปเดตสถานะบัตร';
+          passRefresh.classList.remove('hidden');
+        }
       }
     };
   }
