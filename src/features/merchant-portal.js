@@ -21,6 +21,9 @@ if (passTokenPattern.test(scanFromLink || '')) {
   try { scanToken = sessionStorage.getItem(scanKey); } catch {}
 }
 const login = byId('merchantLogin');
+const passPanel = byId('merchantPassPanel');
+const haveScan = () => passTokenPattern.test(scanToken || '');
+if (haveScan()) byId('merchantLoginHelp').textContent = 'เข้าสู่ระบบครั้งแรกเพื่อเปิดบัตรที่สแกนไว้';
 const registration = byId('merchantRegister');
 const registerForm = byId('merchantRegisterForm');
 const registerSubmit = byId('merchantRegisterSubmit');
@@ -134,6 +137,7 @@ tableMode.addEventListener('change', toggleTableSchedule);
 tableMenu.addEventListener('change', updateTableCapacity);
 
 function showLogin(message = '') {
+  passPanel.classList.add('hidden');
   byId('platformAdmin').classList.add('hidden');
   byId('platformShopList').replaceChildren();
   for (const id of ['platformSignup','platformBilling','merchantBusinessTools','merchantDailyReport']) byId(id).replaceChildren();
@@ -272,11 +276,34 @@ function bookingCard(booking, timezone, changeStatus, readSlip, client, refresh)
 if (typeof window.supabase?.createClient !== 'function') {
   status.textContent = 'โหลดระบบเข้าสู่ระบบไม่สำเร็จ กรุณารีเฟรชหน้า';
 } else {
+  const remember = byId('merchantRememberDevice');
+  const authStorage = {
+    getItem(key) {
+      return sessionStorage.getItem(key) ?? (key.endsWith('-code-verifier') ? null : localStorage.getItem(key));
+    },
+    setItem(key, value) {
+      const shared = !key.endsWith('-code-verifier') &&
+        (remember.checked || localStorage.getItem(key) !== null);
+      if (shared) {
+        localStorage.setItem(key, value);
+        sessionStorage.removeItem(key);
+      } else {
+        sessionStorage.setItem(key, value);
+      }
+    },
+    removeItem(key) {
+      sessionStorage.removeItem(key);
+      if (!key.endsWith('-code-verifier')) localStorage.removeItem(key);
+    }
+  };
+  try { remember.checked = sessionStorage.getItem('reserveflow.remember-device') === 'yes'; } catch {}
+  remember.addEventListener('change', () => {
+    try { sessionStorage.setItem('reserveflow.remember-device', remember.checked ? 'yes' : 'no'); } catch {}
+  });
   const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    auth: { flowType: 'pkce', storage: window.sessionStorage }
+    auth: { flowType: 'pkce', storage: authStorage }
   });
 
-  const passPanel = byId('merchantPassPanel');
   const passFeedback = byId('merchantPassStatus');
   const passDetails = byId('merchantPassDetails');
   const passConfirm = byId('merchantPassConfirm');
@@ -284,10 +311,11 @@ if (typeof window.supabase?.createClient !== 'function') {
     scanToken = null;
     try { sessionStorage.removeItem(scanKey); } catch {}
     passPanel.classList.add('hidden');
+    void loadSession();
   };
 
   async function openScannedPass() {
-    if (!passTokenPattern.test(scanToken || '')) return;
+    if (!haveScan()) return;
     const token = scanToken;
     passPanel.classList.remove('hidden');
     passPanel.focus();
@@ -310,7 +338,6 @@ if (typeof window.supabase?.createClient !== 'function') {
         const result = await client.rpc('check_in_booking_pass', { p_token: token });
         if (result.error) throw result.error;
         await openScannedPass();
-        await loadBookings();
       } catch {
         if (scanToken === token) passFeedback.textContent = 'ยืนยันเช็กอินไม่ได้ กรุณาตรวจสถานะบัตรและช่วงเวลา';
       } finally {
@@ -595,7 +622,15 @@ if (typeof window.supabase?.createClient !== 'function') {
         const params = new URLSearchParams(location.search);
         if (params.has('error') || params.has('error_code') || params.has('code')) {
           showLogin('เข้าสู่ระบบด้วย LINE ไม่สำเร็จ กรุณาลองอีกครั้ง');
+        } else {
+          showLogin();
         }
+        return;
+      }
+      if (haveScan()) {
+        login.classList.add('hidden');
+        status.textContent = '';
+        await openScannedPass();
         return;
       }
       byId('merchantAccountUid').textContent = data.session.user.id;
@@ -625,7 +660,6 @@ if (typeof window.supabase?.createClient !== 'function') {
       dashboard.classList.remove('hidden');
       status.textContent = '';
       await loadShop();
-      await openScannedPass();
     } catch {
       showLogin('ตรวจสิทธิ์ร้านค้าไม่สำเร็จ กรุณาลองอีกครั้ง');
     } finally {

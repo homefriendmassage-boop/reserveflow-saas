@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="./assets/css/app.css?v=booking-pass-1">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/merchant-portal.js?v=booking-pass-1"></script>
+  <script type="module" src="./src/features/merchant-portal.js?v=scan-fast-1"></script>
 </head>
 <body>
 <header>
@@ -20,10 +20,11 @@
   </div>
 </header>
 <main>
-  <section class="panel" id="merchantLogin">
+  <section class="panel hidden" id="merchantLogin">
     <h2>เข้าสู่ระบบร้านค้า</h2>
     <button type="button" id="merchantSignIn" class="btn primary" disabled>เข้าสู่ระบบด้วย LINE</button>
-    <p class="sub">เข้าสู่ระบบเพื่อจัดการร้านหรือสมัครร้านใหม่</p>
+    <p id="merchantLoginHelp" class="sub">เข้าสู่ระบบเพื่อจัดการร้านหรือสมัครร้านใหม่</p>
+    <p><label><input id="merchantRememberDevice" type="checkbox"> จำการเข้าสู่ระบบบนเบราว์เซอร์นี้</label></p>
     <details>
       <summary>เข้าสู่ระบบด้วยอีเมล</summary>
       <form id="merchantEmailForm" class="fields">
@@ -55,6 +56,15 @@
     </details>
     <button id="merchantRegisterSignOut" class="btn soft" type="button">ออกจากระบบ</button>
   </section>
+    <section id="merchantPassPanel" class="panel hidden" tabindex="-1">
+      <h2>ตรวจบัตรจอง</h2>
+      <p id="merchantPassStatus" role="status"></p>
+      <dl id="merchantPassDetails" class="booking-pass-details"></dl>
+      <div class="inline-actions">
+        <button class="btn primary hidden" id="merchantPassConfirm" type="button">ยืนยันเช็กอิน</button>
+        <button class="btn soft" id="merchantPassClose" type="button">ไปหลังบ้านร้านค้า</button>
+      </div>
+    </section>
   <section class="hidden" id="merchantDashboard" aria-label="หลังบ้านร้านค้า">
     <div id="merchantDailyReport"></div>
     <div class="stats merchant-stats" id="merchantStats" aria-label="สรุปรายการจอง">
@@ -112,15 +122,6 @@
         <button type="submit" class="btn primary" disabled>บันทึกการจอง</button>
       </form>
     </details>
-    <section id="merchantPassPanel" class="booking hidden" tabindex="-1">
-      <h2>ตรวจบัตรจอง</h2>
-      <p id="merchantPassStatus" role="status"></p>
-      <dl id="merchantPassDetails" class="booking-pass-details"></dl>
-      <div class="inline-actions">
-        <button class="btn primary hidden" id="merchantPassConfirm" type="button">ยืนยันเช็กอิน</button>
-        <button class="btn soft" id="merchantPassClose" type="button">ปิดบัตร</button>
-      </div>
-    </section>
     <p id="merchantActionStatus" role="status"></p>
     <div class="field">
       <label for="merchantBookingSearch">ค้นหาด้วยชื่อผู้จอง เลขจอง หรือรหัสรายการ</label>
