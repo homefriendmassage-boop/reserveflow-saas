@@ -9,3 +9,6 @@ verify_jwt = false
 
 [functions.line-notification-worker]
 verify_jwt = false
+
+[functions.thunder-verify-slip]
+verify_jwt = false

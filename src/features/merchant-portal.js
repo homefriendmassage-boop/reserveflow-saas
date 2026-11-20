@@ -1,3 +1,4 @@
+import { addThunderCheck } from './thunder-slip.js';
 import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=slips-1';
 import { renderMerchantTeam } from './merchant-team.js';
 import { renderMerchantSettings } from './merchant-settings.js?v=slips-1';
@@ -146,7 +147,7 @@ function showLogin(message = '') {
   status.textContent = message;
 }
 
-function bookingCard(booking, timezone, changeStatus, readSlip) {
+function bookingCard(booking, timezone, changeStatus, readSlip, client) {
   const card = document.createElement('article');
   card.className = 'booking';
   const title = document.createElement('h3');
@@ -191,6 +192,7 @@ function bookingCard(booking, timezone, changeStatus, readSlip) {
         image.alt = 'รูปสลิปที่ลูกค้าแนบ';
         image.src = data.image;
         attachment.append(image);
+        addThunderCheck(attachment, client, booking.id, image);
       } catch {
         note.remove();
         label.textContent = 'เปิดสลิปอีกครั้งเพื่อโหลดใหม่';
@@ -273,7 +275,7 @@ if (typeof window.supabase?.createClient !== 'function') {
       [row.id, row.resource_code].some(value => value.toLowerCase().includes(term)));
     if (rows.length) {
       bookings.replaceChildren(...rows.map(row => bookingCard(row, bookingTimezone, changeStatus, id =>
-        createSupabaseStore(client, shopMenu.value).getBookingSlip(id))));
+        createSupabaseStore(client, shopMenu.value).getBookingSlip(id), client)));
     } else {
       bookings.textContent = term ? 'ไม่พบรายการจองที่ค้นหา' : 'ยังไม่มีรายการจอง';
     }

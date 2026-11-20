@@ -200,3 +200,12 @@ $$);
 5. In Superadmin, generate a pairing code and send it in a private chat with the Official Account. Shop owners can generate a code under shop settings and send it to the Official Account or in a LINE group the Official Account has joined. Generate a fresh code for each destination and refresh the destination list after sending.
 
 New registrations send a Flex message to the Superadmin destination. New bookings send a text message to the destinations linked to the booking's shop. Test with a fresh registration and booking after pairing.
+
+### ตรวจสลิปด้วย Thunder v2
+
+1. รัน migration `20261120000015_resources_and_slip_attachments.sql` เพื่อเปิดแนบสลิปในหน้าจอง
+2. ตั้ง Edge Function Secret ชื่อ `THUNDER_API_KEY` ใน Supabase ด้วยคีย์จากบัญชี Thunder
+3. จากโฟลเดอร์โปรเจกต์ ให้ deploy ด้วย `supabase functions deploy thunder-verify-slip --project-ref zotgxsimkrofqxkhjjak --no-verify-jwt` ฟังก์ชันยืนยันผู้ใช้และตรวจสิทธิ์อ่านสลิปของร้านเอง
+4. ในหลังบ้าน เปิด **รายการจอง → ดูสลิปที่แนบ → ตรวจ QR ด้วย Thunder**
+
+ระบบอ่าน QR จากรูปในเบราว์เซอร์ ส่งเฉพาะข้อความ QR ไปที่ [Thunder v2](https://document.thunder.in.th/th/) และใช้ยอดจากรายการจองใน Supabase เปรียบเทียบกับผลที่ได้ ระบบแสดงยอด เลขอ้างอิง และชื่อผู้รับจาก Thunder ให้ร้านตรวจบัญชีผู้รับและตรวจว่ารายการโอนยังไม่เคยใช้ก่อนยืนยันการจอง ผลตรวจแสดงในหน้าที่เปิดอยู่และไม่เปลี่ยนสถานะการชำระอัตโนมัติ
