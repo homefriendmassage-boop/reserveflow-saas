@@ -3,15 +3,15 @@ export const decorTypes = [
   ['restroom', '🚻 ห้องน้ำ'], ['entrance', '➡️ ทางเข้า'], ['exit', '⬅️ ทางออก'], ['wall', '▰ ผนัง']
 ];
 
-export const bounded = (value, fallback, min, max) =>
+export const bounded = (value, fallback, min, max = Infinity) =>
   Math.max(min, Math.min(max, Number.isFinite(Number(value)) && value != null ? Number(value) : fallback));
 
 export function floorGeometry(item = {}, index = 0) {
   return {
-    x: bounded(item.x, 17 + (index % 3) * 33, 5, 95),
-    y: bounded(item.y, 20 + Math.floor(index / 3) * 14, 5, 95),
-    w: bounded(item.w, 84, 24, 320),
-    h: bounded(item.h, 72, 24, 320)
+    x: bounded(item.x, 17 + (index % 3) * 33, 0, 100),
+    y: bounded(item.y, 20 + Math.floor(index / 3) * 14, 0, 100),
+    w: bounded(item.w, 84, 1),
+    h: bounded(item.h, 72, 1)
   };
 }
 
@@ -25,14 +25,14 @@ export function legacyFloor(category, storage = localStorage) {
     const id = source.id;
     const size = config.layoutSizes?.[id];
     return {
-      width: Math.round(bounded(size?.width, 960, 320, 1600)),
-      height: Math.round(bounded(size?.height, 540, 280, 1600)),
+      width: Math.round(bounded(size?.width, 960, 1)),
+      height: Math.round(bounded(size?.height, 540, 1)),
       background: config.layoutImages?.[id] || null,
       decorations: (config.layoutDecor?.[id] || []).map(block => ({
         type: String(block.type || 'label'),
         label: String(block.label || 'ข้อความอิสระ').slice(0, 80),
-        x: bounded(block.x, 50, 1, 99), y: bounded(block.y, 50, 1, 99),
-        w: bounded(block.w, 130, 20, 800), h: bounded(block.h, 58, 20, 800)
+        x: bounded(block.x, 50, 0, 100), y: bounded(block.y, 50, 0, 100),
+        w: bounded(block.w, 130, 1), h: bounded(block.h, 58, 1)
       })),
       items: config.resources[id].map((item, index) => ({
         code: String(item.id), name: String(item.name || item.id).slice(0, 100),

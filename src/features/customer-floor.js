@@ -1,19 +1,14 @@
-import { decorTypes } from './floor-design.js';
+import { bounded, decorTypes } from './floor-design.js';
 
 const floor = document.getElementById('bookingFloor');
 const section = document.getElementById('bookingFloorSection');
 const status = document.getElementById('floorStatus');
 
-function bounded(value, fallback, min, max) {
-  const number = Number(value ?? fallback);
-  return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback;
-}
-
-function position(element, item, height, width, index = 0, edge = 5) {
-  element.style.setProperty('--table-x', bounded(item.x, 15 + index % 4 * 23, edge, 100 - edge) + '%');
-  element.style.setProperty('--table-y', bounded(item.y, 16 + Math.floor(index / 4) * 13, edge, 100 - edge) + '%');
-  element.style.width = bounded(item.w, 84, 20, width) / width * 100 + '%';
-  element.style.height = bounded(item.h, 60, 20, height) / height * 100 + '%';
+function position(element, item, height, width, index = 0) {
+  element.style.setProperty('--table-x', bounded(item.x, 15 + index % 4 * 23, 0, 100) + '%');
+  element.style.setProperty('--table-y', bounded(item.y, 16 + Math.floor(index / 4) * 13, 0, 100) + '%');
+  element.style.width = bounded(item.w, 84, 1) / width * 100 + '%';
+  element.style.height = bounded(item.h, 60, 1) / height * 100 + '%';
 }
 
 export function showFloorMessage(message, visible = true) {
@@ -24,9 +19,9 @@ export function showFloorMessage(message, visible = true) {
 }
 
 export function renderFloor(plan, resources, resourceField, template) {
-  const width = bounded(plan.width, 960, 320, 1600);
+  const width = bounded(plan.width, 960, 1);
   const rows = Math.ceil(plan.tables.filter(table => table.x == null || table.y == null).length / 4);
-  const height = Math.max(bounded(plan.height, 540, 280, 1600), rows * 70 + 80);
+  const height = Math.max(bounded(plan.height, 540, 1), rows ? rows * 70 + 80 : 0);
   floor.style.setProperty('--floor-width', width);
   floor.style.setProperty('--floor-max-width', width + 'px');
   floor.style.setProperty('--floor-height', height);
@@ -36,7 +31,7 @@ export function renderFloor(plan, resources, resourceField, template) {
     const label = document.createElement('span');
     label.className = 'decor-block kind-' + (decorTypes.some(([key]) => key === item.type) ? item.type : 'label');
     label.textContent = item.label;
-    position(label, item, height, width, 0, 1);
+    position(label, item, height, width);
     return label;
   });
   const tables = new Map(plan.tables.map(table => [table.code, table]));

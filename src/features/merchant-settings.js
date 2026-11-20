@@ -161,8 +161,8 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     const frame = node('div');
     frame.className = 'layout-size-controls';
     const aspect = field(frame, 'รูปแบบกรอบผัง', select([['custom','กำหนดเอง'],['portrait','แนวตั้ง (3:4)'],['wide','แนวนอน (16:9)'],['square','สี่เหลี่ยมจัตุรัส']]));
-    const width = field(frame, 'ความกว้าง (px)', input('number', 960, 320, 1600));
-    const height = field(frame, 'ความสูง (px)', input('number', 540, 280, 1600));
+    const width = field(frame, 'ความกว้าง (px)', input('number', 960, 1));
+    const height = field(frame, 'ความสูง (px)', input('number', 540, 1));
     const saveFrame = button('บันทึกผัง');
     const template = field(categoryArea, 'รูปแบบ Template', select([
       ['grid','ตารางแถวและคอลัมน์'], ['rows','เรียงเป็นแถว'], ['columns','เรียงเป็นคอลัมน์'],
@@ -179,10 +179,10 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     const name = field(editor, 'ชื่อจุดจอง', input('text', ''));
     name.maxLength = 100;
     const capacity = field(editor, 'ความจุ', input('number', 1, 1, 100));
-    const x = field(editor, 'ซ้าย → ขวา (%)', input('number', 50, 5, 95));
-    const y = field(editor, 'บน → ล่าง (%)', input('number', 50, 5, 95));
-    const itemWidth = field(editor, 'กว้าง (px)', input('number', 84, 24, 320));
-    const itemHeight = field(editor, 'สูง (px)', input('number', 72, 24, 320));
+    const x = field(editor, 'ซ้าย → ขวา (%)', input('number', 50, 0, 100));
+    const y = field(editor, 'บน → ล่าง (%)', input('number', 50, 0, 100));
+    const itemWidth = field(editor, 'กว้าง (px)', input('number', 84, 1));
+    const itemHeight = field(editor, 'สูง (px)', input('number', 72, 1));
     const addItem = button('+ เพิ่มจุดจอง');
     const clone = button('คัดลอกจุดที่เลือก');
     const saveItem = button('บันทึกจุดจอง');
@@ -208,11 +208,11 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     const blockType = field(blockEditor, 'ประเภทบล็อก', select(decorTypes));
     const blockName = field(blockEditor, 'ข้อความบนบล็อก', input('text', ''));
     blockName.maxLength = 80;
-    const blockWidth = field(blockEditor, 'กว้าง (px)', input('number', 130, 20, 800));
-    const blockHeight = field(blockEditor, 'สูง (px)', input('number', 58, 20, 800));
-    const blockX = field(blockEditor, 'ตำแหน่ง X (%)', input('number', 50, 1, 99));
-    const blockY = field(blockEditor, 'ตำแหน่ง Y (%)', input('number', 50, 1, 99));
-    for (const control of [blockX, blockY, blockWidth, blockHeight, x, y, itemWidth, itemHeight]) control.step = 'any';
+    const blockWidth = field(blockEditor, 'กว้าง (px)', input('number', 130, 1));
+    const blockHeight = field(blockEditor, 'สูง (px)', input('number', 58, 1));
+    const blockX = field(blockEditor, 'ตำแหน่ง X (%)', input('number', 50, 0, 100));
+    const blockY = field(blockEditor, 'ตำแหน่ง Y (%)', input('number', 50, 0, 100));
+    for (const control of [blockX, blockY, blockWidth, blockHeight, x, y]) control.step = 'any';
     const removeDecor = button('ลบบล็อกนี้');
     removeDecor.className = 'btn danger small';
     blockEditor.append(button('บันทึกบล็อก', 'submit'), removeDecor);
@@ -243,7 +243,7 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
         label.classList.toggle('active', index === activeBlock);
         place(label, block, columns, rows);
         label.addEventListener('click', () => selectBlock(index));
-        bindDrag(label, block, 1, (next, moved) => {
+        bindDrag(label, block, (next, moved) => {
           decor[index] = next;
           selectBlock(index);
           if (moved) void saveDesign({ decorations: decor }, index);
@@ -263,7 +263,7 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
           item.value = resource.code;
           loadItem();
         });
-        if (!resource.pending) bindDrag(tile, geometry, 5, (next, moved) => {
+        if (!resource.pending) bindDrag(tile, geometry, (next, moved) => {
           item.value = resource.code;
           if (moved) resource.display = next;
           loadItem();
@@ -274,7 +274,7 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       canvas.replaceChildren(...blocks, ...tiles);
     }
 
-    function bindDrag(element, geometry, minimum, finish) {
+    function bindDrag(element, geometry, finish) {
       let next = geometry;
       element.addEventListener('pointerdown', event => {
         if (event.button !== 0 || dragging || saving) return;
@@ -288,7 +288,7 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
         if (Math.abs(dx) + Math.abs(dy) < 4 && !dragging.moved) return;
         dragging.moved = true;
         const bounds = canvas.getBoundingClientRect();
-        const clamp = value => Math.max(minimum, Math.min(100 - minimum, Math.round(value * 10) / 10));
+        const clamp = value => Math.max(0, Math.min(100, Math.round(value * 10) / 10));
         next = { ...geometry, x: clamp(Number(geometry.x) + dx * 100 / bounds.width),
           y: clamp(Number(geometry.y) + dy * 100 / bounds.height) };
         place(element, next, Number(width.value), Number(height.value));

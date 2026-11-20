@@ -399,3 +399,20 @@
 #bookingResourceCards small { display: block; color: var(--muted); overflow-wrap: anywhere; }
 .merchant-resource-fields { align-items: end; }
 .merchant-resource-fields label > span { display: block; margin-bottom: 5px; color: var(--muted); }
+
+.live-booking-plan {
+  aspect-ratio: var(--floor-width, 960) / var(--floor-height, 540);
+}
+.merchant-floor-canvas .resource,
+.live-booking-plan .resource,
+.merchant-floor-canvas .decor-block,
+.live-booking-plan .decor-block {
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  left: var(--table-x);
+  top: var(--table-y);
+  padding: 0;
+  overflow: hidden;
+}
