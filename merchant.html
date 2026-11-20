@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>จัดการร้าน | ReserveFlow</title>
-  <link rel="stylesheet" href="./assets/css/app.css?v=booking-pass-1">
+  <link rel="stylesheet" href="./assets/css/app.css?v=business-day-1">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/merchant-portal.js?v=booking-pass-1"></script>
+  <script type="module" src="./src/features/merchant-portal.js?v=business-day-1"></script>
 </head>
 <body>
 <header>
@@ -99,7 +99,7 @@
           <div class="field"><label for="merchantBookingCategory">หมวดการจอง</label><select id="merchantBookingCategory" required></select></div>
           <div class="field"><label for="merchantTable">รายการจอง</label><select id="merchantTable" required></select></div>
           <div class="field"><label for="merchantTableGuests">จำนวนคน</label><input id="merchantTableGuests" type="number" min="1" value="1" required></div>
-          <div class="field hidden"><label for="merchantBookingHours">จำนวนชั่วโมง</label><input id="merchantBookingHours" type="number" min="1" value="2" required disabled></div>
+          <div class="field hidden"><label for="merchantBookingHours">จำนวนชั่วโมง</label><input id="merchantBookingHours" type="number" min="1" value="1" required disabled></div>
           <div class="field hidden"><label for="merchantBookingTickets">จำนวนบัตร</label><input id="merchantBookingTickets" type="number" min="1" value="1" required disabled></div>
           <div class="field"><label for="merchantTableMode">ช่วงเวลาจอง</label><select id="merchantTableMode"><option value="now">ตอนนี้</option><option value="scheduled">จองล่วงหน้า</option><option value="actual">บันทึกเวลาเริ่มจริง</option></select></div>
           <div class="field hidden"><label for="merchantTableDate">วันที่</label><input id="merchantTableDate" type="date" required disabled></div>

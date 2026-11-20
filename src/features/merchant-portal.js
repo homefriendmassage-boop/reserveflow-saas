@@ -1,11 +1,11 @@
 import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-details.js';
-import { renderDailyReport } from './daily-report.js?v=delivery-1';
+import { renderDailyReport } from './daily-report.js?v=business-day-1';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=team-slip-credits-1';
 import { addThunderCheck } from './thunder-slip.js?v=team-slip-credits-1';
 import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=personal-actual-1';
 import { renderMerchantTeam } from './merchant-team.js?v=team-slip-credits-1';
 import { renderMerchantSettings } from './merchant-settings.js?v=payment-drafts-1';
-import { bookingTimeOptions, dateAtShop, timeAtShop } from './booking-slots.js';
+import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, timeAtShop } from './booking-slots.js?v=business-day-1';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=personal-actual-1';
 
@@ -91,12 +91,13 @@ function toggleTableSchedule() {
   const actual = tableMode.value === 'actual';
   const timezone = shopMenu.selectedOptions[0]?.dataset.timezone;
   if (timezone) {
-    const today = dateAtShop(timezone);
+    const today = actual ? dateAtShop(timezone) : businessDateAtShop(timezone);
     dateField.min = scheduled ? today : '';
     dateField.max = actual ? today : '';
-    if (scheduled && dateField.value < today) dateField.value = today;
+    if ((scheduled || actual) && dateField.dataset.mode !== tableMode.value) dateField.value = today;
     if (actual && !actualTimeField.value) actualTimeField.value = timeAtShop(timezone);
   }
+  dateField.dataset.mode = tableMode.value;
   for (const [field, enabled] of [[dateField,scheduled || actual],[timeField,scheduled],[actualTimeField,actual]]) {
     field.disabled = !enabled;
     field.parentElement.classList.toggle('hidden', !enabled);
@@ -108,7 +109,7 @@ function updateTableCapacity() {
   const capacity = Number(tableMenu.selectedOptions[0]?.dataset.capacity) || 100;
   for (const [field, active, max] of [
     [guestField, ['vip','table'].includes(template), Math.min(capacity, 100)],
-    [hoursField, ['staff','vip','seat'].includes(template), template === 'seat' ? 6 : 5],
+    [hoursField, Boolean(template), template === 'seat' ? 6 : 5],
     [ticketsField, template === 'ticket', Math.min(capacity, 10)]
   ]) {
     field.disabled = !active;
@@ -508,7 +509,7 @@ if (typeof window.supabase?.createClient !== 'function') {
     tableSubmit.disabled = true;
     tableForm.reset();
     toggleTableSchedule();
-    dateField.value = dateAtShop(shop.dataset.timezone);
+    dateField.value = businessDateAtShop(shop.dataset.timezone);
     actionStatus.textContent = '';
     bookings.textContent = 'กำลังโหลดข้อมูลร้าน…';
     teamSearch.value = '';
@@ -561,7 +562,7 @@ if (typeof window.supabase?.createClient !== 'function') {
     const [hour, minute] = (actual ? actualTimeField : timeField).value.split(':').map(Number);
     const payload = {
       p_category_code: category, p_resource_code: resource,
-      p_date: scheduled || actual ? dateField.value : null,
+      p_date: scheduled ? calendarSlotDate(dateField.value, timeField.value) : actual ? dateField.value : null,
       p_hour: scheduled || actual ? hour : null, p_minute: scheduled || actual ? minute : null,
       p_guests: guestField.disabled ? null : Number(guestField.value),
       p_hours: hoursField.disabled ? null : Number(hoursField.value),

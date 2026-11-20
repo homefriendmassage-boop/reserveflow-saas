@@ -525,3 +525,6 @@
 .booking-result p { overflow-wrap: anywhere; }
 .pass-line { margin-top: 18px; }
 .pass-line h2 { margin-top: 0; }
+
+#lastCustomerBookingPass { display: inline-flex; margin-bottom: 12px; }
+.card-btn .staff-hourly-price { margin-top: 4px; font-weight: 650; color: #303c80; }

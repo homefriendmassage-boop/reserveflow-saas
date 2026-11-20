@@ -1,4 +1,4 @@
-import { dateAtShop } from './booking-slots.js';
+import { businessDateAtShop } from './booking-slots.js?v=business-day-1';
 
 function node(tag, text) {
   const element = document.createElement(tag);
@@ -19,7 +19,7 @@ export function renderDailyReport(client, container, shopId, timezone) {
   date.type = 'date';
   date.id = 'dailyReportDate';
   date.min = '2000-01-01';
-  date.value = date.max = dateAtShop(timezone);
+  date.value = date.max = businessDateAtShop(timezone);
   dateField.append(dateLabel,date);
   const groupField = node('div');
   groupField.className = 'field';
@@ -119,7 +119,7 @@ export function renderDailyReport(client, container, shopId, timezone) {
       stat.append(node('strong',value),node('span',label));
       stats.append(stat);
     }
-    const note = node('p', 'ยอดรับนับตามวันโอนที่ Thunder ยืนยันพร้อมเวลาโอน ยอดจองนับตามวันเข้าใช้บริการ');
+    const note = node('p', 'รอบรายงาน 06:00 ถึงก่อน 06:00 ของวันถัดไป ยอดรับนับตามเวลาโอนที่ Thunder ยืนยัน ยอดจองนับตามเวลาเริ่มใช้บริการ');
     note.className = 'sub';
     const overview = node('p', 'รวม ' + number.format(data.bookings) + ' รายการ · ยกเลิก ' +
       number.format(data.cancelled) + ' รายการ · ตรวจรับเงิน ' + number.format(data.verified_count) + ' รายการ');

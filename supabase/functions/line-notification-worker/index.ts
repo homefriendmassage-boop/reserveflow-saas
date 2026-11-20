@@ -68,7 +68,7 @@ function lineMessage(kind: string, payload: Record<string, string>, site: string
         row('ยืนยัน / เข้าใช้ / เสร็จ',payload.active),
         row('รอชำระ / รอตรวจ',payload.pending),
         row('ยกเลิก',payload.cancelled),
-        {type:'text',text:'ยอดรับนับตามวันโอนที่ Thunder ยืนยันพร้อมเวลาโอน',wrap:true,size:'xs',color:'#68758A'}
+        {type:'text',text:'รอบรายงาน 06:00 ถึงก่อน 06:00 วันถัดไป ยอดรับนับตามเวลาโอนที่ Thunder ยืนยัน',wrap:true,size:'xs',color:'#68758A'}
       ]},
       footer:{type:'box',layout:'vertical',contents:[
         {type:'button',action:{type:'uri',label:'เปิดหลังบ้าน',uri:new URL('merchant.html',site).href}}

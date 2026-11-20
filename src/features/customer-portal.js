@@ -1,6 +1,6 @@
 import { prepareSlipAttachment } from './customer-slip.js?v=booking-pass-1';
 import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=team-slip-credits-1';
-import { bookingTimeOptions, dateAtShop, nextBookingDate, timeAtShop } from './booking-slots.js';
+import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, nextBookingDate, timeAtShop } from './booking-slots.js?v=business-day-1';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 
 const form = document.getElementById('publicBookingForm');
@@ -53,20 +53,18 @@ function updateEstimate() {
   const category = selectedCategory();
   const resource = category.resources.find(item => item.code === fields.resource.value);
   const { template } = category;
-  setQuantity(fields.hours, ['staff', 'vip', 'seat'].includes(template), template === 'seat' ? 6 : 5);
+  setQuantity(fields.hours, true, template === 'seat' ? 6 : 5);
   setQuantity(fields.guests, ['table', 'vip'].includes(template), Math.min(resource?.capacity ?? 100, 100));
   setQuantity(fields.tickets, template === 'ticket', Math.min(resource?.capacity ?? 10, 10));
 
   const units = template === 'table' ? fields.guests.value
     : template === 'ticket' ? fields.tickets.value : fields.hours.value;
-  const duration = fields.hours.disabled ? 2 : Number(fields.hours.value);
-  const hasDuration = ['staff','vip','seat'].includes(template);
+  const duration = Number(fields.hours.value);
   const [hour, minute] = fields.hour.value.split(':').map(Number);
   const endMinutes = hour * 60 + minute + duration * 60;
   const end = [Math.floor(endMinutes / 60) % 24, endMinutes % 60]
-    .map(value => String(value).padStart(2, '0')).join(':') + (endMinutes >= 1440 ? ' (+1 วัน)' : '');
+    .map(value => String(value).padStart(2, '0')).join(':') + (hour < 6 || endMinutes >= 1440 ? ' (+1 วัน)' : '');
   const endField = document.getElementById('bookingEnd');
-  endField.parentElement.classList.toggle('hidden', !hasDuration);
   const validPeriod = Boolean(fields.hour.value) && duration > 0 &&
     (fields.hours.disabled || fields.hours.validity.valid);
   endField.value = validPeriod ? end : '—';
@@ -74,7 +72,7 @@ function updateEstimate() {
     ? category.name + ' · ' + resource.name : 'ยังไม่ได้เลือก';
   document.getElementById('bookingSummaryDate').textContent = fields.date.value.split('-').reverse().join('/') || '—';
   document.getElementById('bookingSummaryTime').textContent = validPeriod
-    ? fields.hour.value + ' – ' + end : '—';
+    ? fields.hour.selectedOptions[0].textContent + ' – ' + end : '—';
   document.getElementById('bookingSummaryHours').textContent = validPeriod ? duration + ' ชั่วโมง' : '—';
   estimate.textContent = resource && validPeriod
     ? money.format(Number(category.price) * Number(units) + Number(category.service_fee))
@@ -107,6 +105,13 @@ function updateResources() {
       const line = document.createElement(tag);
       line.textContent = value;
       details.append(line);
+    }
+    if (category.template === 'staff') {
+      const price = document.createElement('small');
+      price.className = 'staff-hourly-price';
+      price.textContent = money.format(Number(category.price)) + ' / ชั่วโมง'
+        + (Number(category.service_fee) > 0 ? ' · ค่าบริการ ' + money.format(Number(category.service_fee)) + ' / การจอง' : '');
+      details.append(price);
     }
     if (category.template === 'staff' && customerPhoto.test(resource.photo || '')) {
       const photo = document.createElement('img');
@@ -190,13 +195,15 @@ async function start() {
   function refreshCustomerSlot() {
     const initial = fields.date.value + ' ' + fields.hour.value;
     const now = new Date();
-    const today = dateAtShop(dataCatalogTimezone, now);
+    const today = businessDateAtShop(dataCatalogTimezone, now);
+    const nowDate = dateAtShop(dataCatalogTimezone, now);
     const time = timeAtShop(dataCatalogTimezone, now);
     fields.date.min = today;
     const resetTime = !fields.date.value || fields.date.value < today;
     if (resetTime) fields.date.value = today;
     for (const option of fields.hour.options) {
-      option.disabled = fields.date.value === today && option.value <= time;
+      const calendarDate = calendarSlotDate(fields.date.value, option.value);
+      option.disabled = calendarDate + 'T' + option.value <= nowDate + 'T' + time;
     }
     let first = [...fields.hour.options].find(option => !option.disabled);
     if (!first) {
@@ -222,7 +229,7 @@ async function start() {
   function slotArguments(category) {
     const [hour, minute] = fields.hour.value.split(':').map(Number);
     return { p_shop_slug: shopSlug, p_category_code: category.code,
-      p_date: fields.date.value, p_hour: hour, p_minute: minute };
+      p_date: calendarSlotDate(fields.date.value, fields.hour.value), p_hour: hour, p_minute: minute };
   }
 
   let presenceUpdate = Promise.resolve();
@@ -234,7 +241,7 @@ async function start() {
       await client.rpc('mark_booking_selection', {
         ...slotArguments(category), p_session: selectionSession,
         p_resource_code: mapped && !sending && !awaitingSlip && !document.hidden ? fields.resource.value || null : null,
-        p_hours: category.template === 'table' ? 2 : Number(fields.hours.value)
+        p_hours: Number(fields.hours.value)
       });
     });
     return presenceUpdate;
@@ -262,7 +269,7 @@ async function start() {
     selectionHint.textContent = mapped ? 'เลือกวันและจุดบนผัง แล้วกำหนดเวลา ระบบจะตรวจว่าจุดที่เลือกยังว่าง' : 'เลือกวัน เวลา และรายการที่ต้องการจอง';
     if (!quiet) resourceField.classList.toggle('hidden', !resourceCards.classList.contains('hidden'));
     if (!mapped || !fields.date.value || !fields.date.checkValidity()
-      || (['seat', 'vip'].includes(category.template) && !fields.hours.checkValidity())) {
+      || !fields.hours.checkValidity()) {
       showFloorMessage('', false);
       updateEstimate();
       return;
@@ -275,9 +282,7 @@ async function start() {
     }
     const args = slotArguments(category);
     try {
-      const { data: plan, error } = category.template === 'table'
-        ? await client.rpc('booking_table_plan', args)
-        : await client.rpc('booking_resource_plan', { ...args, p_hours: Number(fields.hours.value) });
+      const { data: plan, error } = await client.rpc('booking_resource_plan', { ...args, p_hours: Number(fields.hours.value) });
       if (request !== planRequest || (quiet && (sending || awaitingSlip))) return;
       if (error || !plan?.tables?.length) {
         if (!quiet) showFloorMessage('ผังยังไม่พร้อม เลือกรายการจากช่องด้านบนได้');
@@ -318,7 +323,7 @@ async function start() {
     void loadFloor();
   });
   fields.hours.addEventListener('change', () => {
-    if (['seat', 'vip'].includes(selectedCategory().template)) {
+    if (['table', 'seat', 'vip'].includes(selectedCategory().template)) {
       void syncSelection();
       void loadFloor();
     }
@@ -413,7 +418,7 @@ async function start() {
     const [hour, minute] = fields.hour.value.split(':').map(Number);
     const payload = {
       p_shop_slug: shopSlug, p_category_code: fields.category.value, p_resource_code: fields.resource.value,
-      p_date: fields.date.value, p_hour: hour, p_minute: minute,
+      p_date: calendarSlotDate(fields.date.value, fields.hour.value), p_hour: hour, p_minute: minute,
       p_hours: count(fields.hours), p_guests: count(fields.guests), p_tickets: count(fields.tickets),
       p_name: fields.customerName.value, p_phone: fields.customerPhone.value, p_note: fields.note.value
     };

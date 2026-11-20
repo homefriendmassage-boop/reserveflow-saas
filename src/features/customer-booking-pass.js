@@ -53,13 +53,18 @@ async function load() {
     get('passLineHelp').textContent = 'คัดลอกข้อความด้านล่างแล้วกดส่งในแชตส่วนตัวกับ LINE OA «'
       + (data.bot_name || data.shop) + '» จากนั้นกลับมากดอัปเดตสถานะ';
     get('passLineCode').value = data.line_code ? 'บัตร ' + data.line_code : '';
-    lineStatus.textContent = data.line_linked
+    const deliveryStatus = {
+      accepted: 'LINE รับข้อความแล้ว · เปิดแชตกับ LINE OA ของร้านเพื่อดูบัตร',
+      queued: 'เชื่อม LINE แล้ว · กำลังรอส่งบัตร',
+      failed: 'LINE ส่งบัตรไม่สำเร็จ · กรุณาติดต่อร้าน'
+    };
+    lineStatus.textContent = deliveryStatus[data.line_delivery] || (data.line_linked
       ? (data.status === 'confirmed'
         ? 'เชื่อม LINE แล้ว · โปรดตรวจข้อความยืนยันในแชตกับ LINE OA ของร้าน'
         : 'เชื่อม LINE แล้ว · ระบบจะส่งบัตรเมื่อร้านยืนยันการจอง')
       : data.line_code ? 'สถานะ LINE · รอลูกค้าส่งข้อความเชื่อมบัตร'
         : !data.expired && ['pending_payment','pending_confirm','slip_review','confirmed'].includes(data.status)
-          ? 'ร้านยังไม่เปิดรับบัตรผ่าน LINE คุณเปิดบัตรจากหน้านี้ได้' : '';
+          ? 'ร้านยังไม่เปิดรับบัตรผ่าน LINE คุณเปิดบัตรจากหน้านี้ได้' : '');
 
   } catch {
     status.textContent = 'โหลดสถานะบัตรไม่ได้ กรุณากดอัปเดตสถานะอีกครั้ง';

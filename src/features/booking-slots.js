@@ -1,8 +1,8 @@
 export function bookingTimeOptions() {
-  return Array.from({ length: 25 }, (_, index) => {
-    const hour = 10 + Math.floor(index / 2);
-    const label = `${hour}:${index % 2 ? '30' : '00'}`;
-    return new Option(label, label);
+  return Array.from({ length: 48 }, (_, index) => {
+    const hour = (6 + Math.floor(index / 2)) % 24;
+    const time = String(hour).padStart(2, '0') + (index % 2 ? ':30' : ':00');
+    return new Option(time + (hour < 6 ? ' (+1 วัน)' : ''), time);
   });
 }
 
@@ -23,4 +23,17 @@ export function nextBookingDate(date) {
   const next = new Date(date + 'T00:00:00Z');
   next.setUTCDate(next.getUTCDate() + 1);
   return next.toISOString().slice(0,10);
+}
+
+
+export function businessDateAtShop(timezone, instant = new Date()) {
+  const date = dateAtShop(timezone, instant);
+  if (timeAtShop(timezone, instant) >= '06:00') return date;
+  const previous = new Date(date + 'T00:00:00Z');
+  previous.setUTCDate(previous.getUTCDate() - 1);
+  return previous.toISOString().slice(0,10);
+}
+
+export function calendarSlotDate(date, time) {
+  return date && time && time < '06:00' ? nextBookingDate(date) : date;
 }

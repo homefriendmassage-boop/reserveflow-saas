@@ -4,20 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>จองคิว | ReserveFlow</title>
-  <link rel="stylesheet" href="./assets/css/app.css?v=booking-pass-placement-1">
+  <link rel="stylesheet" href="./assets/css/app.css?v=business-day-1">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/customer-portal.js?v=booking-pass-placement-1"></script>
+  <script type="module" src="./src/features/customer-portal.js?v=business-day-1"></script>
 </head>
 <body>
 <header>
   <div class="top">
     <div class="logo"><b>R</b><div>ReserveFlow <small id="bookingTitle">จองคิวออนไลน์</small></div></div>
-    <div class="inline-actions"><a id="lastCustomerBookingPass" class="btn soft small hidden">บัตรจองล่าสุด</a><a href="./merchant.html" class="btn soft small">หลังบ้านร้านค้า</a></div>
+    <div class="inline-actions"><a href="./merchant.html" class="btn soft small">หลังบ้านร้านค้า</a></div>
   </div>
 </header>
 <main>
   <p id="bookingStatus" role="status">กำลังโหลดข้อมูลร้าน…</p>
+  <a id="lastCustomerBookingPass" class="btn soft small hidden">บัตรจองของฉัน</a>
   <section id="customerBookingResult" class="panel booking-result hidden" aria-labelledby="customerBookingResultTitle">
     <h2 id="customerBookingResultTitle" tabindex="-1">ส่งคำขอจองแล้ว</h2>
     <p id="customerBookingResultStatus" role="status"></p>
@@ -35,7 +36,7 @@
         <p id="bookingSelectionHint" class="sub"></p>
         <div class="fields live-booking-date">
           <div class="field hidden"><label for="category">หมวด</label><select id="category" name="category" required></select></div>
-          <div class="field"><label for="date">วันที่ใช้บริการ</label><input id="date" name="date" type="date" required></div>
+          <div class="field"><label for="date">วันที่ใช้บริการ (รอบ 06:00 ถึงก่อน 06:00 วันถัดไป)</label><input id="date" name="date" type="date" required></div>
         </div>
         <div class="field" id="bookingResourceField"><label for="resource">เลือกรายการ</label><select id="resource" name="resource" required></select></div>
         <div id="bookingResourceCards" class="resource-grid hidden" role="group" aria-label="รายการที่จองได้"></div>
@@ -53,7 +54,7 @@
         </section>
         <div class="fields live-booking-time">
           <div class="field"><label for="hour">เวลาเริ่ม</label><select id="hour" name="hour" required></select></div>
-          <div class="field"><label for="hours">จำนวนชั่วโมง</label><input id="hours" name="hours" type="number" min="1" value="2" required></div>
+          <div class="field"><label for="hours">จำนวนชั่วโมง</label><input id="hours" name="hours" type="number" min="1" value="1" required></div>
           <div class="field"><label for="bookingEnd">ถึงเวลา</label><input id="bookingEnd" readonly></div>
           <div class="field"><label for="guests">จำนวนคน</label><input id="guests" name="guests" type="number" min="1" value="2" required></div>
           <div class="field"><label for="tickets">จำนวนบัตร</label><input id="tickets" name="tickets" type="number" min="1" value="1" required></div>
