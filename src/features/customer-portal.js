@@ -1,4 +1,4 @@
-import { prepareSlipAttachment } from './customer-slip.js?v=promptpay-id-1';
+import { prepareSlipAttachment } from './customer-slip.js?v=payment-drafts-1';
 import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=platform-onboarding-1';
 import { bookingTimeOptions, dateAtShop, nextBookingDate, timeAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
@@ -25,6 +25,7 @@ let categories = [];
 let pendingRequest;
 
 const errorMessages = {
+  BOOKING_PAYMENT_UNAVAILABLE: 'ร้านยังไม่ได้เปิดรับชำระพร้อมเพย์สำหรับรายการนี้',
   BOOKING_OPTION_UNAVAILABLE: 'รายการนี้ไม่เปิดให้จองแล้ว กรุณารีเฟรชหน้า',
   INVALID_CAPACITY: 'จำนวนคนหรือจำนวนบัตรเกินที่กำหนด',
   INVALID_BOOKING_DATE: 'เลือกเวลาในอนาคตและจองล่วงหน้าได้สูงสุด 90 วัน',
@@ -137,14 +138,11 @@ async function start() {
   }
 
   categories = data.categories;
-  const slipAttachmentsEnabled = data.slip_attachments_enabled === true;
   const dataCatalogTimezone = data.timezone;
-  const promptPayMobile = data.promptpay_mobile;
-  const promptpayEnabled = data.promptpay_enabled === true || Boolean(promptPayMobile);
+  const draftKey = 'reserveflow.payment.v1:' + shopSlug;
   let awaitingSlip = false;
   title.textContent = `ส่งคำขอจอง · ${data.name}`;
   fields.category.replaceChildren(...categories.map(category => new Option(category.name, category.code)));
-  if (promptpayEnabled) submit.textContent = 'จองและแสดง QR ชำระเงิน';
   categoryTabs.replaceChildren(...categories.map(category => {
     const tab = document.createElement('button');
     tab.type = 'button';
@@ -302,7 +300,6 @@ async function start() {
       void loadFloor();
     }
   });
-  void loadFloor();
   fields.resource.addEventListener('input', () => void syncSelection());
   document.addEventListener('visibilitychange', () => void syncSelection());
   setInterval(() => {
@@ -319,6 +316,55 @@ async function start() {
   for (const field of [fields.resource, fields.hours, fields.guests, fields.tickets]) {
     field.addEventListener('input', updateEstimate);
   }
+
+  const paymentGrid = document.querySelector('.live-booking-grid');
+  const paymentHidden = [
+    categoryTabs, document.getElementById('bookingSelection'),
+    ...document.querySelectorAll('#bookingContact > h2, #bookingContact > .sub, .live-booking-contact, #bookingContact > .summary')
+  ];
+
+  function openPayment(draft) {
+    awaitingSlip = true;
+    paymentGrid.classList.add('booking-payment-active');
+    for (const element of paymentHidden) element.classList.add('hidden');
+    submit.classList.add('hidden');
+    submitStatus.textContent = 'รอแนบสลิปเพื่อส่งคำขอจอง';
+    prepareSlipAttachment(client, draft, async image => {
+      const { data, error } = await client.rpc('submit_customer_payment', {
+        p_request: draft.payload, p_amount: draft.booking.amount, p_image: image
+      });
+      if (error) throw error;
+      return data;
+    }, (message, id) => {
+      try { localStorage.removeItem(draftKey); } catch {}
+      pendingRequest = undefined;
+      awaitingSlip = false;
+      paymentGrid.classList.remove('booking-payment-active');
+      form.reset();
+      for (const element of paymentHidden) element.classList.remove('hidden');
+      submit.classList.remove('hidden');
+      fields.category.selectedIndex = 0;
+      markCategory();
+      fields.hour.value = '';
+      refreshCustomerSlot();
+      updateResources();
+      void loadFloor();
+      submitStatus.textContent = id ? message + ' · เลขจอง ' + id : message;
+      submitStatus.focus();
+    });
+  }
+
+  let savedDraft;
+  try {
+    savedDraft = JSON.parse(localStorage.getItem(draftKey));
+    if (savedDraft && (savedDraft.expires <= Date.now() || savedDraft.payload?.p_shop_slug !== shopSlug ||
+        !savedDraft.booking?.qr || !savedDraft.label)) {
+      localStorage.removeItem(draftKey);
+      savedDraft = null;
+    }
+  } catch {}
+  if (savedDraft) openPayment(savedDraft);
+  else void loadFloor();
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
@@ -343,47 +389,28 @@ async function start() {
     }
     sending = true;
     void syncSelection();
-    let completed = false;
-    const editable = [...fields, ...categoryTabs.children, ...document.querySelectorAll('#bookingFloor button, #bookingResourceCards button')].filter(field => !field.disabled && !field.closest('#bookingSlip'));
+    const editable = [...fields, ...categoryTabs.children, ...document.querySelectorAll('#bookingFloor button, #bookingResourceCards button')]
+      .filter(field => !field.disabled && !field.closest('#bookingSlip'));
     editable.forEach(field => { field.disabled = true; });
-    submitStatus.textContent = 'กำลังส่งคำขอ…';
+    submitStatus.textContent = 'กำลังเตรียม QR ชำระเงิน…';
+    const category = selectedCategory();
+    const resource = category.resources.find(row => row.code === payload.p_resource_code);
+    const label = [category.name, resource?.name || payload.p_resource_code, payload.p_date, fields.hour.value].join(' · ');
 
     try {
-      const { data, error } = await client.rpc('submit_customer_booking', {
-        p_request_id: pendingRequest.id, ...payload
-      });
+      const request = { p_request_id: pendingRequest.id, ...payload };
+      const { data, error } = await client.rpc('quote_customer_payment', { p_request: request });
       if (error) throw error;
-      pendingRequest = undefined;
-      const complete = message => {
-        completed = true;
-        awaitingSlip = false;
-        form.reset();
-        editable.forEach(field => { field.disabled = false; });
-        submit.classList.remove('hidden');
-        fields.category.selectedIndex = 0;
-        markCategory();
-        fields.hour.value = '';
-        refreshCustomerSlot();
-        updateResources();
-        void loadFloor();
-        submitStatus.textContent = message + ' · เลขจอง ' + data.id;
-        submitStatus.focus();
-      };
-      if (slipAttachmentsEnabled && Number(data.amount) > 0) {
-        awaitingSlip = true;
-        submit.classList.add('hidden');
-        submitStatus.textContent = 'จองเวลาแล้ว · เลขจอง ' + data.id;
-        prepareSlipAttachment(client, data, payload.p_phone, promptPayMobile, promptpayEnabled, complete);
-      } else {
-        complete('ส่งคำขอจองแล้ว · รอร้านยืนยัน');
-      }
+      const draft = { booking: data, payload: request, label, expires: Date.now() + 86400000 };
+      try { localStorage.setItem(draftKey, JSON.stringify(draft)); } catch {}
+      openPayment(draft);
     } catch (error) {
       submitStatus.textContent = errorMessages[error.message]
-        || 'ยืนยันผลการส่งไม่ได้ ลองส่งข้อมูลเดิมอีกครั้งเพื่อป้องกันการจองซ้ำ';
+        || (error.code === 'PGRST202' ? 'ร้านยังไม่ได้เปิดใช้หน้าชำระเงิน' : 'เปิด QR ไม่สำเร็จ กรุณาลองอีกครั้ง');
     } finally {
       sending = false;
-      if (!awaitingSlip && !completed) {
-        editable.forEach(field => { field.disabled = false; });
+      editable.forEach(field => { field.disabled = false; });
+      if (!awaitingSlip) {
         updateEstimate();
         if (submitStatus.textContent === errorMessages.BOOKING_SLOT_TAKEN) void loadFloor();
       }

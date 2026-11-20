@@ -1,4 +1,4 @@
-import { renderListResources } from './merchant-list-resources.js?v=slips-1';
+import { renderListResources } from './merchant-list-resources.js?v=payment-drafts-1';
 import { decorTypes, floorGeometry, legacyFloor, sampleTableFloor, templatePositions } from './floor-design.js';
 
 function node(tag, text = '') {
@@ -209,7 +209,7 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     editor.className = 'fields';
     const item = field(editor, 'จุดจอง', select([]));
     item.dataset.floorItem = '';
-    const name = field(editor, 'ชื่อจุดจอง', input('text', ''));
+    const name = field(editor, 'ชื่อที่แสดงบนปุ่มที่นั่งหรือโต๊ะ', input('text', ''));
     name.maxLength = 100;
     const capacity = field(editor, 'จำนวนคนสูงสุดต่อจุด', input('number', 1, 1, 100));
     const x = field(editor, 'ซ้าย → ขวา (%)', input('number', 50, 0, 100));
@@ -219,6 +219,11 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     const addItem = button('+ เพิ่มจุดจอง');
     const clone = button('คัดลอกจุดที่เลือก');
     const saveItem = button('บันทึกจุดจอง');
+    const rename = button('แก้ชื่อจุดจอง');
+    rename.addEventListener('click', () => {
+      name.focus();
+      name.select();
+    });
     categoryArea.append(grid, addItem, clone);
     const upload = field(categoryArea, 'ภาพผังพื้นหลัง (JPG/PNG/WebP)', node('input'));
     upload.type = 'file';
@@ -232,7 +237,7 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     categoryArea.append(clearBackground, restore, sample);
     const deleteItem = button('ลบจุดนี้');
     deleteItem.className = 'btn danger small';
-    editor.append(saveItem, deleteItem);
+    editor.append(rename, saveItem, deleteItem);
     const decorType = field(frame, 'ชนิดบล็อกประกอบผัง', select(decorTypes));
     const addDecor = button('+ เพิ่มบล็อก');
     frame.append(addDecor, saveFrame);

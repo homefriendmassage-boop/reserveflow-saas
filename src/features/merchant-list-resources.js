@@ -1,3 +1,5 @@
+const staffPhoto = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+
 export function renderListResources(panel, categories, resources, save, archive) {
   const create = (tag, text = '') => Object.assign(document.createElement(tag), { textContent: text });
   const form = create('form');
@@ -39,11 +41,13 @@ export function renderListResources(panel, categories, resources, save, archive)
   const removeEntry = create('button', 'ลบรายการออกจากหน้าจอง');
   removeEntry.className = 'btn danger';
   removeEntry.type = 'button';
-  const info = create('p', 'รายการที่บันทึกแล้วอยู่ในช่องรายการที่ต้องการแก้ไข และแสดงในหมวดเดียวกันบนหน้าลูกค้าเมื่อหมวดเปิดแสดง');
+  const info = create('p', 'กดแก้ไขที่การ์ดพนักงาน หรือเลือกรายการจากช่องด้านล่าง');
   info.className = 'sub';
   form.append(preview, remove, submit, removeEntry);
-  panel.append(info);
-  panel.append(form, status);
+  const savedStaff = create('ul');
+  savedStaff.className = 'merchant-saved-staff';
+  savedStaff.setAttribute('aria-label', 'พนักงานที่บันทึกแล้ว');
+  panel.append(info, savedStaff, form, status);
   let photo = null;
   let fileRead = 0;
   function showPhoto() {
@@ -73,6 +77,30 @@ export function renderListResources(panel, categories, resources, save, archive)
   function loadCategory() {
     const rows = resources.filter(row => row.category_code === category.value && row.display?.archived !== true);
     resource.replaceChildren(new Option('+ เพิ่มรายการใหม่', ''), ...rows.map(row => new Option(row.name, row.code)));
+    const staff = categories.find(row => row.code === category.value).template === 'staff';
+    savedStaff.classList.toggle('hidden', !staff || !rows.length);
+    savedStaff.replaceChildren(...(staff ? rows.map(row => {
+      const card = create('li');
+      if (staffPhoto.test(row.display?.photo || '')) {
+        const portrait = create('img');
+        Object.assign(portrait, { className: 'live-staff-photo', loading: 'lazy', alt: '', src: row.display.photo });
+        card.append(portrait);
+      }
+      const details = create('div');
+      details.append(create('strong', row.name));
+      if (row.display?.position) details.append(create('p', row.display.position));
+      const edit = create('button', 'แก้ไข');
+      edit.className = 'btn soft small';
+      edit.type = 'button';
+      edit.setAttribute('aria-label', 'แก้ไข ' + row.name);
+      edit.addEventListener('click', () => {
+        resource.value = row.code;
+        loadResource();
+        name.focus();
+      });
+      card.append(details, edit);
+      return card;
+    }) : []));
     loadResource();
   }
   removeEntry.addEventListener('click', async () => {

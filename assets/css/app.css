@@ -312,6 +312,7 @@
 .live-category-tabs { flex-wrap: wrap; overflow: visible; }
 .merchant-settings-panel > .inline-actions { margin-block: 12px; }
 
+.live-booking-grid.booking-payment-active { grid-template-columns: minmax(0, 1fr); max-width: 560px; margin-inline: auto; }
 .live-booking-grid .fields { margin-bottom: 14px; }
 .live-booking-grid .summary > div {
   display: flex;
@@ -396,6 +397,11 @@
 .live-booking-date { grid-template-columns: minmax(0, 1fr); }
 .live-booking-time { margin-top: 16px; }
 .live-staff-photo { width: 62px; height: 62px; object-fit: cover; border-radius: 12px; }
+.merchant-saved-staff { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 10px; }
+.merchant-saved-staff li { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid #d9e2f3; border-radius: 12px; }
+.merchant-saved-staff p { margin: 2px 0 0; font-size: .85rem; }
+.merchant-saved-staff button { margin-inline-start: auto; flex-shrink: 0; }
+
 #bookingResourceCards small { display: block; color: var(--muted); overflow-wrap: anywhere; }
 .merchant-resource-fields { align-items: end; }
 .merchant-resource-fields label > span { display: block; margin-bottom: 5px; color: var(--muted); }

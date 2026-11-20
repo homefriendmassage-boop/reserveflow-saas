@@ -77,13 +77,38 @@ function lineMessage(kind: string, payload: Record<string, string>, site: string
       }
     };
   }
+  const detail = (label: string, value: string) => ({
+    type: 'box', layout: 'vertical', spacing: 'xs', contents: [
+      { type: 'text', text: label, color: '#55627A', size: 'xs' },
+      { type: 'text', text: value, color: '#182440', size: 'sm', weight: 'bold', wrap: true }
+    ]
+  });
+  const amount = payload.amount == null ? [] : [
+    detail('ยอดจอง', new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(Number(payload.amount)))
+  ];
   return {
-    type: 'text',
-    text: [
-      'ReserveFlow · มีรายการจองใหม่', payload.name, 'รายการ ' + payload.resource,
-      'เวลา ' + payload.date + ' (' + payload.time_zone + ')',
-      'เลขจอง ' + payload.booking_id, new URL('merchant.html', site).href
-    ].join('\n')
+    type: 'flex',
+    altText: 'ReserveFlow · มีรายการจองใหม่',
+    contents: {
+      type: 'bubble', size: 'mega',
+      header: { type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '20px', backgroundColor: '#303C80', contents: [
+        { type: 'text', text: 'ReserveFlow', size: 'xs', weight: 'bold', color: '#DBE4FF' },
+        { type: 'text', text: 'มีรายการจองใหม่', size: 'xl', weight: 'bold', color: '#FFFFFF', wrap: true },
+        { type: 'text', text: payload.name || 'ร้านค้า', size: 'sm', color: '#EBEFFF', wrap: true }
+      ] },
+      body: { type: 'box', layout: 'vertical', spacing: 'lg', contents: [
+        detail(payload.category || 'รายการ', payload.resource || '—'),
+        detail('วันและเวลาใช้บริการ', payload.date || '—'),
+        ...amount,
+        { type: 'separator', color: '#E1E6F3' },
+        detail('เลขจอง', payload.booking_id || '—')
+      ] },
+      footer: { type: 'box', layout: 'vertical', contents: [
+        { type: 'button', style: 'primary', color: '#404FBA', action: {
+          type: 'uri', label: 'เปิดหลังบ้าน', uri: new URL('merchant.html', site).href
+        } }
+      ] }
+    }
   };
 }
 

@@ -3,7 +3,7 @@ import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from
 import { addThunderCheck } from './thunder-slip.js?v=thunder-decisions-1';
 import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=personal-actual-1';
 import { renderMerchantTeam } from './merchant-team.js';
-import { renderMerchantSettings } from './merchant-settings.js?v=category-buttons-1';
+import { renderMerchantSettings } from './merchant-settings.js?v=payment-drafts-1';
 import { bookingTimeOptions, dateAtShop, timeAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=personal-actual-1';

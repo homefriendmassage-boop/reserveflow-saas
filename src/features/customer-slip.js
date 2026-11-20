@@ -1,7 +1,6 @@
 import { checkThunderSlip, thunderStatus } from './thunder-slip.js?v=thunder-decisions-1';
-import { promptPayPayload } from './promptpay.js';
 
-export function prepareSlipAttachment(client, booking, phone, mobile, promptpayEnabled, onComplete) {
+export function prepareSlipAttachment(client, draft, sendPayment, onComplete) {
   const section = document.getElementById('bookingSlip');
   const file = document.getElementById('bookingSlipFile');
   const preview = document.getElementById('bookingSlipPreview');
@@ -10,6 +9,8 @@ export function prepareSlipAttachment(client, booking, phone, mobile, promptpayE
   const skip = document.getElementById('bookingSlipSkip');
   const qr = document.getElementById('bookingPaymentQr');
   const amount = document.getElementById('bookingPaymentAmount');
+  const { booking, label, payload } = draft;
+  document.getElementById('bookingPaymentSelection').textContent = label;
   let image = '';
   let selection = 0;
 
@@ -17,36 +18,15 @@ export function prepareSlipAttachment(client, booking, phone, mobile, promptpayE
   submit.disabled = true;
   section.classList.remove('hidden');
   qr.replaceChildren();
-  qr.dataset.booking = booking.id;
   amount.textContent = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(booking.amount);
-  if (promptpayEnabled) {
-    qr.setAttribute('aria-describedby', 'bookingPaymentNote');
-    qr.textContent = 'กำลังโหลด QR พร้อมเพย์…';
-    void (async () => {
-      try {
-        let payload;
-        if (mobile) {
-          payload = promptPayPayload(mobile, Number(booking.amount));
-        } else {
-          const {data,error} = await client.rpc('booking_promptpay_qr',{p_booking_id:booking.id,p_phone:phone});
-          if (error || !data) throw error || new Error('QR unavailable');
-          payload = data;
-        }
-        if (!section.classList.contains('hidden') && qr.dataset.booking === booking.id) {
-          qr.replaceChildren();
-          new window.QRCode(qr, { text: payload, width: 192, height: 192 });
-        }
-      } catch {
-        if (qr.dataset.booking === booking.id) qr.textContent = 'เปิด QR ไม่ได้ กรุณาติดต่อร้านก่อนชำระเงิน';
-      }
-    })();
-  } else {
-    qr.textContent = 'ติดต่อร้านเพื่อขอข้อมูลชำระเงิน';
+  try {
+    new window.QRCode(qr, { text: booking.qr, width: 192, height: 192 });
+  } catch {
+    qr.textContent = 'เปิด QR ไม่ได้ กรุณาติดต่อร้านก่อนชำระเงิน';
   }
 
-  function close(message) {
+  function close(message, id) {
     selection++;
-    delete qr.dataset.booking;
     file.onchange = submit.onclick = skip.onclick = null;
     file.value = '';
     file.disabled = false;
@@ -56,7 +36,7 @@ export function prepareSlipAttachment(client, booking, phone, mobile, promptpayE
     preview.classList.add('hidden');
     section.classList.add('hidden');
     status.textContent = '';
-    onComplete(message);
+    onComplete(message, id);
   }
 
   file.onchange = () => {
@@ -89,8 +69,8 @@ export function prepareSlipAttachment(client, booking, phone, mobile, promptpayE
   };
 
   skip.onclick = () => {
-    if (!confirm('เริ่มรายการใหม่โดยยังไม่ส่งสลิป? รายการจองนี้จะยังอยู่และรอร้านยืนยัน')) return;
-    close('ส่งคำขอจองแล้ว · ยังไม่ได้แนบสลิป');
+    if (!confirm('ยกเลิกฉบับร่าง? หากโอนแล้ว ให้แนบสลิปหรือติดต่อร้านก่อน')) return;
+    close('ยกเลิกฉบับร่างแล้ว');
   };
 
   submit.onclick = async () => {
@@ -98,18 +78,19 @@ export function prepareSlipAttachment(client, booking, phone, mobile, promptpayE
     submit.disabled = file.disabled = skip.disabled = true;
     status.textContent = 'กำลังส่งสลิป…';
     try {
-      const { error } = await client.rpc('attach_customer_booking_slip', {
-        p_booking_id: booking.id, p_phone: phone, p_image: image
-      });
-      if (error) throw error;
+      const saved = await sendPayment(image);
       status.textContent = 'ส่งสลิปแล้ว · กำลังตรวจด้วย Thunder…';
       try {
-        close(thunderStatus(await checkThunderSlip(client, booking.id, phone)));
+        close(thunderStatus(await checkThunderSlip(client, saved.id, payload.p_phone)), saved.id);
       } catch {
-        close('ส่งสลิปแล้ว · รอแอดมินตรวจ');
+        close('ส่งสลิปแล้ว · รอแอดมินตรวจ', saved.id);
       }
     } catch (error) {
       status.textContent = ({
+        BOOKING_PAYMENT_UNAVAILABLE: 'ร้านยังรับชำระรายการนี้ไม่ได้ กรุณาติดต่อร้าน',
+        BOOKING_SLOT_TAKEN: 'ช่วงเวลานี้ถูกจองแล้ว หากโอนแล้วกรุณาติดต่อร้านพร้อมสลิป',
+        INVALID_BOOKING_DATE: 'เลยเวลาที่เลือกแล้ว หากโอนแล้วกรุณาติดต่อร้านพร้อมสลิป',
+        BOOKING_PRICE_CHANGED: 'ยอดจองเปลี่ยนแล้ว หากโอนแล้วกรุณาติดต่อร้านพร้อมสลิป',
         SLIP_BOOKING_UNAVAILABLE: 'รายการจองนี้รับสลิปไม่ได้แล้ว กรุณาติดต่อร้าน',
         SLIP_ALREADY_ATTACHED: 'รายการจองนี้มีสลิปแล้ว กรุณาติดต่อร้านหากต้องการเปลี่ยน'
       })[error.message] || (error.code === 'PGRST202' ? 'ร้านยังไม่ได้เปิดใช้การแนบสลิป' : 'ส่งรูปไม่ได้ กรุณาลองอีกครั้ง');
