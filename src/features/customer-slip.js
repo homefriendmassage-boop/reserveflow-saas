@@ -1,7 +1,7 @@
 import { checkThunderSlip, thunderStatus } from './thunder-slip.js?v=thunder-decisions-1';
 import { promptPayPayload } from './promptpay.js';
 
-export function prepareSlipAttachment(client, booking, phone, mobile, onComplete) {
+export function prepareSlipAttachment(client, booking, phone, mobile, promptpayEnabled, onComplete) {
   const section = document.getElementById('bookingSlip');
   const file = document.getElementById('bookingSlipFile');
   const preview = document.getElementById('bookingSlipPreview');
@@ -17,20 +17,36 @@ export function prepareSlipAttachment(client, booking, phone, mobile, onComplete
   submit.disabled = true;
   section.classList.remove('hidden');
   qr.replaceChildren();
+  qr.dataset.booking = booking.id;
   amount.textContent = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(booking.amount);
-  if (mobile) {
+  if (promptpayEnabled) {
     qr.setAttribute('aria-describedby', 'bookingPaymentNote');
-    try {
-      new window.QRCode(qr, { text: promptPayPayload(mobile, Number(booking.amount)), width: 192, height: 192 });
-    } catch {
-      qr.textContent = 'เปิด QR ไม่ได้ กรุณาติดต่อร้านก่อนชำระเงิน';
-    }
+    qr.textContent = 'กำลังโหลด QR พร้อมเพย์…';
+    void (async () => {
+      try {
+        let payload;
+        if (mobile) {
+          payload = promptPayPayload(mobile, Number(booking.amount));
+        } else {
+          const {data,error} = await client.rpc('booking_promptpay_qr',{p_booking_id:booking.id,p_phone:phone});
+          if (error || !data) throw error || new Error('QR unavailable');
+          payload = data;
+        }
+        if (!section.classList.contains('hidden') && qr.dataset.booking === booking.id) {
+          qr.replaceChildren();
+          new window.QRCode(qr, { text: payload, width: 192, height: 192 });
+        }
+      } catch {
+        if (qr.dataset.booking === booking.id) qr.textContent = 'เปิด QR ไม่ได้ กรุณาติดต่อร้านก่อนชำระเงิน';
+      }
+    })();
   } else {
     qr.textContent = 'ติดต่อร้านเพื่อขอข้อมูลชำระเงิน';
   }
 
   function close(message) {
     selection++;
+    delete qr.dataset.booking;
     file.onchange = submit.onclick = skip.onclick = null;
     file.value = '';
     file.disabled = false;

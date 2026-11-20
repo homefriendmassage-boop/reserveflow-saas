@@ -59,19 +59,26 @@ function shopChannelSettings(client, shopId, refresh) {
   group.placeholder = 'C…';
   const connect = action('ตรวจและเชื่อมกลุ่ม');
   connect.type = 'submit';
+  connect.disabled = true;
   const groupStatus = element('p');
   groupStatus.setAttribute('role','status');
+  groupStatus.textContent = 'บันทึก Channel secret และ Channel access token ของ OA ร้านด้านบนก่อน';
   groupForm.append(label('LINE Group ID (source.groupId)',group),connect);
   direct.append(element('summary','ใช้ Webhook เดิม · เชื่อมกลุ่มด้วย Group ID'),
     element('p','เชิญ OA ร้านเข้ากลุ่ม แล้วใช้ source.groupId จากระบบเดิม'),groupForm,groupStatus);
   section.append(direct);
   groupForm.addEventListener('submit',async event=>{
     event.preventDefault();
+    const id = group.value.trim();
+    if (!/^C[a-f0-9]{32}$/.test(id)) {
+      groupStatus.textContent = 'ใช้เฉพาะค่า source.groupId ที่ขึ้นต้นด้วย C จากบอทเดิม';
+      return;
+    }
     connect.disabled = true;
     groupStatus.textContent = 'กำลังตรวจกลุ่มจาก LINE…';
     try {
       const {data,error}=await client.functions.invoke('line-webhook?link-group=1',{
-        body:{shop_id:shopId,group_id:group.value.trim()}
+        body:{shop_id:shopId,group_id:id}
       });
       if (error) throw error;
       if (data.result === 'linked') {
@@ -91,17 +98,34 @@ function shopChannelSettings(client, shopId, refresh) {
   });
   async function load() {
     const { data,error } = await client.rpc('shop_line_channel_status',{p_shop_id:shopId});
+    const configured = !error && Boolean(data?.bot_name);
     status.textContent = error ? 'เปิด SQL ไฟล์ 21 เพื่อใช้ LINE OA รายร้าน'
-      : data?.bot_name ? 'OA ที่บันทึกไว้ · '+data.bot_name : 'ยังไม่ได้บันทึก LINE OA ของร้าน';
-    return !error && Boolean(data?.bot_name);
+      : configured ? 'OA ที่บันทึกไว้ · '+data.bot_name : 'ยังไม่ได้บันทึก LINE OA ของร้าน';
+    connect.disabled = !configured;
+    if (configured && groupStatus.textContent.startsWith('บันทึก Channel')) {
+      groupStatus.textContent = 'พร้อมเชื่อมกลุ่มจาก Webhook เดิม';
+    }
+    return configured;
   }
   form.addEventListener('submit',async event=>{
     event.preventDefault();
+    const channelSecret = secret.value.trim();
+    const accessToken = token.value.trim();
+    if (!/^[a-f0-9]{32}$/i.test(channelSecret)) {
+      status.textContent = 'คัดลอก Channel secret จาก Basic settings ของ Messaging API ให้ครบ 32 ตัว';
+      secret.focus();
+      return;
+    }
+    if (accessToken.length < 20) {
+      status.textContent = 'คัดลอก Channel access token จากแท็บ Messaging API ของ OA เดียวกัน';
+      token.focus();
+      return;
+    }
     save.disabled = true;
     status.textContent = 'กำลังตรวจ Token กับ LINE…';
     try {
       const {data,error}=await client.functions.invoke('line-webhook?configure=1',{
-        body:{shop_id:shopId,secret:secret.value.trim(),token:token.value.trim()}
+        body:{shop_id:shopId,secret:channelSecret,token:accessToken}
       });
       if (error) throw error;
       if (data.result !== 'saved') {

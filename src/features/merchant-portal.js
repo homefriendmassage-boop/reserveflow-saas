@@ -1,7 +1,7 @@
 import { renderDailyReport } from './daily-report.js';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js';
 import { addThunderCheck } from './thunder-slip.js?v=thunder-decisions-1';
-import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=shop-line-2';
+import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=promptpay-id-1';
 import { renderMerchantTeam } from './merchant-team.js';
 import { renderMerchantSettings } from './merchant-settings.js?v=platform-onboarding-1';
 import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
@@ -395,8 +395,8 @@ if (typeof window.supabase?.createClient !== 'function') {
     if (shopMenu.value !== shopId) return;
     savePromptPay.disabled = false;
     if (error) {
-      promptPayStatus.textContent = error.message === 'INVALID_PROMPTPAY_MOBILE'
-        ? 'ใช้เบอร์มือถือไทยที่ผูกพร้อมเพย์ 10 หลัก' : 'บันทึกพร้อมเพย์ไม่ได้ กรุณาลองอีกครั้ง';
+      promptPayStatus.textContent = ['INVALID_PROMPTPAY_PROXY','INVALID_PROMPTPAY_MOBILE'].includes(error.message)
+        ? 'ใช้เบอร์มือถือ 10 หลักหรือเลขบัตรประชาชน 13 หลัก หากใส่เลขบัตรแล้วบันทึกไม่ได้ ให้อัปเดต SQL ไฟล์ 23' : 'บันทึกพร้อมเพย์ไม่ได้ กรุณาลองอีกครั้ง';
       return;
     }
     promptPayMobile.value = mobile;

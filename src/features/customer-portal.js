@@ -1,4 +1,4 @@
-import { prepareSlipAttachment } from './customer-slip.js?v=thunder-decisions-1';
+import { prepareSlipAttachment } from './customer-slip.js?v=promptpay-id-1';
 import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=platform-onboarding-1';
 import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
@@ -140,10 +140,11 @@ async function start() {
   const slipAttachmentsEnabled = data.slip_attachments_enabled === true;
   const dataCatalogTimezone = data.timezone;
   const promptPayMobile = data.promptpay_mobile;
+  const promptpayEnabled = data.promptpay_enabled === true || Boolean(promptPayMobile);
   let awaitingSlip = false;
   title.textContent = `ส่งคำขอจอง · ${data.name}`;
   fields.category.replaceChildren(...categories.map(category => new Option(category.name, category.code)));
-  if (promptPayMobile) submit.textContent = 'จองและแสดง QR ชำระเงิน';
+  if (promptpayEnabled) submit.textContent = 'จองและแสดง QR ชำระเงิน';
   categoryTabs.replaceChildren(...categories.map(category => {
     const tab = document.createElement('button');
     tab.type = 'button';
@@ -341,7 +342,7 @@ async function start() {
         awaitingSlip = true;
         submit.classList.add('hidden');
         submitStatus.textContent = 'จองเวลาแล้ว · เลขจอง ' + data.id;
-        prepareSlipAttachment(client, data, payload.p_phone, promptPayMobile, complete);
+        prepareSlipAttachment(client, data, payload.p_phone, promptPayMobile, promptpayEnabled, complete);
       } else {
         complete('ส่งคำขอจองแล้ว · รอร้านยืนยัน');
       }

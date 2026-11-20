@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="./assets/css/app.css?v=slips-1">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/merchant-portal.js?v=shop-line-2"></script>
+  <script type="module" src="./src/features/merchant-portal.js?v=promptpay-id-1"></script>
 </head>
 <body>
 <header>
@@ -75,9 +75,9 @@
       </form>
       <details class="merchant-settings-panel">
         <summary>QR รับเงินพร้อมเพย์</summary>
-        <p class="sub">ใช้เบอร์มือถือที่ผูกพร้อมเพย์กับบัญชีร้าน เบอร์นี้จะใช้สร้าง QR ให้ลูกค้าชำระตามยอดจอง เว้นว่างแล้วบันทึกเพื่อปิด QR</p>
+        <p class="sub">ใช้เบอร์มือถือ 10 หลัก หรือเลขบัตรประชาชน 13 หลักที่ผูกพร้อมเพย์กับบัญชีรับเงินของร้าน เว้นว่างแล้วบันทึกเพื่อปิด QR</p>
         <form class="fields" id="merchantPromptPayForm">
-          <div class="field"><label for="merchantPromptPayMobile">เบอร์มือถือพร้อมเพย์ของร้าน</label><input id="merchantPromptPayMobile" type="tel" inputmode="tel" maxlength="16"></div>
+          <div class="field"><label for="merchantPromptPayMobile">เบอร์มือถือหรือเลขบัตรประชาชนพร้อมเพย์</label><input id="merchantPromptPayMobile" type="text" inputmode="numeric" maxlength="20" autocomplete="off"></div>
           <button class="btn soft" type="submit" disabled>บันทึกพร้อมเพย์</button>
         </form>
         <p id="merchantPromptPayStatus" role="status"></p>
