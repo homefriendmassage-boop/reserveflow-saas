@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ReserveFlow | Universal Booking Demo</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap');
+    :root{
+      --bg:#f4f6fb;--panel:#ffffff;--line:#dfe5f0;--ink:#17233e;--muted:#68758f;--blue:#586af0;--blue2:#ecf0ff;
+      --green:#16906c;--greenbg:#e7f8f1;--red:#c45555;--redbg:#fdecec;--amber:#ad7423;--amberbg:#fff4df;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:14px 'Prompt',system-ui,sans-serif}
+    button,input,select{font:inherit}
+    button{cursor:pointer}
+    header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line)}
+    .top{max-width:1280px;margin:auto;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .logo{font-weight:700;font-size:21px;display:flex;align-items:center;gap:10px}
+    .logo b{display:grid;place-items:center;height:40px;width:40px;border-radius:12px;background:var(--blue);color:#fff}
+    .logo small{display:block;color:var(--muted);font-size:12px;font-weight:400}
+    .switch{display:flex;gap:5px;padding:4px;border-radius:12px;background:#f1f3fb}
+    .switch button{border:0;background:transparent;padding:10px 15px;color:var(--muted);border-radius:10px}
+    .switch button.active{background:#fff;color:var(--blue);box-shadow:0 2px 8px rgba(30,48,90,.10)}
+    main{max-width:1280px;margin:24px auto;padding:0 24px 40px}
+    .hero{background:linear-gradient(115deg,#1d2f5b,#5064d6);color:#fff;border-radius:20px;padding:28px 30px;display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:20px}
+    .hero h1{margin:0 0 8px;font-size:28px}
+    .hero p{margin:0;color:#dee4ff;max-width:720px}
+    .pill{border-radius:999px;background:rgba(255,255,255,.16);padding:11px 16px;white-space:nowrap}
+    .grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(320px,1fr);gap:20px}
+    .panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 4px 20px rgba(24,40,84,.05);margin-bottom:18px}
+    .panel h2{margin:0 0 6px;font-size:19px}.sub{margin:0 0 18px;color:var(--muted);font-size:13px}
+    .tabs{display:flex;gap:8px;overflow:auto;padding-bottom:2px;margin:0 0 16px}
+    .tabs button{border:1px solid var(--line);background:#fff;border-radius:13px;padding:12px 18px;white-space:nowrap;color:#5d6a84}
+    .tabs button.active{background:var(--blue);border-color:var(--blue);color:#fff}
+    .fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .field label{display:block;margin:0 0 7px;color:#53617b;font-size:12px}
+    .field input,.field select,.field textarea{width:100%;height:44px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;color:var(--ink)}
+    .field textarea{height:72px;resize:vertical}
+    .helper{font-size:11px;color:var(--muted);margin-top:6px}
+    .chips{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+    .chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 12px;font-size:12px;background:#f5f7ff;color:#596885}
+    .dot{display:inline-block;width:9px;height:9px;border-radius:50%}
+    .dot.available{background:#45b37a}.dot.pending{background:#e0a23f}.dot.booked{background:#dc7272}.dot.selected{background:#6172ec}
+    .plan{height:390px;position:relative;border:2px dashed #d8e0ec;border-radius:16px;background:repeating-linear-gradient(0deg,#fbfcff,#fbfcff 22px,#f6f8fd 23px);overflow:hidden}
+    .anchor{position:absolute;left:32%;top:14px;width:36%;height:36px;border-radius:8px;background:#dfe6f7;color:#6b7992;line-height:36px;text-align:center;font-size:12px}
+    .entrance{position:absolute;left:37%;bottom:0;width:26%;padding:8px;border-radius:9px 9px 0 0;background:#dcece8;color:#17816a;text-align:center}
+    .resource{position:absolute;transform:translate(-50%,-50%);min-width:84px;height:72px;padding:6px 10px;border-radius:15px;border:1.5px solid #9bd8b8;background:#e8f8f0;color:#177056;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;line-height:1.25}
+    .resource small{font-size:10px}
+    .resource.pending{background:#fff3df;border-color:#e7c27a;color:#9b6d19}
+    .resource.booked{background:#fdeaea;border-color:#f0b7b7;color:#b35151}
+    .resource.selected{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 0 0 4px rgba(88,106,240,.15)}
+    .resource:hover:not(:disabled){transform:translate(-50%,-50%) scale(1.03)}
+    .resource-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .card-btn{border:1.5px solid var(--line);background:#fff;border-radius:15px;padding:13px;text-align:left;color:var(--ink);display:flex;gap:12px;align-items:center;min-width:0}
+    .card-btn.selected{border-color:var(--blue);background:#f5f7ff}
+    .card-btn.pending{background:#fffaf0;border-color:#edd6a0}
+    .card-btn.booked{background:#fff4f4;border-color:#efc1c1}
+    .card-btn:disabled{opacity:.65;cursor:not-allowed}
+    .avatar{width:62px;height:62px;border-radius:14px;background:#ebf0fd;display:grid;place-items:center;flex:none;overflow:hidden;font-size:28px}
+    .avatar img{width:100%;height:100%;object-fit:cover}
+    .price{display:block;color:var(--blue);font-weight:600;margin-top:4px}
+    .badge{display:inline-flex;align-items:center;border-radius:999px;padding:4px 8px;font-size:11px;margin-top:6px}
+    .badge.pending{background:var(--amberbg);color:var(--amber)}
+    .badge.booked{background:var(--redbg);color:var(--red)}
+    .summary{background:#f6f8ff;border-radius:14px;padding:16px;margin:16px 0}
+    .row{display:flex;justify-content:space-between;gap:10px;margin-bottom:10px}.row:last-child{margin:0}
+    .row.total{padding-top:12px;border-top:1px solid #dfe4f3;font-weight:700}
+    .btn{border:0;border-radius:11px;padding:12px 18px;font-weight:600}
+    .btn.primary{background:var(--blue);color:#fff}.btn.soft{background:#edf1ff;color:var(--blue)}.btn.success{background:#158a69;color:#fff}.btn.danger{background:#ffe8e8;color:#b54444}.btn.warn{background:#fff3df;color:#9b6d19}.btn.small{padding:8px 11px;font-size:12px;border-radius:9px}
+    .btn.full{width:100%}
+    .note{font-size:11px;color:var(--muted);margin-top:10px}
+    .booking{border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+    .booking-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .booking h3{margin:0;font-size:15px}.booking p{margin:7px 0;color:var(--muted);font-size:12px}
+    .status{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;font-size:11px;white-space:nowrap;background:#edf1ff;color:#4960d8}
+    .status.pending_payment{background:var(--amberbg);color:var(--amber)}
+    .status.pending_confirm{background:#f1efff;color:#6a55d4}
+    .status.slip_review{background:#fff2df;color:#a66b22}
+    .status.confirmed{background:var(--greenbg);color:var(--green)}
+    .status.checked_in{background:#e7f4ff;color:#1872a0}
+    .status.completed{background:#eef1f8;color:#5f6d84}
+    .status.cancelled{background:var(--redbg);color:var(--red)}
+    .actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+    .empty{padding:28px;border-radius:13px;background:#fafbfe;color:var(--muted);text-align:center}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+    .stat{background:#fff;border:1px solid var(--line);border-radius:15px;padding:19px}
+    .stat strong{display:block;font-size:28px;color:var(--blue)}.stat span{font-size:12px;color:var(--muted)}
+    .notice{font-size:12px;background:#fff7e5;color:#946c22;padding:12px;border-radius:10px;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse}
+    th,td{border-top:1px solid #edf1f6;padding:10px 8px;text-align:left;font-size:12px;vertical-align:top}
+    th{color:#6a7690;font-weight:600;background:#fbfcfe}
+    td input,td select{height:38px;width:100%;border:1px solid var(--line);border-radius:9px;padding:7px 10px}
+    .inline-actions{display:flex;gap:7px;flex-wrap:wrap}
+    .hidden{display:none!important}
+    .toast{position:fixed;right:18px;bottom:18px;background:#1a2c57;color:#fff;padding:13px 16px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:20;max-width:360px}
+    .layout-tools{display:flex;gap:9px;flex-wrap:wrap;align-items:end;margin-bottom:13px}
+    .layout-tools .field{min-width:150px;flex:1}
+    .editor-plan{position:relative;height:420px;touch-action:none;border:2px dashed #b6c6e8;border-radius:15px;background-image:linear-gradient(#e9eef8 1px,transparent 1px),linear-gradient(90deg,#e9eef8 1px,transparent 1px);background-size:5% 10%;background-color:#fafcff;overflow:hidden}
+    .edit-item{position:absolute;transform:translate(-50%,-50%);border:2px solid #9bd8b8;border-radius:12px;background:#e8f8f0;color:#126d50;display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:none;user-select:none;cursor:grab;font-size:12px;line-height:1.3}
+    .edit-item.active{border-color:#5364e9;background:#e8edff;color:#263bab;z-index:2;box-shadow:0 0 0 3px #5364e92c}.edit-item small{font-size:10px}
+    .decor-block{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;text-align:center;padding:5px;border:1.5px dashed #8394b2;border-radius:8px;background:rgba(220,228,243,.92);color:#354766;font-size:12px;font-weight:600;line-height:1.3;white-space:pre-line;overflow:hidden;z-index:1}
+    .decor-block.kind-stage{background:#dee7fa;border-color:#728ed0}.decor-block.kind-restroom{background:#e0f5f2;border-color:#66aaa2}.decor-block.kind-door,.decor-block.kind-entrance,.decor-block.kind-exit{background:#fef3d9;border-color:#d7a95c}.decor-block.kind-wall{background:#b4bed1;border-color:#79869e;color:#27364e}
+    .editor-decor{cursor:grab;touch-action:none;user-select:none}.editor-decor.active{border:2px solid #586af0;box-shadow:0 0 0 3px #586af030;z-index:3}
+    .layout-size-controls{display:flex;gap:9px;flex-wrap:wrap;align-items:end;margin-bottom:13px}.layout-size-controls .field{min-width:130px}
+    .layout-shell{width:100%;overflow-x:auto;padding-bottom:6px}.editor-plan{margin:0 auto;max-width:none;flex:none}.plan{margin:0 auto;max-width:none}
+    .category-order{display:flex;flex-direction:column;gap:5px;min-width:76px}.category-order button{padding:5px 8px}
+    .editor-settings{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}
+    .payment-panel{background:#f7f9ff;border:1px solid #dce3fa;padding:17px;border-radius:14px}
+    .payment-panel h3{margin:0 0 10px;font-size:16px}
+    .ticket{border:2px dashed #7b8df0;border-radius:14px;padding:16px;margin-top:12px;background:#fff}
+    .qr-target{display:grid;place-items:center;min-height:166px;background:#fff;border:1px solid #e4e9f4;border-radius:11px;margin:12px auto;padding:12px;width:190px;text-align:center}
+    .qr-target img{max-width:100%;height:auto}
+    .file-preview{max-width:100%;max-height:180px;object-fit:contain;border-radius:9px;margin:8px 0}
+    .footer{text-align:center;color:#8a95aa;font-size:12px;padding:18px}
+    @media (max-width:980px){.grid{grid-template-columns:1fr}.fields{grid-template-columns:repeat(2,minmax(0,1fr))}.stats{grid-template-columns:repeat(2,1fr)}}
+    @media (max-width:640px){main{padding:0 12px 30px}.top{padding:12px}.hero{display:block;padding:22px}.hero h1{font-size:23px}.resource-grid{grid-template-columns:1fr}.fields{grid-template-columns:1fr}.stats{grid-template-columns:1fr}.panel{padding:16px}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div class="logo"><b>R</b><div>ReserveFlow <small>Universal Booking Demo</small></div></div>
+    <div class="switch">
+      <button id="customerMode" class="active" onclick="setMode('customer')">👤 ลูกค้า</button>
+      <button id="adminMode" onclick="setMode('admin')">🧑‍💼 หลังบ้านแอดมิน</button>
+    </div>
+  </div>
+</header>
+<main>
+  <section id="customerView">
+    <div class="tabs" id="categoryTabs"></div>
+    <div class="grid">
+      <div>
+        <div class="panel">
+          <h2 id="mainTitle">เลือกทรัพยากร</h2>
+          <p class="sub" id="mainDesc">เลือกรายการที่ต้องการจอง</p>
+          <div class="fields" id="dynamicFields"></div>
+          <div class="chips">
+            <span class="chip"><i class="dot available"></i>ว่าง</span>
+            <span class="chip"><i class="dot pending"></i>จองรอชำระ</span>
+            <span class="chip"><i class="dot booked"></i>จองแล้ว</span>
+            <span class="chip"><i class="dot selected"></i>เลือกแล้ว</span>
+          </div>
+          <div id="resourceArea"></div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <h2>ข้อมูลผู้จอง</h2>
+          <p class="sub">กรอกรายละเอียด แล้วตรวจสอบสรุปก่อนยืนยันคำขอ</p>
+          <div class="field" style="margin-bottom:11px"><label>ชื่อผู้จอง</label><input id="customerName" placeholder="ชื่อ-นามสกุล"></div>
+          <div class="field" style="margin-bottom:11px"><label>เบอร์โทรศัพท์</label><input id="customerPhone" placeholder="08xxxxxxxx"></div>
+          <div class="field" style="margin-bottom:11px"><label>หมายเหตุ (ไม่บังคับ)</label><textarea id="customerNote" placeholder="เช่น ต้องการมุมเงียบ / ฉลองวันเกิด / ขอพนักงานผู้หญิง"></textarea></div>
+          <h2 style="margin-top:18px">สรุปการจอง</h2>
+          <p class="sub">ตรวจสอบรายละเอียดและยอดชำระ</p>
+          <div id="summaryBox" class="summary"></div>
+          <button class="btn primary full" id="submitBooking" onclick="createBooking()">ส่งคำขอจอง</button>
+          <div id="paymentStep" class="hidden" style="margin-top:14px"></div>
+          <div class="note">เดโมนี้ยังไม่เชื่อมชำระเงินจริง LINE OA หรือฐานข้อมูลออนไลน์ ข้อมูลถูกเก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น</div>
+        </div>
+
+        <div class="panel">
+          <h2>การจองของฉัน</h2>
+          <p class="sub">ค้นหาจากเบอร์โทรศัพท์ที่ใช้จอง</p>
+          <div class="field" style="margin-bottom:12px"><input id="lookupPhone" placeholder="กรอกเบอร์โทรศัพท์" oninput="renderMyBookings()"></div>
+          <div id="myBookings"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="adminView" class="hidden">
+    <div class="stats" id="statCards"></div>
+
+    <div class="panel">
+      <h2>ตั้งค่าหมวดการจอง</h2>
+      <p class="sub">แก้ชื่อหมวด ซ่อน/แสดง กำหนดราคา ค่าบริการ ประเภทการชำระ และสถานะเริ่มต้นได้เอง รวมถึงเพิ่มหรือลบหมวดในเดโม</p>
+      <div class="notice">⚠️ เดโมนี้เปิดหน้าแอดมินได้โดยไม่ต้องล็อกอิน และการเพิ่มหมวดใหม่ในเดโมจะอิงจากแม่แบบ 5 แบบ: โต๊ะ / พนักงาน / ห้อง VIP / ที่นั่ง / บัตร</div>
+      <div style="overflow:auto">
+        <table>
+          <thead>
+            <tr>
+              <th style="min-width:160px">ชื่อหมวด</th>
+              <th style="min-width:120px">แม่แบบ</th>
+              <th style="min-width:90px">แสดงผล</th>
+              <th style="min-width:120px">ราคาเริ่มต้น</th>
+              <th style="min-width:110px">ค่าบริการ</th>
+              <th style="min-width:120px">รูปแบบชำระ</th>
+              <th style="min-width:140px">สถานะเริ่มต้น</th>
+              <th style="min-width:110px">ลำดับ</th>
+              <th style="min-width:90px">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="categoryTable"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:14px;border-top:1px solid #edf1f6;padding-top:14px">
+        <div class="fields">
+          <div class="field"><label>ชื่อหมวดใหม่</label><input id="newCatName" placeholder="เช่น จองซุ้มส่วนตัว"></div>
+          <div class="field"><label>เลือกแม่แบบ</label><select id="newCatTemplate"><option value="table">โต๊ะ</option><option value="staff">พนักงาน</option><option value="vip">ห้อง VIP</option><option value="seat">ที่นั่ง</option><option value="ticket">บัตร</option></select></div>
+          <div class="field"><label>ราคาเริ่มต้น</label><input id="newCatPrice" type="number" min="0" placeholder="0"></div>
+          <div class="field"><label>&nbsp;</label><button class="btn soft full" onclick="addCategory()">+ เพิ่มหมวดใหม่</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>🏪 ตั้งค่าร้านค้า / บัญชีรับเงิน</h2>
+      <p class="sub">กำหนดข้อมูลสำหรับแสดงเมื่อส่งคำขอจอง แต่ละร้านในระบบ SaaS จริงต้องมีบัญชีรับเงินและสิทธิ์แยกกัน</p>
+      <div class="fields">
+        <div class="field"><label>ชื่อร้านค้า</label><input id="shopName" placeholder="ชื่อร้าน" onchange="saveShopSettings()"></div>
+        <div class="field"><label>รหัสร้าน (จำลอง Tenant ID)</label><input id="shopCode" placeholder="เช่น SHOP_DEMO" readonly></div>
+        <div class="field"><label>ธนาคารรับเงิน</label><input id="bankName" placeholder="เลือก/กรอกชื่อธนาคาร" onchange="saveShopSettings()"></div>
+        <div class="field"><label>ชื่อบัญชี</label><input id="bankOwner" placeholder="ชื่อเจ้าของบัญชี" onchange="saveShopSettings()"></div>
+        <div class="field"><label>เลขบัญชีรับเงิน</label><input id="bankNumber" inputmode="numeric" placeholder="กรอกบัญชีจริงของร้าน" onchange="saveShopSettings()"></div>
+        <div class="field"><label>เลขพร้อมเพย์ (ไม่บังคับ)</label><input id="promptpayId" placeholder="เบอร์/เลขประจำตัวผู้เสียภาษี" onchange="saveShopSettings()"></div>
+        <div class="field"><label>แพ็กเกจตัวอย่าง</label><select id="saasPlan" onchange="saveShopSettings()"><option>Trial</option><option>Starter</option><option>Basic</option><option>Pro</option></select></div>
+      </div>
+      <div class="note">การตั้งค่าถูกเก็บในเครื่องนี้เท่านั้น ไม่มีการตรวจสอบชื่อบัญชีหรือ PromptPay จริง และยังไม่มีระบบสมาชิกหรือเก็บค่ารายเดือน</div>
+    </div>
+
+    <div class="panel">
+      <h2>🗺️ ออกแบบผังโต๊ะและที่นั่ง</h2>
+      <p class="sub">เลือกหมวดและเทมเพลต แล้วลากกล่องบนผังเพื่อย้ายตำแหน่ง คลิกกล่องเพื่อแก้ชื่อ ขนาด และจำนวนที่นั่ง บันทึกอัตโนมัติ</p>
+      <div class="layout-tools">
+        <div class="field"><label>แก้ผังหมวด</label><select id="layoutCategory" onchange="layoutSelectCategory(this.value)"></select></div>
+        <div class="field"><label>รูปแบบ Template</label><select id="layoutTemplate"><option value="grid">ตารางแถวและคอลัมน์</option><option value="rows">เรียงเป็นแถว</option><option value="columns">เรียงเป็นคอลัมน์</option><option value="u">รูปตัว U</option><option value="circle">ครึ่งวงกลม / รอบเวที</option></select></div>
+        <button class="btn soft small" onclick="applyLayoutTemplate()">ใช้ Template</button>
+        <button class="btn soft small" onclick="layoutAdd()">+ เพิ่มจุดจอง</button>
+        <button class="btn soft small" id="copyLayoutButton" onclick="layoutCopy()" title="เลือกโต๊ะหรือที่นั่งบนผังก่อน">📋 คัดลอกจุดที่เลือก</button>
+        <div class="field"><label>ภาพผังพื้นหลัง (JPG/PNG/WebP)</label><input type="file" accept="image/png,image/jpeg,image/webp" onchange="uploadLayoutBackground(this)"></div>
+        <button class="btn danger small" onclick="clearLayoutBackground()">ลบภาพพื้นหลัง</button>
+      </div>
+      <div class="layout-size-controls">
+        <div class="field"><label>รูปแบบกรอบผัง</label><select id="layoutAspect" onchange="changeLayoutAspect(this.value)"><option value="wide">แนวนอน (16:9)</option><option value="portrait">แนวตั้ง (3:4)</option><option value="square">จัตุรัส (1:1)</option><option value="custom">อิสระ / กำหนดเอง</option></select></div>
+        <div class="field"><label>ความกว้าง (px)</label><input id="layoutWidth" type="number" min="320" max="1600" step="10" onchange="updateLayoutSize()"></div>
+        <div class="field"><label>ความสูง (px)</label><input id="layoutHeight" type="number" min="280" max="1600" step="10" onchange="updateLayoutSize()"></div>
+        <div class="field"><label>ชนิดบล็อกประกอบผัง</label><select id="newDecorType"><option value="door">🚪 ประตู</option><option value="stage">🎤 เวที</option><option value="restroom">🚻 ห้องน้ำ</option><option value="entrance">➡️ ทางเข้า</option><option value="exit">⬅️ ทางออก</option><option value="wall">▰ ผนัง</option><option value="label">ข้อความอิสระ</option></select></div>
+        <button class="btn soft small" onclick="layoutAddDecor()">+ เพิ่มบล็อก</button>
+      </div>
+      <div class="note" style="margin-bottom:12px">บล็อกประกอบผัง เช่น ประตู เวที ห้องน้ำ ทางเข้า ทางออก ผนัง และข้อความ สามารถลาก ย้าย ปรับขนาดได้ แต่ลูกค้าจะกดจองบล็อกเหล่านี้ไม่ได้</div>
+      <div class="layout-shell"><div id="layoutCanvas" class="editor-plan"></div></div>
+      <div class="editor-settings" id="layoutSettings"></div>
+      <div class="note">รองรับผังร้านเป็นภาพพื้นหลังพร้อมลากวางจุดจองและปรับขนาด ภาพสูงสุด 700 KB ในเดโม (บันทึกในเครื่องนี้ ไม่อัปโหลดขึ้นเซิร์ฟเวอร์)</div>
+    </div>
+
+    <div class="panel">
+      <h2>รายการจองทั้งหมด</h2>
+      <p class="sub">ตรวจสอบ ยืนยัน เปลี่ยนสถานะ และดูข้อมูลการจองทุกหมวด</p>
+      <div class="fields" style="margin-bottom:16px">
+        <div class="field"><label>กรองตามหมวด</label><select id="adminCategoryFilter" onchange="renderAdminBookings()"><option value="all">ทุกหมวด</option></select></div>
+        <div class="field"><label>ค้นหา</label><input id="adminSearch" oninput="renderAdminBookings()" placeholder="ค้นหาชื่อ เบอร์ เลขจอง หรือรายการ"></div>
+        <div class="field"><label>สถานะ</label><select id="adminStatusFilter" onchange="renderAdminBookings()"><option value="all">ทุกสถานะ</option><option value="pending_payment">จองรอชำระ</option><option value="slip_review">รอตรวจสลิป</option><option value="pending_confirm">รอลูกค้าคอนเฟิร์ม</option><option value="slip_review">รอตรวจสลิป</option><option value="confirmed">จองแล้ว</option><option value="checked_in">เช็กอินแล้ว</option><option value="completed">เสร็จสิ้น</option><option value="cancelled">ยกเลิก</option></select></div>
+        <div class="field"><label>เครื่องมือเดโม</label><button class="btn soft full" onclick="resetAll()">รีเซ็ตข้อมูลทั้งหมด</button></div>
+      </div>
+      <div id="adminBookings"></div>
+    </div>
+  </section>
+</main>
+<div class="footer">ReserveFlow Demo • Local Prototype • ไม่มีระบบรับเงินจริง / ไม่มี LINE API / ไม่มีหลายผู้ใช้พร้อมกัน</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const BOOKING_KEY='reserveflow_bookings_v2';
+const CONFIG_KEY='reserveflow_config_v2';
+let currentMode='customer';
+let currentCategory='';
+let selectedResourceId='';
+
+const STATUS_LABEL={
+  pending_payment:'จองรอชำระ',
+  slip_review:'รอตรวจสลิป',
+  pending_confirm:'รอลูกค้าคอนเฟิร์ม',
+  confirmed:'จองแล้ว',
+  checked_in:'เช็กอินแล้ว',
+  completed:'เสร็จสิ้น',
+  cancelled:'ยกเลิก'
+};
+
+const TEMPLATE_META={
+  table:{icon:'🍽️',title:'เลือกโต๊ะจากผังร้าน',desc:'เลือกโต๊ะตามจำนวนผู้ใช้บริการและช่วงเวลาที่ต้องการ',unit:'ผู้ใช้บริการ'},
+  staff:{icon:'👩‍💼',title:'เลือกพนักงานผู้ให้บริการ',desc:'เลือกพนักงานและระยะเวลาที่ต้องการจอง',unit:'ชั่วโมง'},
+  vip:{icon:'🚪',title:'เลือกห้อง VIP',desc:'เลือกห้อง VIP พร้อมจำนวนผู้ใช้บริการและจำนวนชั่วโมง',unit:'ชั่วโมง'},
+  seat:{icon:'💺',title:'เลือกที่นั่งจากผัง',desc:'เหมาะกับการจองที่นั่งรายชั่วโมงหรือรอบเวลา',unit:'ชั่วโมง'},
+  ticket:{icon:'🎫',title:'เลือกประเภทบัตร',desc:'เลือกโซนบัตรและจำนวนบัตรที่ต้องการจอง',unit:'บัตร'}
+};
+
+const DEFAULT_CONFIG={
+  shop:{name:'ร้าน DEMO',tenantId:'SHOP_DEMO',bankName:'',bankOwner:'',bankNumber:'',promptpayId:'',plan:'Trial'},
+  layoutImages:{},
+  layoutDecor:{},
+  layoutSizes:{},
+  categories:[
+    {id:'table',name:'จองโต๊ะ',template:'table',visible:true,price:200,serviceFee:0,paymentMode:'deposit',defaultStatus:'pending_payment'},
+    {id:'staff',name:'จองพนักงาน',template:'staff',visible:true,price:500,serviceFee:50,paymentMode:'full',defaultStatus:'pending_confirm'},
+    {id:'vip',name:'จองห้อง',template:'vip',visible:true,price:1500,serviceFee:100,paymentMode:'deposit',defaultStatus:'pending_payment'},
+    {id:'seat',name:'จองที่นั่ง',template:'seat',visible:true,price:150,serviceFee:0,paymentMode:'full',defaultStatus:'pending_confirm'},
+    {id:'ticket',name:'จองบัตร',template:'ticket',visible:true,price:900,serviceFee:20,paymentMode:'full',defaultStatus:'pending_payment'}
+  ],
+  resources:{
+    table:[
+      {id:'T01',name:'โต๊ะ T01',capacity:2,desc:'ริมหน้าต่าง',x:19,y:25},
+      {id:'T02',name:'โต๊ะ T02',capacity:4,desc:'กลางร้าน',x:50,y:30},
+      {id:'T03',name:'โต๊ะ T03',capacity:4,desc:'ริมสวน',x:81,y:25},
+      {id:'T04',name:'โต๊ะ T04',capacity:6,desc:'โซนครอบครัว',x:19,y:62},
+      {id:'T05',name:'โต๊ะ T05',capacity:6,desc:'ใกล้เวที',x:50,y:63},
+      {id:'T06',name:'โต๊ะ T06',capacity:8,desc:'โต๊ะใหญ่',x:81,y:62}
+    ],
+    staff:[
+      {id:'S01',name:'คุณมายด์',desc:'พนักงานดูแลส่วนตัว',icon:'👩🏻‍💼',photo:''},
+      {id:'S02',name:'คุณน้ำ',desc:'พนักงานบริการลูกค้า VIP',icon:'👩🏽‍💼',photo:''},
+      {id:'S03',name:'คุณต้น',desc:'ผู้ช่วยส่วนตัว / เทรนเนอร์',icon:'👨🏻‍💼',photo:''},
+      {id:'S04',name:'คุณฟ้า',desc:'พนักงานบริการเฉพาะบุคคล',icon:'👩🏼‍💼',photo:''}
+    ],
+    vip:[
+      {id:'V01',name:'ห้อง VIP A',capacity:4,desc:'ห้องส่วนตัวขนาดเล็ก',icon:'🚪'},
+      {id:'V02',name:'ห้อง VIP B',capacity:8,desc:'ห้องคาราโอเกะ',icon:'🎤'},
+      {id:'V03',name:'ห้อง VIP C',capacity:10,desc:'ห้องประชุม/จัดเลี้ยง',icon:'✨'}
+    ],
+    seat:[
+      {id:'A01',name:'ที่นั่ง A01',desc:'ติดทางเข้า',x:18,y:24},
+      {id:'A02',name:'ที่นั่ง A02',desc:'มุมซ้าย',x:38,y:24},
+      {id:'A03',name:'ที่นั่ง A03',desc:'กลางแถวหน้า',x:58,y:24},
+      {id:'A04',name:'ที่นั่ง A04',desc:'มุมขวา',x:78,y:24},
+      {id:'B01',name:'ที่นั่ง B01',desc:'แถวกลางซ้าย',x:18,y:58},
+      {id:'B02',name:'ที่นั่ง B02',desc:'แถวกลาง',x:38,y:58},
+      {id:'B03',name:'ที่นั่ง B03',desc:'แถวกลางขวา',x:58,y:58},
+      {id:'B04',name:'ที่นั่ง B04',desc:'ใกล้ทางออก',x:78,y:58}
+    ],
+    ticket:[
+      {id:'E01',name:'โซน General',desc:'บัตรยืน / ต่อใบ',icon:'🎵'},
+      {id:'E02',name:'โซน Seating',desc:'บัตรนั่ง / ต่อใบ',icon:'💺'},
+      {id:'E03',name:'โซน VIP',desc:'บัตร VIP / ต่อใบ',icon:'⭐'}
+    ]
+  }
+};
+
+function $(id){return document.getElementById(id)}
+function deep(obj){return JSON.parse(JSON.stringify(obj))}
+function esc(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function money(n){return new Intl.NumberFormat('th-TH').format(Number(n||0))+' บาท'}
+function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function toast(msg){const el=document.createElement('div');el.className='toast';el.textContent=msg;document.body.appendChild(el);setTimeout(()=>el.remove(),3400)}
+function getBookings(){try{return JSON.parse(localStorage.getItem(BOOKING_KEY)||'[]')}catch(e){return []}}
+function setBookings(v){localStorage.setItem(BOOKING_KEY,JSON.stringify(v))}
+function getConfig(){
+  try{
+    const data=JSON.parse(localStorage.getItem(CONFIG_KEY)||'null');
+    if(data&&data.categories&&data.resources)return data;
+  }catch(e){}
+  return deep(DEFAULT_CONFIG);
+}
+function setConfig(v){localStorage.setItem(CONFIG_KEY,JSON.stringify(v))}
+function getCategory(id){return getConfig().categories.find(c=>c.id===id)}
+function visibleCategories(){return getConfig().categories.filter(c=>c.visible)}
+function getResources(catId){const cat=getCategory(catId);if(!cat)return[];const cfg=getConfig();return cfg.resources[catId]||cfg.resources[cat.template]||[]}
+function setMode(mode){
+  if(mode==='customer' && currentMode==='admin'){
+    currentCategory='';
+    selectedResourceId='';
+    ensureCurrentCategory();
+  }
+  currentMode=mode;
+  $('customerView').classList.toggle('hidden',mode!=='customer');
+  $('adminView').classList.toggle('hidden',mode!=='admin');
+  $('customerMode').classList.toggle('active',mode==='customer');
+  $('adminMode').classList.toggle('active',mode==='admin');
+  if(mode==='admin') renderAdmin(); else renderCustomer();
+}
+function ensureCurrentCategory(){
+  const list=visibleCategories();
+  if(!list.length){currentCategory='';return}
+  if(!list.some(c=>c.id===currentCategory)) currentCategory=list[0].id;
+}
+function setDefaultDate(){const inp=$('bookingDate'); if(inp && !inp.value){inp.value=today(); inp.min=today();}}
+function categoryTitle(cat){return `${TEMPLATE_META[cat.template]?.icon||'📌'} ${cat.name}`}
+function inputState(){
+  const data={
+    date:$('bookingDate')?.value||today(),
+    start:$('startTime')?.value||'18:00',
+    duration:Number($('durationHours')?.value||0),
+    guests:Number($('guestsCount')?.value||0),
+    tickets:Number($('ticketQty')?.value||0)
+  };
+  data.end=data.duration?addHours(data.start,data.duration):'';
+  return data;
+}
+function timeToMin(t){ const [h,m]=String(t||'00:00').split(':').map(Number); return h*60+m }
+function overlaps(startA,endA,startB,endB){
+  if(!endA || !endB) return startA===startB;
+  return timeToMin(startA) < timeToMin(endB) && timeToMin(startB) < timeToMin(endA);
+}
+function addHours(time,hours){
+  const [hh,mm]=String(time||'00:00').split(':').map(Number);
+  const total=hh*60+mm+Number(hours)*60;
+  const newH=((Math.floor(total/60))%24+24)%24;
+  const newM=((total%60)+60)%60;
+  return `${String(newH).padStart(2,'0')}:${String(newM).padStart(2,'0')}`;
+}
+function resourceBookingState(resourceId){
+  const state=inputState();
+  const bookings=getBookings().filter(b=>b.categoryId===currentCategory&&b.resourceId===resourceId&&b.date===state.date&&!['cancelled','completed'].includes(b.status)&&overlaps(state.start,state.end,b.startTime,b.endTime));
+  if(!bookings.length) return 'available';
+  if(bookings.some(b=>b.status==='pending_payment')) return 'pending';
+  return 'booked';
+}
+function chooseResource(id){selectedResourceId=id;renderCustomer()}
+function selectedResource(){return getResources(currentCategory).find(r=>r.id===selectedResourceId)}
+function calcAmount(cat,res,state){
+  const unitBase=Number(cat.price||0);
+  const fee=Number(cat.serviceFee||0);
+  let qty=1;
+  if(cat.template==='table') qty=Math.max(Number(state.guests||0),1);
+  if(cat.template==='staff') qty=Math.max(Number(state.duration||0),1);
+  if(cat.template==='vip') qty=Math.max(Number(state.duration||0),1);
+  if(cat.template==='seat') qty=Math.max(Number(state.duration||0),1);
+  if(cat.template==='ticket') qty=Math.max(Number(state.tickets||0),1);
+  const subtotal=unitBase*qty;
+  const total=subtotal+fee;
+  return {qty,subtotal,total,fee};
+}
+function validateSelection(cat,res,state){
+  if(!res) return 'กรุณาเลือกรายการที่ต้องการจอง';
+  if(cat.template==='table' && !state.guests) return 'กรุณาเลือกจำนวนผู้ใช้บริการ';
+  if(cat.template==='staff' && !state.duration) return 'กรุณาเลือกจำนวนชั่วโมง';
+  if(cat.template==='vip' && (!state.guests || !state.duration)) return 'กรุณาเลือกจำนวนผู้ใช้บริการและจำนวนชั่วโมง';
+  if(cat.template==='seat' && !state.duration) return 'กรุณาเลือกจำนวนชั่วโมง';
+  if(cat.template==='ticket' && !state.tickets) return 'กรุณาเลือกจำนวนบัตร';
+  if(['staff','vip','seat'].includes(cat.template) && !state.end) return 'กรุณากำหนดช่วงเวลา';
+  if(['table','vip'].includes(cat.template) && res.capacity && state.guests>res.capacity) return 'จำนวนผู้ใช้บริการเกินความจุ';
+  if(resourceBookingState(res.id)!=='available') return 'รายการนี้ไม่ว่างในรอบเวลาที่เลือก';
+  return '';
+}
+function renderDynamicFields(cat,preserve={}){
+  const template=cat.template;
+  const fields=[];
+  fields.push(`<div class="field"><label>วันที่ใช้บริการ</label><input id="bookingDate" type="date" onchange="renderCustomer()"></div>`);
+  fields.push(`<div class="field"><label>${['staff','vip','seat'].includes(template)?'เวลาเริ่ม':'รอบเวลา'}</label><select id="startTime" onchange="renderCustomer()">${['10:00','12:00','14:00','16:00','18:00','20:00','22:00'].map(t=>`<option ${t==='18:00'?'selected':''}>${t}</option>`).join('')}</select></div>`);
+  if(template==='table') fields.push(`<div class="field"><label>จำนวนผู้มาใช้บริการ</label><select id="guestsCount" onchange="renderCustomer()">${[1,2,4,6,8,10].map(n=>`<option value="${n}" ${n===2?'selected':''}>${n} คน</option>`).join('')}</select></div>`);
+  if(template==='staff') fields.push(`<div class="field"><label>จำนวนชั่วโมง</label><select id="durationHours" onchange="renderCustomer()">${[1,2,3,4,5].map(n=>`<option value="${n}" ${n===1?'selected':''}>${n} ชั่วโมง</option>`).join('')}</select></div>`);
+  if(template==='vip'){
+    fields.push(`<div class="field"><label>จำนวนผู้มาใช้บริการ</label><select id="guestsCount" onchange="renderCustomer()">${[2,4,6,8,10].map(n=>`<option value="${n}" ${n===4?'selected':''}>${n} คน</option>`).join('')}</select></div>`);
+    fields.push(`<div class="field"><label>จำนวนชั่วโมง</label><select id="durationHours" onchange="renderCustomer()">${[1,2,3,4,5].map(n=>`<option value="${n}" ${n===2?'selected':''}>${n} ชั่วโมง</option>`).join('')}</select></div>`);
+  }
+  if(template==='seat'){
+    fields.push(`<div class="field"><label>จำนวนชั่วโมง</label><select id="durationHours" onchange="renderCustomer()">${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${n===2?'selected':''}>${n} ชั่วโมง</option>`).join('')}</select></div>`);
+    fields.push(`<div class="field"><label>ถึงเวลา</label><input id="endTimeView" disabled></div>`);
+  }
+  if(template==='staff') fields.push(`<div class="field"><label>ถึงเวลา</label><input id="endTimeView" disabled></div>`);
+  if(template==='vip') fields.push(`<div class="field"><label>ถึงเวลา</label><input id="endTimeView" disabled></div>`);
+  if(template==='ticket') fields.push(`<div class="field"><label>จำนวนบัตร</label><select id="ticketQty" onchange="renderCustomer()">${[1,2,3,4,5,6,8,10].map(n=>`<option value="${n}" ${n===2?'selected':''}>${n} ใบ</option>`).join('')}</select></div>`);
+  $('dynamicFields').innerHTML=fields.join('');
+  setDefaultDate();
+  if($('bookingDate') && preserve.date) $('bookingDate').value=preserve.date;
+  if($('startTime') && preserve.start) $('startTime').value=preserve.start;
+  if($('durationHours') && preserve.duration) $('durationHours').value=String(preserve.duration);
+  if($('guestsCount') && preserve.guests) $('guestsCount').value=String(preserve.guests);
+  if($('ticketQty') && preserve.tickets) $('ticketQty').value=String(preserve.tickets);
+  const state=inputState();
+  if($('endTimeView')) $('endTimeView').value=state.end||'-';
+}
+function renderResourceArea(cat){
+  const list=getResources(cat.id);
+  const template=cat.template;
+  const state=inputState();
+  const people=state.guests;
+  if(['table','seat'].includes(template)){
+    const title=template==='table'?'เคาน์เตอร์ / จุดบริการ':'เวที / จุดกิจกรรม';
+    const background=getConfig().layoutImages?.[cat.id];
+    const bg=background?`background-image:linear-gradient(rgba(255,255,255,.27),rgba(255,255,255,.27)),url('${background}');background-size:cover;background-position:center;`:'';
+    const dims=getLayoutSize(cat.id);
+    const decor=layoutDecorations(cat.id);
+    const html=`<div class="layout-shell"><div class="plan" style="${bg}width:${dims.width}px;height:${dims.height}px"><div class="anchor" style="${decor.length?'display:none':''}">${title}</div>${decor.map(decorHtml).join('')}${list.map(r=>{
+      const s=resourceBookingState(r.id);
+      const disabled=(s!=='available')||(template==='table' && r.capacity && people>r.capacity);
+      const cls=['resource',s,selectedResourceId===r.id?'selected':''].filter(Boolean).join(' ');
+      const note=template==='table'?`${r.capacity} ที่นั่ง`:'เลือกได้';
+      return `<button class="${cls}" style="left:${r.x}%;top:${r.y}%;width:${r.w||84}px;height:${r.h||72}px" ${disabled?'disabled':''} onclick="chooseResource('${r.id}')"><b>${esc(r.id)}</b><small>${esc(note)}</small></button>`;
+    }).join('')}<div class="entrance" style="${decor.length?'display:none':''}">${template==='table'?'ทางเข้า':'ทางออก'}</div></div></div>`;
+    $('resourceArea').innerHTML=html;
+    return;
+  }
+  $('resourceArea').innerHTML=`<div class="resource-grid">${list.map(r=>{
+    const s=resourceBookingState(r.id);
+    const disabled=(s!=='available') || ((template==='vip') && r.capacity && state.guests>r.capacity);
+    const cls=['card-btn',s,selectedResourceId===r.id?'selected':''].filter(Boolean).join(' ');
+    const avatar=r.photo?`<img src="${esc(r.photo)}" alt="${esc(r.name)}">`:esc(r.icon||'📌');
+    const stateLabel=s==='pending'?'<span class="badge pending">จองรอชำระ</span>':(s==='booked'?'<span class="badge booked">จองแล้ว</span>':'');
+    const detail=template==='vip'?`${esc(r.desc)} • รองรับ ${r.capacity} คน`:esc(r.desc||'');
+    return `<button class="${cls}" ${disabled?'disabled':''} onclick="chooseResource('${r.id}')"><span class="avatar">${avatar}</span><span><strong>${esc(r.name)}</strong><small>${detail}</small><span class="price">${money(cat.price)} ${template==='ticket'?'/ ใบ':(template==='table'?'/ คน':(template==='staff'||template==='vip'||template==='seat'?'/ ชั่วโมง':''))}</span>${stateLabel}</span></button>`;
+  }).join('')}</div>`;
+}
+function renderSummary(cat){
+  const res=selectedResource();
+  const state=inputState();
+  if($('endTimeView')) $('endTimeView').value=state.end||'-';
+  const calc=res?calcAmount(cat,res,state):{qty:0,subtotal:0,total:0,fee:Number(cat.serviceFee||0)};
+  const paymentText=cat.paymentMode==='deposit'?'มัดจำ':'ชำระเต็ม';
+  const detailLabel=cat.template==='table'?'จำนวนผู้ใช้บริการ':cat.template==='staff'?'จำนวนชั่วโมง':cat.template==='vip'?'จำนวนผู้ใช้บริการ / ชั่วโมง':cat.template==='seat'?'จำนวนชั่วโมง':'จำนวนบัตร';
+  const detailValue=cat.template==='table'?`${state.guests||'-'} คน`:cat.template==='staff'?`${state.duration||'-'} ชั่วโมง`:cat.template==='vip'?`${state.guests||'-'} คน / ${state.duration||'-'} ชั่วโมง`:cat.template==='seat'?`${state.duration||'-'} ชั่วโมง`:`${state.tickets||'-'} ใบ`;
+  $('summaryBox').innerHTML=`
+    <div class="row"><span>หมวด</span><b>${esc(categoryTitle(cat))}</b></div>
+    <div class="row"><span>รายการที่เลือก</span><b>${res?esc(res.name):'ยังไม่ได้เลือก'}</b></div>
+    <div class="row"><span>วันที่ / เวลา</span><b>${esc(state.date)} · ${esc(state.start)}${state.end?` - ${esc(state.end)}`:''}</b></div>
+    <div class="row"><span>${detailLabel}</span><b>${detailValue}</b></div>
+    <div class="row"><span>รูปแบบชำระ</span><b>${paymentText}</b></div>
+    <div class="row"><span>ราคาจอง</span><b>${money(calc.subtotal)}</b></div>
+    <div class="row"><span>ค่าบริการ</span><b>${money(calc.fee)}</b></div>
+    <div class="row total"><span>${paymentText==='มัดจำ'?'ยอดมัดจำ':'ยอดชำระรวม'}</span><b>${money(calc.total)}</b></div>`;
+  $('submitBooking').disabled=!res;
+}
+function renderTabs(){
+  ensureCurrentCategory();
+  const list=visibleCategories();
+  $('categoryTabs').innerHTML=list.length?list.map(c=>`<button class="${currentCategory===c.id?'active':''}" onclick="switchCategory('${c.id}')">${esc(TEMPLATE_META[c.template]?.icon||'📌')} ${esc(c.name)}</button>`).join(''):'<div class="empty" style="width:100%">ยังไม่มีหมวดที่เปิดให้จอง กรุณาเปิดหมวดจากหลังบ้านแอดมิน</div>';
+}
+function switchCategory(id){currentCategory=id;selectedResourceId='';$('paymentStep').classList.add('hidden');renderCustomer()}
+function renderCustomer(){
+  const preserve={
+    date:$('bookingDate')?.value||today(),
+    start:$('startTime')?.value||'18:00',
+    duration:Number($('durationHours')?.value||0),
+    guests:Number($('guestsCount')?.value||0),
+    tickets:Number($('ticketQty')?.value||0)
+  };
+  renderTabs();
+  if(!currentCategory){$('resourceArea').innerHTML='';$('summaryBox').innerHTML='<div class="empty">ยังไม่มีหมวดให้จอง</div>';return;}
+  const cat=getCategory(currentCategory); const meta=TEMPLATE_META[cat.template];
+  $('mainTitle').textContent=meta.title;
+  $('mainDesc').textContent=meta.desc;
+  renderDynamicFields(cat,preserve);
+  const res=selectedResource();
+  if(res){ const err=validateSelection(cat,res,inputState()); if(err && err.includes('ไม่ว่าง')) selectedResourceId=''; }
+  renderResourceArea(cat);
+  renderSummary(cat);
+  renderMyBookings();
+}
+function createBooking(){
+  const cat=getCategory(currentCategory);
+  const res=selectedResource();
+  const state=inputState();
+  const error=validateSelection(cat,res,state);
+  if(error) return toast(error);
+  const name=$('customerName').value.trim();
+  const phone=$('customerPhone').value.replace(/\s+/g,'').trim();
+  if(!name) return toast('กรุณากรอกชื่อผู้จอง');
+  if(!/^0\d{8,9}$/.test(phone)) return toast('กรุณากรอกเบอร์โทรศัพท์ไทย 9–10 หลัก');
+  const calc=calcAmount(cat,res,state);
+  const booking={
+    id:'RF'+Date.now().toString(36).toUpperCase(),
+    categoryId:cat.id,categoryName:cat.name,template:cat.template,
+    resourceId:res.id,resourceName:res.name,
+    date:state.date,startTime:state.start,endTime:state.end,duration:state.duration,
+    guests:state.guests,tickets:state.tickets,
+    name,phone,note:$('customerNote').value.trim(),
+    paymentMode:cat.paymentMode,serviceFee:Number(cat.serviceFee||0),basePrice:Number(cat.price||0),amount:calc.total,
+    status:calc.total>0?'pending_payment':cat.defaultStatus,postPaymentStatus:cat.defaultStatus,createdAt:new Date().toISOString()
+  };
+  const bookings=getBookings();
+  bookings.unshift(booking); setBookings(bookings);
+  $('lookupPhone').value=phone;
+  $('customerName').value=''; $('customerPhone').value=''; $('customerNote').value='';
+  selectedResourceId='';
+  toast(`บันทึกคำขอจองสำเร็จ เลขจอง ${booking.id}`);
+  renderCustomer();
+  renderPaymentStep(booking.id);
+}
+function bookingText(b){
+  if(b.template==='table') return `👥 ${b.guests} คน`;
+  if(b.template==='staff') return `⏱️ ${b.duration} ชั่วโมง`;
+  if(b.template==='vip') return `👥 ${b.guests} คน · ⏱️ ${b.duration} ชั่วโมง`;
+  if(b.template==='seat') return `⏱️ ${b.duration} ชั่วโมง`;
+  return `🎫 ${b.tickets} ใบ`;
+}
+function bookingCard(b,admin=false){
+  let quick='';
+  if(admin){
+    const next=[];
+    if(b.status==='slip_review'){}
+    if(b.status==='pending_confirm' && (b.paymentVerified || b.amount===0)) next.push(['confirmed','ยืนยันการจอง','success']);
+    if(b.status==='pending_payment' && b.amount===0) next.push(['confirmed','ยืนยันการจองฟรี','success']);
+    if(b.status==='confirmed') next.push(['checked_in','เช็กอิน','soft']);
+    if(b.status==='checked_in') next.push(['completed','ปิดงาน','soft']);
+    if(!['completed','cancelled'].includes(b.status)) next.push(['cancelled','ยกเลิก','danger']);
+    quick=`<div class="actions">${next.map(n=>`<button class="btn small ${n[2]}" onclick="changeStatus('${b.id}','${n[0]}')">${n[1]}</button>`).join('')}
+      <select onchange="if(this.value) changeStatus('${b.id}',this.value)" style="height:36px;border:1px solid var(--line);border-radius:9px;padding:0 8px"><option value="">เปลี่ยนสถานะ...</option>${Object.entries(STATUS_LABEL).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
+    </div>`;
+  } else {
+    if(['pending_payment','pending_confirm'].includes(b.status)) quick=`<div class="actions"><button class="btn small danger" onclick="changeStatus('${b.id}','cancelled')">ยกเลิกคำขอ</button></div>`;
+  }
+  if(admin && b.status==='slip_review') quick+=`<div class="actions"><button class="btn small success" onclick="demoApproveSlip('${b.id}')">✓ จำลองผล API: สลิปผ่าน</button><button class="btn small danger" onclick="demoRejectSlip('${b.id}')">✕ จำลองผล API: ไม่ผ่าน</button></div>`;
+  if(!admin && b.status==='pending_payment') quick+=`<div class="actions"><button class="btn small soft" onclick="renderPaymentStep('${b.id}')">ดูวิธีชำระ/แนบสลิป</button></div>`;
+  if(!admin && b.status==='pending_confirm' && b.paymentVerified) quick+=`<div class="actions"><button class="btn small success" onclick="customerConfirm('${b.id}')">ยืนยันการจองของฉัน</button></div>`;
+  if(!admin && ['confirmed','checked_in','completed'].includes(b.status) && b.paymentVerified) quick+=`<div class="actions"><button class="btn small success" onclick="openTicket('${b.id}')">🎫 เปิดบัตรพร้อม QR</button></div>`;
+  if(admin && b.slipName)quick+=`<p>📎 สลิปแนบ: ${esc(b.slipName)} ${b.slipImage?`<button class="btn small soft" onclick="viewSlip('${b.id}')">ดูรูปสลิป</button>`:''}</p>`;
+  return `<article class="booking"><div class="booking-head"><div><h3>${esc(b.resourceName)} <span style="font-size:11px;color:#8590a6">${esc(b.id)}</span></h3><p>📌 ${esc(b.categoryName)} · 📅 ${esc(b.date)} · ${esc(b.startTime)}${b.endTime?` - ${esc(b.endTime)}`:''}</p><p>${bookingText(b)} · 💳 ${money(b.amount)} (${b.paymentMode==='deposit'?'มัดจำ':'ชำระเต็ม'})</p><p>👤 ${esc(b.name)} · ${esc(b.phone)} ${b.note?'· '+esc(b.note):''}</p></div><span class="status ${b.status}">${STATUS_LABEL[b.status]||b.status}</span></div>${quick}</article>`;
+}
+function renderMyBookings(){
+  const phone=$('lookupPhone').value.replace(/\s+/g,'').trim();
+  const list=phone?getBookings().filter(b=>b.phone===phone):[];
+  $('myBookings').innerHTML=list.length?list.map(b=>bookingCard(b,false)).join(''):'<div class="empty">กรอกเบอร์โทรเพื่อดูรายการจอง</div>';
+}
+function renderAdmin(){
+  renderShopSettings();
+  renderCategoryTable();
+  renderAdminFilters();
+  renderAdminStats();
+  renderAdminBookings();
+  renderLayoutAdmin();
+}
+function renderCategoryTable(){
+  const cfg=getConfig();
+  $('categoryTable').innerHTML=cfg.categories.map(c=>`<tr>
+    <td><input value="${esc(c.name)}" onchange="updateCategory('${c.id}','name',this.value)"></td>
+    <td>${esc(TEMPLATE_META[c.template]?.title||c.template)}</td>
+    <td><select onchange="updateCategory('${c.id}','visible',this.value==='true')"><option value="true" ${c.visible?'selected':''}>แสดง</option><option value="false" ${!c.visible?'selected':''}>ซ่อน</option></select></td>
+    <td><input type="number" min="0" value="${Number(c.price||0)}" onchange="updateCategory('${c.id}','price',Number(this.value||0))"></td>
+    <td><input type="number" min="0" value="${Number(c.serviceFee||0)}" onchange="updateCategory('${c.id}','serviceFee',Number(this.value||0))"></td>
+    <td><select onchange="updateCategory('${c.id}','paymentMode',this.value)"><option value="deposit" ${c.paymentMode==='deposit'?'selected':''}>มัดจำ</option><option value="full" ${c.paymentMode==='full'?'selected':''}>ชำระเต็ม</option></select></td>
+    <td><select onchange="updateCategory('${c.id}','defaultStatus',this.value)"><option value="pending_payment" ${c.defaultStatus==='pending_payment'?'selected':''}>จองรอชำระ</option><option value="pending_confirm" ${c.defaultStatus==='pending_confirm'?'selected':''}>รอลูกค้าคอนเฟิร์ม</option><option value="confirmed" ${c.defaultStatus==='confirmed'?'selected':''}>จองแล้ว</option></select></td>
+    <td><div class="category-order"><button class="btn small soft" onclick="moveCategory('${c.id}',-1)" ${cfg.categories[0].id===c.id?'disabled':''}>↑ ขึ้น</button><button class="btn small soft" onclick="moveCategory('${c.id}',1)" ${cfg.categories[cfg.categories.length-1].id===c.id?'disabled':''}>↓ ลง</button></div></td>
+    <td><div class="inline-actions"><button class="btn small danger" onclick="removeCategory('${c.id}')">ลบ</button></div></td>
+  </tr>`).join('');
+}
+function moveCategory(id,direction){
+  const cfg=getConfig();const index=cfg.categories.findIndex(c=>c.id===id);
+  const target=index+direction;
+  if(index<0||target<0||target>=cfg.categories.length)return;
+  [cfg.categories[index],cfg.categories[target]]=[cfg.categories[target],cfg.categories[index]];
+  setConfig(cfg);renderAdmin();renderCustomer();toast('ปรับลำดับหมวดที่ลูกค้าเห็นแล้ว');
+}
+function updateCategory(id,key,value){
+  const cfg=getConfig();
+  const row=cfg.categories.find(c=>c.id===id); if(!row) return;
+  row[key]=value; setConfig(cfg);
+  if(key==='visible' || key==='name') renderTabs();
+  if(currentMode==='admin') renderAdmin();
+  renderCustomer();
+  toast('บันทึกการตั้งค่าหมวดแล้ว');
+}
+function removeCategory(id){
+  if(!confirm('ต้องการลบหมวดนี้ออกจากเดโมหรือไม่?')) return;
+  const cfg=getConfig();
+  cfg.categories=cfg.categories.filter(c=>c.id!==id);
+  delete cfg.resources[id];
+  if(cfg.layoutDecor)delete cfg.layoutDecor[id];
+  if(cfg.layoutSizes)delete cfg.layoutSizes[id];
+  if(cfg.layoutImages)delete cfg.layoutImages[id];
+  setConfig(cfg);
+  let bookings=getBookings().filter(b=>b.categoryId!==id); setBookings(bookings);
+  ensureCurrentCategory(); selectedResourceId='';
+  renderCustomer(); renderAdmin(); toast('ลบหมวดเรียบร้อย');
+}
+function addCategory(){
+  const name=$('newCatName').value.trim();
+  const template=$('newCatTemplate').value;
+  const price=Number($('newCatPrice').value||0);
+  if(!name) return toast('กรุณากรอกชื่อหมวดใหม่');
+  const cfg=getConfig();
+  const id='cat_'+Date.now().toString(36);
+  cfg.categories.push({id,name,template,visible:true,price,serviceFee:0,paymentMode:'deposit',defaultStatus:'pending_payment'});
+  cfg.resources[id]=deep(DEFAULT_CONFIG.resources[template]).map((r,i)=>({ ...r, id:(template[0]||'X').toUpperCase()+String(i+1).padStart(2,'0'), name:r.name.replace(/T\d+|V\d+|A\d+|B\d+|E\d+|S\d+/g,'').trim() || r.name }));
+  setConfig(cfg);
+  $('newCatName').value=''; $('newCatPrice').value='';
+  currentCategory=id; selectedResourceId='';
+  renderCustomer(); renderAdmin(); toast('เพิ่มหมวดใหม่แล้ว');
+}
+function renderAdminFilters(){
+  const cats=getConfig().categories;
+  $('adminCategoryFilter').innerHTML='<option value="all">ทุกหมวด</option>'+cats.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+}
+function renderAdminStats(){
+  const data=getBookings();
+  const stats=[
+    ['ทั้งหมด',data.length],
+    ['จองรอชำระ',data.filter(x=>x.status==='pending_payment').length],
+    ['รอคอนเฟิร์ม',data.filter(x=>x.status==='pending_confirm').length],
+    ['จองแล้ว/เช็กอิน',data.filter(x=>['confirmed','checked_in'].includes(x.status)).length]
+  ];
+  $('statCards').innerHTML=stats.map(s=>`<div class="stat"><strong>${s[1]}</strong><span>${s[0]}</span></div>`).join('');
+}
+function renderAdminBookings(){
+  const cat=$('adminCategoryFilter').value;
+  const status=$('adminStatusFilter').value;
+  const q=$('adminSearch').value.trim().toLowerCase();
+  let data=getBookings().filter(b=>
+    (cat==='all'||b.categoryId===cat) &&
+    (status==='all'||b.status===status) &&
+    (!q || [b.id,b.name,b.phone,b.resourceName,b.categoryName].some(v=>String(v||'').toLowerCase().includes(q)))
+  );
+  $('adminBookings').innerHTML=data.length?data.map(b=>bookingCard(b,true)).join(''):'<div class="empty">ยังไม่มีรายการจองที่ตรงเงื่อนไข</div>';
+}
+function changeStatus(id,status){
+  const data=getBookings();
+  const booking=data.find(b=>b.id===id); if(!booking) return;
+  if(!confirm(`ต้องการเปลี่ยนสถานะ ${booking.id} เป็น “${STATUS_LABEL[status]}” ใช่หรือไม่?`)) return;
+  if(status==='confirmed' && booking.amount>0 && !booking.paymentVerified && booking.status!=='pending_confirm') return toast('ต้องตรวจสอบการชำระเงินก่อนออกบัตร');
+  booking.status=status;
+  setBookings(data);
+  renderCustomer(); renderAdmin();
+  toast('อัปเดตสถานะเรียบร้อย');
+}
+function resetAll(){
+  $('paymentStep').classList.add('hidden');
+  if(!confirm('ต้องการรีเซ็ตข้อมูลเดโมทั้งหมด (รายการจอง + การตั้งค่าหมวด) หรือไม่?')) return;
+  localStorage.removeItem(BOOKING_KEY);
+  localStorage.removeItem(CONFIG_KEY);
+  currentCategory='table'; selectedResourceId='';
+  renderCustomer(); renderAdmin(); toast('รีเซ็ตข้อมูลเดโมทั้งหมดแล้ว');
+}
+
+
+let layoutCategoryId='table';
+let editItemId='';
+let editDecorId='';
+let dragInfo=null;
+const ASPECTS={wide:{width:960,height:540},portrait:{width:540,height:720},square:{width:700,height:700}};
+const DECOR_TYPES={door:'🚪 ประตู',stage:'🎤 เวที',restroom:'🚻 ห้องน้ำ',entrance:'➡️ ทางเข้า',exit:'⬅️ ทางออก',wall:'▰ ผนัง',label:'ข้อความอิสระ'};
+function getLayoutSize(id){
+  const value=getConfig().layoutSizes?.[id];
+  return value&&value.width&&value.height?value:{aspect:'wide',...ASPECTS.wide};
+}
+function layoutDecorations(id){return getConfig().layoutDecor?.[id]||[]}
+function decorHtml(d){return `<div class="decor-block kind-${esc(d.type)}" style="left:${Number(d.x)}%;top:${Number(d.y)}%;width:${Number(d.w)}px;height:${Number(d.h)}px">${esc(d.label)}</div>`}
+function changeLayoutAspect(aspect){
+  if(!layoutCategoryId)return;
+  const cfg=getConfig();cfg.layoutSizes=cfg.layoutSizes||{};
+  const old=getLayoutSize(layoutCategoryId);
+  cfg.layoutSizes[layoutCategoryId]={aspect,...(ASPECTS[aspect]||{width:old.width,height:old.height})};
+  setConfig(cfg);renderLayoutAdmin();renderCustomer();
+}
+function updateLayoutSize(){
+  if(!layoutCategoryId)return;
+  const cfg=getConfig();cfg.layoutSizes=cfg.layoutSizes||{};
+  const width=Math.max(320,Math.min(1600,Number($('layoutWidth').value)||960));
+  const height=Math.max(280,Math.min(1600,Number($('layoutHeight').value)||540));
+  cfg.layoutSizes[layoutCategoryId]={aspect:'custom',width,height};
+  setConfig(cfg);renderLayoutAdmin();renderCustomer();toast('บันทึกขนาดผังแล้ว');
+}
+function layoutAddDecor(){
+  if(!layoutCategoryId)return;
+  const kind=$('newDecorType').value;if(!DECOR_TYPES[kind])return toast('กรุณาเลือกประเภทบล็อก');
+  const cfg=getConfig();cfg.layoutDecor=cfg.layoutDecor||{};
+  const list=cfg.layoutDecor[layoutCategoryId]||[];
+  const id='D'+Date.now().toString(36);
+  list.push({id,type:kind,label:DECOR_TYPES[kind],x:50,y:50,w:kind==='wall'?210:130,h:kind==='wall'?26:58});
+  cfg.layoutDecor[layoutCategoryId]=list;setConfig(cfg);
+  editDecorId=id;editItemId='';renderLayoutAdmin();renderCustomer();toast('เพิ่มบล็อกแล้ว ลากไปวางตำแหน่งได้เลย');
+}
+function layoutDecorUpdate(key,value){
+  const cfg=getConfig();const item=cfg.layoutDecor?.[layoutCategoryId]?.find(x=>x.id===editDecorId);
+  if(!item)return;
+  if(['w','h'].includes(key)) value=Math.max(20,Math.min(800,Number(value)||20));
+  if(['x','y'].includes(key)) value=Math.max(1,Math.min(99,Number(value)||1));
+  item[key]=value;setConfig(cfg);renderLayoutAdmin();renderCustomer();
+}
+function layoutDeleteDecor(){
+  if(!editDecorId||!confirm('ลบบล็อกประกอบผังนี้?'))return;
+  const cfg=getConfig();cfg.layoutDecor[layoutCategoryId]=layoutDecorations(layoutCategoryId).filter(x=>x.id!==editDecorId);
+  editDecorId='';setConfig(cfg);renderLayoutAdmin();renderCustomer();
+}
+function layoutDecorPointerDown(e){
+  if(e.button!==0)return;
+  const target=e.currentTarget;editDecorId=target.dataset.decorId;editItemId='';
+  const r=layoutDecorations(layoutCategoryId).find(a=>a.id===editDecorId);
+  const rect=$('layoutCanvas').getBoundingClientRect();
+  dragInfo={type:'decor',id:editDecorId,originX:r.x,originY:r.y,startX:e.clientX,startY:e.clientY,rect,el:target};
+  target.setPointerCapture(e.pointerId);
+  target.addEventListener('pointermove',layoutPointerMove);
+  target.addEventListener('pointerup',layoutPointerEnd,{once:true});
+  target.addEventListener('pointercancel',layoutPointerEnd,{once:true});
+  e.preventDefault();
+}
+
+function layoutCategories(){return getConfig().categories.filter(c=>['table','seat'].includes(c.template))}
+function layoutSelectCategory(id){layoutCategoryId=id;editItemId='';editDecorId='';renderLayoutAdmin()}
+function layoutResources(){return getResources(layoutCategoryId)}
+function layoutWrite(fn){
+  const cfg=getConfig();
+  if(!cfg.resources[layoutCategoryId]) cfg.resources[layoutCategoryId]=deep(cfg.resources[getCategory(layoutCategoryId).template]||[]);
+  fn(cfg.resources[layoutCategoryId]);
+  setConfig(cfg);
+  renderLayoutAdmin();
+  renderCustomer();
+}
+function renderLayoutAdmin(){
+  const categories=layoutCategories();
+  if(!categories.some(c=>c.id===layoutCategoryId)) layoutCategoryId=categories[0]?.id||'';
+  const select=$('layoutCategory');
+  if(!select)return;
+  select.innerHTML=categories.map(c=>`<option value="${c.id}" ${c.id===layoutCategoryId?'selected':''}>${esc(c.name)}</option>`).join('');
+  if(!layoutCategoryId){$('layoutCanvas').innerHTML='<div class="empty">ยังไม่มีหมวดผัง</div>';return}
+  const resources=layoutResources();
+  const size=getLayoutSize(layoutCategoryId);
+  $('layoutAspect').value=size.aspect||'custom';
+  $('layoutWidth').value=size.width;
+  $('layoutHeight').value=size.height;
+  $('layoutCanvas').style.width=size.width+'px';
+  $('layoutCanvas').style.height=size.height+'px';
+  const decor=layoutDecorations(layoutCategoryId);
+  const bg=getConfig().layoutImages?.[layoutCategoryId];
+  $('layoutCanvas').style.backgroundImage=bg?`linear-gradient(rgba(255,255,255,.27),rgba(255,255,255,.27)),url('${bg}')`:'';
+  $('layoutCanvas').style.backgroundSize=bg?'cover':'5% 10%';
+  $('layoutCanvas').style.backgroundPosition='center';
+  $('layoutCanvas').innerHTML=decor.map(d=>`<div class="decor-block editor-decor kind-${esc(d.type)} ${d.id===editDecorId?'active':''}" data-decor-id="${esc(d.id)}" style="left:${Number(d.x)}%;top:${Number(d.y)}%;width:${Number(d.w)}px;height:${Number(d.h)}px">${esc(d.label)}</div>`).join('')+resources.map(r=>`<div class="edit-item ${r.id===editItemId?'active':''}" data-id="${esc(r.id)}" style="left:${Number(r.x||50)}%;top:${Number(r.y||50)}%;width:${Number(r.w||84)}px;height:${Number(r.h||72)}px"><b>${esc(r.id)}</b><small>${esc(r.name)}</small></div>`).join('');
+  const current=resources.find(r=>r.id===editItemId);
+  if($('copyLayoutButton')) $('copyLayoutButton').disabled=!current;
+  const activeDecor=decor.find(d=>d.id===editDecorId);
+  $('layoutSettings').innerHTML=activeDecor?`
+  <div class="field"><label>ประเภทบล็อก</label><select onchange="layoutDecorUpdate('type',this.value)">${Object.entries(DECOR_TYPES).map(([k,v])=>`<option value="${k}" ${activeDecor.type===k?'selected':''}>${v}</option>`).join('')}</select></div>
+  <div class="field"><label>ข้อความบนบล็อก</label><input value="${esc(activeDecor.label)}" onchange="layoutDecorUpdate('label',this.value)"></div>
+  <div class="field"><label>กว้าง (px)</label><input type="number" min="20" max="800" value="${activeDecor.w}" onchange="layoutDecorUpdate('w',this.value)"></div>
+  <div class="field"><label>สูง (px)</label><input type="number" min="20" max="800" value="${activeDecor.h}" onchange="layoutDecorUpdate('h',this.value)"></div>
+  <div class="field"><label>ตำแหน่ง X (%)</label><input type="number" min="1" max="99" value="${activeDecor.x}" onchange="layoutDecorUpdate('x',this.value)"></div>
+  <div class="field"><label>ตำแหน่ง Y (%)</label><input type="number" min="1" max="99" value="${activeDecor.y}" onchange="layoutDecorUpdate('y',this.value)"></div>
+  <div class="field"><label>จัดการบล็อก</label><button class="btn danger small full" onclick="layoutDeleteDecor()">ลบบล็อกนี้</button></div>
+  `:current?`
+  <div class="field"><label>รหัส</label><input value="${esc(current.id)}" disabled></div>
+  <div class="field"><label>ชื่อ</label><input value="${esc(current.name)}" onchange="layoutUpdate('name',this.value)"></div>
+  <div class="field"><label>กว้าง (px)</label><input type="number" min="40" max="240" value="${Number(current.w||84)}" onchange="layoutUpdate('w',Number(this.value))"></div>
+  <div class="field"><label>สูง (px)</label><input type="number" min="36" max="160" value="${Number(current.h||72)}" onchange="layoutUpdate('h',Number(this.value))"></div>
+  <div class="field"><label>ตำแหน่ง X (%)</label><input type="number" min="5" max="95" value="${Number(current.x||50)}" onchange="layoutUpdate('x',Number(this.value))"></div>
+  <div class="field"><label>ตำแหน่ง Y (%)</label><input type="number" min="5" max="95" value="${Number(current.y||50)}" onchange="layoutUpdate('y',Number(this.value))"></div>
+  ${getCategory(layoutCategoryId)?.template==='table'?`<div class="field"><label>จำนวนที่นั่ง</label><input type="number" min="1" max="100" value="${Number(current.capacity||2)}" onchange="layoutUpdate('capacity',Number(this.value))"></div>`:''}
+  <div class="field"><label>จัดการจุดจอง</label><div class="inline-actions"><button class="btn soft small" onclick="layoutCopy()">📋 คัดลอกจุดนี้</button><button class="btn danger small" onclick="layoutDelete()">ลบจุดนี้</button></div></div>
+  `:'<div class="note">คลิกหรือแตะโต๊ะ/ที่นั่งเพื่อแก้ไข แล้วลากย้ายไปยังตำแหน่งใหม่ได้</div>';
+  $('layoutCanvas').querySelectorAll('.edit-item').forEach(el=>el.addEventListener('pointerdown',layoutPointerDown));
+  $('layoutCanvas').querySelectorAll('.editor-decor').forEach(el=>el.addEventListener('pointerdown',layoutDecorPointerDown));
+}
+function layoutUpdate(key,value){
+  if(['w','h'].includes(key)) value=Math.max(key==='w'?40:36,Math.min(key==='w'?240:160,value||0));
+  if(['x','y'].includes(key)) value=Math.max(5,Math.min(95,value||0));
+  layoutWrite(arr=>{const r=arr.find(x=>x.id===editItemId);if(r)r[key]=value});
+}
+function layoutPointerDown(e){
+  if(e.button!==0)return;
+  const target=e.currentTarget;
+  editItemId=target.dataset.id;editDecorId='';
+  $('layoutCanvas').querySelectorAll('.edit-item').forEach(el=>el.classList.toggle('active',el===target));
+  const r=layoutResources().find(a=>a.id===editItemId);
+  const rect=$('layoutCanvas').getBoundingClientRect();
+  dragInfo={id:editItemId,originX:r.x||50,originY:r.y||50,startX:e.clientX,startY:e.clientY,rect,el:target};
+  target.setPointerCapture(e.pointerId);
+  target.addEventListener('pointermove',layoutPointerMove);
+  target.addEventListener('pointerup',layoutPointerEnd,{once:true});
+  target.addEventListener('pointercancel',layoutPointerEnd,{once:true});
+  e.preventDefault();
+}
+function layoutPointerMove(e){
+  if(!dragInfo)return;
+  const d=dragInfo;
+  const x=Math.max(6,Math.min(94,d.originX+(e.clientX-d.startX)/d.rect.width*100));
+  const y=Math.max(8,Math.min(92,d.originY+(e.clientY-d.startY)/d.rect.height*100));
+  d.el.style.left=x.toFixed(1)+'%';d.el.style.top=y.toFixed(1)+'%';
+}
+function layoutPointerEnd(e){
+  if(!dragInfo)return;
+  const d=dragInfo;dragInfo=null;
+  d.el.removeEventListener('pointermove',layoutPointerMove);
+  const x=Number.parseFloat(d.el.style.left),y=Number.parseFloat(d.el.style.top);
+  if(d.type==='decor'){
+    const cfg=getConfig();const item=cfg.layoutDecor?.[layoutCategoryId]?.find(a=>a.id===d.id);
+    if(item){item.x=Number(x.toFixed(1));item.y=Number(y.toFixed(1));setConfig(cfg);}
+    renderLayoutAdmin();renderCustomer();
+  }else{
+    layoutWrite(arr=>{const r=arr.find(a=>a.id===d.id);if(r){r.x=Number(x.toFixed(1));r.y=Number(y.toFixed(1));}});
+  }
+}
+function applyLayoutTemplate(){
+  if(!layoutCategoryId)return;
+  const type=$('layoutTemplate').value;
+  layoutWrite(arr=>{
+    const n=arr.length;
+    arr.forEach((r,i)=>{
+      let x=50,y=50;
+      if(type==='grid'){
+        const cols=Math.ceil(Math.sqrt(n*1.5)),rows=Math.ceil(n/cols),col=i%cols,row=Math.floor(i/cols);
+        x=(col+1)*100/(cols+1);y=(row+1)*100/(rows+1);
+      } else if(type==='rows'){
+        const cols=Math.min(n,4),row=Math.floor(i/cols),c=i%cols,rows=Math.ceil(n/cols);
+        x=(c+1)*100/(cols+1);y=(row+1)*100/(rows+1);
+      } else if(type==='columns'){
+        const rows=Math.min(n,4),col=Math.floor(i/rows),row=i%rows,cols=Math.ceil(n/rows);
+        x=(col+1)*100/(cols+1);y=(row+1)*100/(rows+1);
+      } else if(type==='u'){
+        const t=n===1?0.5:i/(n-1);
+        if(t<.33){x=16;y=20+t/.33*60}else if(t<.67){x=16+(t-.33)/.34*68;y=80}else{x=84;y=80-(t-.67)/.33*60}
+      } else if(type==='circle'){
+        const a=Math.PI+(Math.PI*(n===1?.5:i/(n-1)));
+        x=50+34*Math.cos(a);y=57+33*Math.sin(a);
+      }
+      r.x=Number(x.toFixed(1));r.y=Number(y.toFixed(1));
+    });
+  });
+  toast('จัดผังตาม Template แล้ว');
+}
+function layoutAdd(){
+  if(!layoutCategoryId)return;
+  const template=getCategory(layoutCategoryId)?.template;
+  const arr=layoutResources();
+  const existing=new Set(arr.map(r=>r.id));let idx=1;
+  const prefix=template==='table'?'T':'A';
+  while(existing.has(prefix+String(idx).padStart(2,'0')))idx++;
+  const id=prefix+String(idx).padStart(2,'0');
+  layoutWrite(items=>items.push({id,name:(template==='table'?'โต๊ะ ':'ที่นั่ง ')+id,capacity:template==='table'?4:1,x:50,y:50,w:84,h:72}));
+  editItemId=id;renderLayoutAdmin();
+}
+function layoutCopy(){
+  if(!layoutCategoryId || !editItemId) return toast('กรุณาเลือกโต๊ะหรือที่นั่งบนผังก่อนคัดลอก');
+  const items=layoutResources();
+  const source=items.find(r=>r.id===editItemId);
+  if(!source) return toast('ไม่พบจุดจองที่เลือก');
+  const used=new Set(items.map(r=>r.id));
+  const match=String(source.id).match(/^([^0-9]*)([0-9]+)$/);
+  const prefix=match?match[1]:(getCategory(layoutCategoryId)?.template==='table'?'T':'A');
+  const digits=match?match[2].length:2;
+  let next=1;
+  while(used.has(prefix+String(next).padStart(digits,'0')))next++;
+  const id=prefix+String(next).padStart(digits,'0');
+  const copy=deep(source);
+  copy.id=id;
+  // Keep every visual and capacity setting, but give the clone a fresh identity.
+  copy.name=String(source.name||source.id).includes(source.id)
+    ?String(source.name).replace(source.id,id)
+    :(getCategory(layoutCategoryId)?.template==='table'?'โต๊ะ ':'ที่นั่ง ')+id;
+  // Offset clones so the admin can see and drag them independently.
+  copy.x=Math.max(6,Math.min(94,Number(source.x||50)+9));
+  copy.y=Math.max(8,Math.min(92,Number(source.y||50)+9));
+  editItemId=id;
+  editDecorId='';
+  layoutWrite(arr=>arr.push(copy));
+  toast(`คัดลอก ${source.id} เป็น ${id} แล้ว สามารถลากไปวางตำแหน่งใหม่ได้`);
+}
+function layoutDelete(){
+  if(!editItemId || !confirm('ลบจุดจอง '+editItemId+' ออกจากผัง?'))return;
+  const id=editItemId;
+  if(getBookings().some(b=>b.categoryId===layoutCategoryId&&b.resourceId===id&&!['cancelled','completed'].includes(b.status)))return toast('มีรายการจองที่ยังใช้งานอยู่ ไม่สามารถลบได้');
+  editItemId='';layoutWrite(items=>{const i=items.findIndex(r=>r.id===id);if(i>=0)items.splice(i,1)});
+}
+
+
+// Demo storefront settings; production requires tenant-aware authenticated API.
+function renderShopSettings(){
+  const shop=getConfig().shop||DEFAULT_CONFIG.shop;
+  for(const [id,key] of [['shopName','name'],['shopCode','tenantId'],['bankName','bankName'],['bankOwner','bankOwner'],['bankNumber','bankNumber'],['promptpayId','promptpayId'],['saasPlan','plan']]){
+    if($(id)) $(id).value=shop[key]||'';
+  }
+}
+function saveShopSettings(){
+  const cfg=getConfig();cfg.shop=cfg.shop||deep(DEFAULT_CONFIG.shop);
+  for(const [id,key] of [['shopName','name'],['bankName','bankName'],['bankOwner','bankOwner'],['bankNumber','bankNumber'],['promptpayId','promptpayId'],['saasPlan','plan']]){
+    cfg.shop[key]=$(id).value.trim();
+  }
+  setConfig(cfg);toast('บันทึกข้อมูลร้านและบัญชีรับเงินในเดโมแล้ว');
+}
+function uploadLayoutBackground(input){
+  const file=input.files?.[0];if(!file)return;
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type))return toast('รองรับ JPG PNG หรือ WebP เท่านั้น');
+  if(file.size>700*1024)return toast('เดโมจำกัดภาพพื้นหลังไม่เกิน 700 KB');
+  const reader=new FileReader();reader.onload=()=>{
+    const cfg=getConfig();cfg.layoutImages=cfg.layoutImages||{};
+    cfg.layoutImages[layoutCategoryId]=reader.result;
+    try{setConfig(cfg)}catch(e){return toast('พื้นที่จัดเก็บในเบราว์เซอร์เต็ม กรุณาลดขนาดภาพ')}
+    renderLayoutAdmin();renderCustomer();toast('อัปโหลดภาพพื้นหลังผังแล้ว');
+  };reader.readAsDataURL(file);
+}
+function clearLayoutBackground(){
+  if(!layoutCategoryId)return;
+  const cfg=getConfig();if(cfg.layoutImages)delete cfg.layoutImages[layoutCategoryId];
+  setConfig(cfg);renderLayoutAdmin();renderCustomer();toast('ลบภาพพื้นหลังแล้ว');
+}
+function findBooking(id){return getBookings().find(b=>b.id===id)}
+function qrRender(target,payload){
+  target.innerHTML='';
+  if(typeof QRCode==='function'){
+    new QRCode(target,{text:payload,width:164,height:164,colorDark:'#17233e',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+  }else{
+    target.innerHTML='<div style="padding:12px;color:#b56f12;font-size:12px">ไม่สามารถโหลดตัวสร้าง QR ได้เมื่อออฟไลน์<br>ใช้เลขการจองตรวจสอบในเดโมแทน</div>';
+  }
+}
+function renderPaymentStep(id){
+  const b=findBooking(id);if(!b)return;
+  const shop=getConfig().shop||DEFAULT_CONFIG.shop;
+  const accountReady=!!(shop.bankName&&shop.bankNumber&&shop.bankOwner);
+  const el=$('paymentStep');el.classList.remove('hidden');
+  el.innerHTML=`<div class="payment-panel"><h3>💳 ขั้นตอนชำระเงิน • ${esc(b.id)}</h3>
+    <div class="row"><span>ชื่อร้าน</span><b>${esc(shop.name)}</b></div>
+    <div class="row"><span>รูปแบบ</span><b>${b.paymentMode==='deposit'?'มัดจำ':'ชำระเต็ม'}</b></div>
+    <div class="row total"><span>ยอดชำระ</span><b>${money(b.amount)}</b></div>
+    ${accountReady?`<p style="margin:14px 0 4px">บัญชีธนาคารสำหรับโอนเงิน</p><div class="row"><span>ธนาคาร</span><b>${esc(shop.bankName)}</b></div><div class="row"><span>ชื่อบัญชี</span><b>${esc(shop.bankOwner)}</b></div><div class="row"><span>เลขบัญชี</span><b>${esc(shop.bankNumber)}</b></div>`:
+       '<div class="notice" style="margin-top:12px">ยังไม่ได้ตั้งค่าบัญชีรับเงิน กรุณาให้ร้านตั้งค่าจากหลังบ้านก่อน ไม่ควรโอนเงิน</div>'}
+    ${shop.promptpayId?`<div class="row"><span>พร้อมเพย์ร้าน</span><b>${esc(shop.promptpayId)}</b></div>`:''}
+    <div class="notice">เดโมไม่สร้าง QR พร้อมเพย์สำหรับโอนเงินจริง เพื่อป้องกันการโอนผิดบัญชี การเชื่อม Payment QR จริงต้องใช้ข้อมูลที่ผ่านการตรวจสอบและยืนยันยอดจากเซิร์ฟเวอร์</div>
+    <div class="field"><label>แนบรูปสลิปโอนเงิน (ทดลอง)</label><input type="file" id="slipFile" accept="image/png,image/jpeg,image/webp"></div>
+    <button class="btn primary full" style="margin-top:12px" onclick="submitSlip('${b.id}')" ${accountReady?'':'disabled'}>📎 ส่งสลิปให้ตรวจสอบ (จำลอง)</button>
+    <div class="note">การส่งในเดโมเปลี่ยนสถานะเป็น “รอตรวจสลิป” เท่านั้น ไม่ได้ติดต่อ API หรือตรวจเงินเข้าจริง</div>
+  </div>`;
+  el.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function submitSlip(id){
+  const file=$('slipFile')?.files?.[0];if(!file)return toast('กรุณาแนบไฟล์สลิป');
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type))return toast('รองรับไฟล์ JPG PNG WebP');
+  if(file.size>550*1024)return toast('เดโมรับสลิปไม่เกิน 550 KB เพื่อเก็บในเครื่อง');
+  const reader=new FileReader();reader.onload=()=>{
+    const data=getBookings(),b=data.find(x=>x.id===id);
+    if(!b || b.status!=='pending_payment')return toast('รายการนี้ไม่อยู่ในสถานะรอชำระ');
+    b.slipName=file.name;b.slipImage=reader.result;b.status='slip_review';
+    try{setBookings(data)}catch(e){return toast('รูปใหญ่เกินพื้นที่เบราว์เซอร์ ลองย่อภาพก่อน')}
+    $('paymentStep').classList.add('hidden');renderCustomer();toast('แนบสลิปแล้ว • รอผลตรวจสอบ (จำลอง)');
+  };reader.readAsDataURL(file);
+}
+function demoApproveSlip(id){
+  if(!confirm('ยืนยันผลสลิปผ่านในเดโม? ไม่มีการตรวจ API หรือยอดเงินจริง'))return;
+  const data=getBookings(),b=data.find(x=>x.id===id);
+  if(!b||b.status!=='slip_review')return;
+  b.paymentVerified=true;b.paymentSource='DEMO_ONLY';b.status=b.postPaymentStatus==='pending_confirm'?'pending_confirm':'confirmed';
+  setBookings(data);renderCustomer();renderAdmin();toast('จำลองการตรวจผ่านแล้ว • ออกบัตร QR ได้ (ไม่ได้ส่ง LINE จริง)');
+}
+function customerConfirm(id){
+  const data=getBookings(),b=data.find(x=>x.id===id);
+  if(!b||b.status!=='pending_confirm'||!b.paymentVerified)return toast('ยังไม่สามารถคอนเฟิร์มได้');
+  b.status='confirmed';setBookings(data);renderCustomer();toast('คอนเฟิร์มแล้ว เปิดบัตร QR ได้ในรายการจอง');
+}
+function demoRejectSlip(id){
+  const data=getBookings(),b=data.find(x=>x.id===id);
+  if(!b||b.status!=='slip_review')return;
+  b.status='pending_payment';b.paymentVerified=false;b.slipImage='';b.slipName='';
+  setBookings(data);renderCustomer();renderAdmin();toast('จำลองผลสลิปไม่ผ่านแล้ว');
+}
+function viewSlip(id){const b=findBooking(id);if(!b?.slipImage)return toast('ไม่พบรูป');const w=window.open('','_blank');if(!w)return toast('อนุญาตหน้าต่างใหม่เพื่อดูรูป');w.document.write(`<img src="${b.slipImage}" style="max-width:95vw;max-height:95vh;object-fit:contain">`);w.document.close()}
+function openTicket(id){
+  const b=findBooking(id);if(!b||!b.paymentVerified||!['confirmed','checked_in','completed'].includes(b.status))return toast('ยังไม่สามารถออกบัตรได้');
+  const el=$('paymentStep');el.classList.remove('hidden');
+  el.innerHTML=`<div class="ticket"><h3>🎫 บัตรยืนยันการจอง (เดโม)</h3><p>${esc(b.name)} · ${esc(b.categoryName)}</p><b>${esc(b.resourceName)}</b><p>📅 ${esc(b.date)} · ${esc(b.startTime)}${b.endTime?' - '+esc(b.endTime):''}</p><div id="ticketQrTarget" class="qr-target"></div><p style="text-align:center"><b>${esc(b.id)}</b></p><div class="notice">QR สำหรับเดโมเท่านั้น ไม่ใช่บัตรสิทธิ์ออนไลน์ที่ตรวจสอบด้วยเซิร์ฟเวอร์ และยังไม่ได้ส่งเข้า LINE</div></div>`;
+  qrRender($('ticketQrTarget'),`RESERVEFLOW-DEMO:${b.id}`);
+  el.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function init(){
+  if(!localStorage.getItem(CONFIG_KEY)) setConfig(deep(DEFAULT_CONFIG));
+  ensureCurrentCategory();
+  renderCustomer();
+}
+init();
+</script>
+</body>
+</html>
