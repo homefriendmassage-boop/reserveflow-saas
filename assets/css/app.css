@@ -495,3 +495,7 @@
 .daily-report-table td, .daily-report-table th { padding: 8px; border-bottom: 1px solid var(--line); }
 .daily-report-table td:first-child, .daily-report-table th:first-child { text-align: left; overflow-wrap: anywhere; }
 .daily-report-table td, .daily-report-table th { text-align: right; }
+
+.category-visibility { display: grid; gap: 4px; align-self: center; }
+.category-visibility small { color: var(--muted); }
+.category-visibility .btn { white-space: nowrap; }

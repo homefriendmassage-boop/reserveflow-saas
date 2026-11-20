@@ -80,7 +80,12 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
         if (blockIndex != null) replacement.querySelectorAll('.editor-decor')[blockIndex]?.click();
       }
       const freshMessage = feedbackArea.querySelector(`[data-section="${section}"] [role=status]`);
-      if (freshMessage) freshMessage.textContent = rpc === 'archive_merchant_list_resource' ? 'ลบออกจากหน้าจองแล้ว' : 'บันทึกแล้ว';
+      if (freshMessage) {
+        freshMessage.textContent = ({
+          archive_merchant_list_resource: 'ลบออกจากหน้าจองแล้ว',
+          save_merchant_category: args.p_visible ? 'บันทึกแล้ว · แสดงบนหน้าจอง' : 'บันทึกแล้ว · ซ่อนจากหน้าจอง'
+        })[rpc] || 'บันทึกแล้ว';
+      }
       return true;
     } catch (error) {
       feedback.textContent = error?.message === 'RESOURCE_NAME_EXISTS'
@@ -121,8 +126,29 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       const type = field(form, 'แม่แบบ', select(templates));
       type.value = category?.template || 'table';
       type.disabled = Boolean(category);
-      const visible = field(form, 'แสดงผล', select([['true','แสดง'],['false','ซ่อน']]));
-      visible.value = String(category?.visible ?? true);
+      let visible;
+      if (category) {
+        const visibility = node('div');
+        visibility.className = 'category-visibility';
+        const state = node('small', category.visible ? 'แสดงอยู่' : 'ซ่อนอยู่');
+        const toggle = button(category.visible ? 'ซ่อนหมวด' : 'แสดงหมวด');
+        toggle.setAttribute('aria-label', toggle.textContent + ' ' + category.name);
+        toggle.addEventListener('click', async () => {
+          if (saving) return;
+          toggle.disabled = true;
+          try {
+            await persist('save_merchant_category', {
+              p_code: category.code, p_name: category.name, p_template: category.template,
+              p_visible: !category.visible, p_price: category.price, p_fee: category.service_fee,
+              p_order: category.sort_order
+            }, 'categories');
+          } finally { toggle.disabled = false; }
+        });
+        visibility.append(state, toggle);
+        form.append(visibility);
+      } else {
+        visible = field(form, 'แสดงผล', select([['true','แสดง'],['false','ซ่อน']]));
+      }
       const price = field(form, 'ราคาเริ่มต้น', input('number', category?.price ?? 0, 0, 99999999.99));
       const fee = field(form, 'ค่าบริการ', input('number', category?.service_fee ?? 0, 0, 99999999.99));
       price.step = fee.step = '0.01';
@@ -147,7 +173,7 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
         event.preventDefault();
         void persist('save_merchant_category', {
           p_code: category?.code ?? null, p_name: name.value.trim(), p_template: type.value,
-          p_visible: visible.value === 'true', p_price: Number(price.value), p_fee: Number(fee.value),
+          p_visible: category ? category.visible !== false : visible.value === 'true', p_price: Number(price.value), p_fee: Number(fee.value),
           p_order: Number(order.value)
         }, 'categories');
       });
