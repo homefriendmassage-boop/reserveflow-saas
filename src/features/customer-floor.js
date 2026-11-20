@@ -73,10 +73,10 @@ function paintAvailability(button, table) {
     button.classList.remove('selected');
     button.setAttribute('aria-pressed','false');
   }
-  for (const name of ['booked', 'review', 'unpaid', 'selecting']) button.classList.toggle(name, state === name);
+  for (const name of ['booked', 'review', 'unpaid', 'selecting', 'in_use']) button.classList.toggle(name, state === name);
   const status = button.querySelector('.floor-availability');
   status.dataset.availability = ({
-    booked: 'จองแล้ว', review: 'รอตรวจสลิป', unpaid: 'รอชำระ', selecting: 'กำลังเลือก'
+    booked: 'จองแล้ว', in_use: 'กำลังใช้งาน', review: 'รอตรวจสลิป', unpaid: 'รอชำระ', selecting: 'กำลังเลือก'
   })[state] || 'ว่าง';
   status.textContent = button.classList.contains('selected') && !button.disabled
     ? 'คุณเลือกอยู่' : status.dataset.availability;

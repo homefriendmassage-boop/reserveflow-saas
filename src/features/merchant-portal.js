@@ -75,6 +75,7 @@ let pendingBooking;
 let saving = false;
 
 const actionErrors = {
+  BOOKING_RESOURCE_IN_USE: 'จุดนี้ยังมีผู้ใช้บริการ กรุณาสิ้นสุดการใช้งานเดิมก่อน',
   BOOKING_SLOT_TAKEN: 'รายการนี้ถูกจองในช่วงเวลาดังกล่าวแล้ว',
   INVALID_BOOKING_DATE: 'เลือกเวลาในอนาคตและจองล่วงหน้าได้สูงสุด 90 วัน',
   INVALID_CAPACITY: 'จำนวนคนหรือจำนวนบัตรเกินที่กำหนด',
@@ -360,7 +361,9 @@ if (typeof window.supabase?.createClient !== 'function') {
         await openScannedPass();
       } catch {
         if (scanToken === token) {
-          passFeedback.textContent = 'ยืนยันเช็กอินไม่ได้ กรุณาอัปเดตสถานะบัตร';
+          passFeedback.textContent = error.message === 'BOOKING_RESOURCE_IN_USE'
+            ? 'จุดนี้ยังมีผู้ใช้บริการ กรุณาสิ้นสุดการใช้งานเดิมก่อนเช็กอิน'
+            : 'ยืนยันเช็กอินไม่ได้ กรุณาอัปเดตสถานะบัตร';
           passRefresh.classList.remove('hidden');
         }
       }

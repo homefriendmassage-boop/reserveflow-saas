@@ -530,3 +530,6 @@
 .card-btn .staff-hourly-price { margin-top: 4px; font-weight: 650; color: #303c80; }
 
 #merchantPassConfirm:disabled { opacity: .55; cursor: not-allowed; }
+
+.live-booking-plan .resource.in_use { background: #ffdbac; border-color: #d47921; color: #783a0d; }
+.dot.in_use { background: #df761e; }

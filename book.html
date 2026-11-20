@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>จองคิว | ReserveFlow</title>
-  <link rel="stylesheet" href="./assets/css/app.css?v=business-day-1">
+  <link rel="stylesheet" href="./assets/css/app.css?v=occupied-floor-1">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/customer-portal.js?v=business-day-1"></script>
+  <script type="module" src="./src/features/customer-portal.js?v=occupied-floor-1"></script>
 </head>
 <body>
 <header>
@@ -47,6 +47,7 @@
             <span class="chip live-hold-legend hidden"><i class="dot unpaid"></i>รอชำระ · ยังจองได้</span>
             <span class="chip live-hold-legend hidden"><i class="dot review"></i>รอตรวจสลิป</span>
             <span class="chip"><i class="dot booked"></i>จองแล้ว</span>
+            <span class="chip"><i class="dot in_use"></i>กำลังใช้งาน</span>
             <span class="chip"><i class="dot selected"></i>เลือกแล้ว</span>
           </div>
           <p id="floorStatus" class="sub" role="status"></p>

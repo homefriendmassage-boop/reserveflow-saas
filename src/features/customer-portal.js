@@ -1,5 +1,5 @@
-import { prepareSlipAttachment } from './customer-slip.js?v=booking-pass-1';
-import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=team-slip-credits-1';
+import { prepareSlipAttachment } from './customer-slip.js?v=occupied-floor-1';
+import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=occupied-floor-1';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, nextBookingDate, timeAtShop } from './booking-slots.js?v=business-day-1';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 
@@ -32,6 +32,7 @@ const errorMessages = {
   INVALID_BOOKING: 'กรุณาตรวจข้อมูลการจองและใช้เบอร์โทรศัพท์ไทย',
   INVALID_BOOKING_PRICE: 'ร้านยังไม่สามารถรับคำขอในราคานี้',
   BOOKING_RATE_LIMIT: 'เบอร์นี้ส่งคำขอครบ 5 รายการในชั่วโมงนี้แล้ว',
+  BOOKING_RESOURCE_IN_USE: 'จุดนี้กำลังใช้งาน กรุณาเลือกเวลาอื่นหรือรอให้ร้านปิดโต๊ะ',
   BOOKING_SLOT_TAKEN: 'รายการนี้มีการจองทับช่วงเวลาที่เลือก กรุณาเลือกเวลาอื่น',
   BOOKING_REQUEST_MISMATCH: 'คำขอนี้เคยถูกส่งแล้ว กรุณารีเฟรชหน้าก่อนส่งใหม่'
 };

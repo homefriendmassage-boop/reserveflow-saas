@@ -88,6 +88,7 @@ export function prepareSlipAttachment(client, draft, sendPayment, onComplete) {
     } catch (error) {
       status.textContent = ({
         BOOKING_PAYMENT_UNAVAILABLE: 'ร้านยังรับชำระรายการนี้ไม่ได้ กรุณาติดต่อร้าน',
+        BOOKING_RESOURCE_IN_USE: 'จุดนี้ยังมีผู้ใช้บริการ หากโอนแล้วกรุณาติดต่อร้านพร้อมสลิป',
         BOOKING_SLOT_TAKEN: 'ช่วงเวลานี้ถูกจองแล้ว หากโอนแล้วกรุณาติดต่อร้านพร้อมสลิป',
         INVALID_BOOKING_DATE: 'เลยเวลาที่เลือกแล้ว หากโอนแล้วกรุณาติดต่อร้านพร้อมสลิป',
         BOOKING_PRICE_CHANGED: 'ยอดจองเปลี่ยนแล้ว หากโอนแล้วกรุณาติดต่อร้านพร้อมสลิป',
