@@ -464,3 +464,24 @@
 .dot.selecting { background:#6295de; }
 .dot.unpaid { background:#dea341; }
 .dot.review { background:#aa72dc; }
+
+.live-booking-plan .resource,
+.merchant-floor-canvas .resource { container-type: size; }
+.live-booking-plan .resource strong,
+.merchant-floor-canvas .resource strong {
+  display: block;
+  max-width: 100%;
+  font-size: clamp(7px, min(calc(90cqw / var(--floor-label-length, 4)), 56cqh), 15px);
+  line-height: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.live-booking-plan .resource small { font-size: clamp(7px, 24cqh, 11px); line-height: 1; }
+@container (height < 30px) {
+  .live-booking-plan .resource small { display: none; }
+}
+.platform-field { display: block; margin-block: 8px; }
+.platform-field > span { color: var(--muted); font-size: 12px; }
+#platformSignup .btn, #platformBilling .btn, #merchantBusinessTools .btn { margin: 3px; }
+#platformSignup img, #merchantBusinessTools img { max-width: 100%; }

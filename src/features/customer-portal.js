@@ -1,5 +1,5 @@
 import { prepareSlipAttachment } from './customer-slip.js?v=thunder-decisions-1';
-import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=booking-holds-1';
+import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=platform-onboarding-1';
 import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 

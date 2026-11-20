@@ -263,6 +263,7 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
         tile.append(node('strong', resource.name));
         tile.setAttribute('aria-label', resource.name);
         tile.className = 'resource' + (selected ? ' selected' : '');
+        tile.style.setProperty('--floor-label-length', Math.max(2, [...resource.name].length * .56));
         const geometry = selected ? { x: Number(x.value), y: Number(y.value), w: Number(itemWidth.value), h: Number(itemHeight.value) }
           : floorGeometry(resource.display, index);
         place(tile, geometry, columns, rows);

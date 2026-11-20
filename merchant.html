@@ -6,7 +6,8 @@
   <title>จัดการร้าน | ReserveFlow</title>
   <link rel="stylesheet" href="./assets/css/app.css?v=slips-1">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
-  <script type="module" src="./src/features/merchant-portal.js?v=booking-holds-1"></script>
+  <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
+  <script type="module" src="./src/features/merchant-portal.js?v=platform-onboarding-1"></script>
 </head>
 <body>
 <header>
@@ -34,11 +35,13 @@
   </section>
   <section class="panel hidden" id="merchantRegister">
     <h2>สมัครร้านค้าใหม่</h2>
+    <p id="signupPackages" class="sub">ทดลองฟรี 7 วัน</p>
     <p class="sub">ถ้าคุณเป็นทีมงาน ให้ส่งคำขอเข้าร้านแทนการสร้างร้านใหม่</p>
     <p>UID ของคุณ <code id="merchantRegistrationUid"></code></p>
     <form id="merchantRegisterForm" class="fields">
       <div class="field"><label for="merchantRegisterName">ชื่อร้าน</label><input name="shopName" id="merchantRegisterName" maxlength="100" required></div>
       <div class="field"><label for="merchantRegisterSlug">ชื่อสำหรับลิงก์จอง</label><input name="slug" id="merchantRegisterSlug" minlength="3" maxlength="40" pattern="[a-z0-9][a-z0-9\-]{1,38}[a-z0-9]" title="อักษรอังกฤษตัวเล็ก ตัวเลข และขีดกลาง 3–40 ตัว" autocapitalize="none" required></div>
+      <div class="field"><label for="merchantSignupPlan">แพ็กเกจ</label><select id="merchantSignupPlan"><option value="">ทดลองฟรี 7 วัน</option></select></div>
       <div class="field"><button id="merchantRegisterSubmit" class="btn primary" type="submit">สร้างร้านค้า</button></div>
     </form>
     <details class="merchant-settings-panel" id="merchantJoinPanel">
@@ -84,6 +87,7 @@
       <p id="merchantTeamStatus" role="status"></p>
       <div id="merchantTeamList" aria-live="polite"></div>
     </section>
+    <div id="merchantBusinessTools"></div>
     <div id="merchantAdvancedSettings" class="merchant-editor"></div>
     <section class="panel">
     <h2>รายการจองทั้งหมด</h2>
@@ -108,7 +112,7 @@
     </details>
     <p id="merchantActionStatus" role="status"></p>
     <div class="field">
-      <label for="merchantBookingSearch">ค้นหาด้วยเลขจองหรือรหัสรายการ</label>
+      <label for="merchantBookingSearch">ค้นหาด้วยชื่อผู้จอง เลขจอง หรือรหัสรายการ</label>
       <input id="merchantBookingSearch" type="search" autocomplete="off">
     </div>
     <div id="merchantBookings" aria-live="polite"></div>
@@ -127,6 +131,8 @@
   <section class="panel hidden" id="platformAdmin">
     <h2>Superadmin · ร้านค้าบนแพลตฟอร์ม</h2>
     <button type="button" class="btn soft small" id="platformSignOut">ออกจากระบบ</button>
+    <div id="platformSignup"></div>
+    <div id="platformBilling"></div>
     <div id="platformShopList"></div>
     <div id="platformLineSettings"></div>
   </section>

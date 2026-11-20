@@ -36,6 +36,22 @@ export function fixedTimeMatch(expected: string, supplied: string) {
 }
 
 export function lineMessage(kind: string, payload: Record<string, string>, site: string) {
+  if (kind === 'referral') {
+    const signup = new URL('merchant.html', site);
+    signup.searchParams.set('signup', '1');
+    if (payload.ref) signup.searchParams.set('ref', payload.ref);
+    return { type: 'flex', altText: 'ReserveFlow · สมัครร้านค้า', contents: {
+      type: 'bubble',
+      body: { type: 'box', layout: 'vertical', spacing: 'md', contents: [
+        { type: 'text', text: 'เปิดร้านบน ReserveFlow', weight: 'bold', wrap: true },
+        { type: 'text', text: 'แนะนำโดย ' + payload.name, wrap: true },
+        { type: 'text', text: 'ทดลองใช้ฟรี 7 วัน', wrap: true }
+      ] },
+      footer: { type: 'box', layout: 'vertical', contents: [
+        { type: 'button', action: {type:'uri',label:'เปิดใบสมัคร',uri:signup.href} }
+      ] }
+    } };
+  }
   if (kind === 'shop') {
     return {
       type: 'flex',

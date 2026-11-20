@@ -40,6 +40,7 @@ export function renderFloor(plan, resources, resourceField, template) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'resource';
+    button.style.setProperty('--floor-label-length', Math.max(2, [...resource.name].length * .56));
     button.disabled = Boolean(table.occupied);
     const name = document.createElement('strong');
     name.textContent = resource.name;
@@ -65,9 +66,11 @@ function paintAvailability(button, table) {
   const state = table.availability || (table.occupied ? 'booked' : 'available');
   button.disabled = Boolean(table.occupied);
   for (const name of ['booked', 'review', 'unpaid', 'selecting']) button.classList.toggle(name, state === name);
-  button.querySelector('.floor-availability').textContent = ({
+  const status = button.querySelector('.floor-availability');
+  status.textContent = ({
     booked: 'จองแล้ว', review: 'รอตรวจสลิป', unpaid: 'รอชำระ', selecting: 'กำลังเลือก'
   })[state] || 'ว่าง';
+  button.title = button.querySelector('strong').textContent + ' · ' + status.textContent;
 }
 
 export function refreshFloorAvailability(plan) {

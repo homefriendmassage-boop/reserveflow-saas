@@ -14,28 +14,47 @@ Deno.serve(async request => {
   if (request.method !== 'POST') return json({state:'unavailable'},405);
   let bookingId: unknown;
   let phone: unknown;
+  let packageOrder: unknown;
   try {
     const raw = await request.text();
     if (raw.length > 500) return json({state:'unavailable'},400);
-    ({ booking_id: bookingId, phone } = JSON.parse(raw));
+    ({ booking_id: bookingId, phone, package_order_id: packageOrder } = JSON.parse(raw));
   } catch {
     return json({state:'unavailable'},400);
   }
-  if (typeof bookingId !== 'string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(bookingId) ||
+  const id = packageOrder ?? bookingId;
+  if (typeof id !== 'string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id) ||
       (phone != null && (typeof phone !== 'string' || !/^[0-9\s-]{9,20}$/.test(phone)))) {
     return json({state:'unavailable'},400);
   }
   const url = Deno.env.get('SUPABASE_URL')!;
+  const key = Deno.env.get('THUNDER_API_KEY')?.trim();
   let staffId = null;
-  if (!phone) {
+  if (!phone || packageOrder) {
     const authorization = request.headers.get('Authorization');
     if (!authorization?.startsWith('Bearer ')) return json({state:'unavailable'},401);
-    const client = createClient(url, Deno.env.get('SUPABASE_ANON_KEY')!);
+    const client = createClient(url, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global:{headers:{Authorization:authorization}},auth:{persistSession:false,autoRefreshToken:false}
+    });
     const { data, error } = await client.auth.getUser(authorization.slice(7));
     if (error || !data.user) return json({state:'unavailable'},401);
     staffId = data.user.id;
+    if (packageOrder) {
+      const {data: order,error: orderError}=await client.rpc('platform_package_verification_input',{p_order_id:id});
+      if (orderError || !order) return json({state:'unavailable'},403);
+      if (!key) return json({state:'not_configured'});
+      const payload = decodeSlipQr(order.image);
+      if (!payload) return json({state:'qr_unreadable'});
+      try {
+        const result = await verifySlip(payload,key);
+        if (result.outcome !== 'provider_verified') return json({state:result.outcome});
+        if (result.amount !== Number(order.amount)) return json({state:'amount_review',amount:result.amount});
+        if (result.mobile !== order.mobile || !result.paidAt || Date.parse(result.paidAt)<Date.parse(order.created_at)
+          || Date.parse(result.paidAt)>Date.now()+120000) return json({state:'receiver_review',amount:result.amount});
+        return json({state:'package_match',amount:result.amount,reference:result.reference});
+      } catch { return json({state:'retry'}); }
+    }
   }
-  const key = Deno.env.get('THUNDER_API_KEY')?.trim();
   if (!key) return json({state:'not_configured'});
 
   const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);

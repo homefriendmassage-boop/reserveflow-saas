@@ -1,10 +1,11 @@
+import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js';
 import { addThunderCheck } from './thunder-slip.js?v=thunder-decisions-1';
 import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=slips-1';
 import { renderMerchantTeam } from './merchant-team.js';
-import { renderMerchantSettings } from './merchant-settings.js?v=slips-1';
+import { renderMerchantSettings } from './merchant-settings.js?v=platform-onboarding-1';
 import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
-import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=thunder-decisions-1';
+import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=platform-onboarding-1';
 
 const byId = id => document.getElementById(id);
 const login = byId('merchantLogin');
@@ -111,6 +112,7 @@ tableMenu.addEventListener('change', updateTableCapacity);
 function showLogin(message = '') {
   byId('platformAdmin').classList.add('hidden');
   byId('platformShopList').replaceChildren();
+  for (const id of ['platformSignup','platformBilling','merchantBusinessTools']) byId(id).replaceChildren();
   byId('platformLineSettings').replaceChildren();
   byId('merchantLineSettings').replaceChildren();
   registration.classList.add('hidden');
@@ -165,11 +167,17 @@ function bookingCard(booking, timezone, changeStatus, readSlip, client, refresh)
   details.textContent = [
     formatDate.formatRange(new Date(booking.starts_at), new Date(booking.ends_at)),
     labels[booking.status] || booking.status,
-    amount.format(booking.amount)
-  ].join(' · ');
+    currentRole === 'staff' ? '' : amount.format(booking.amount)
+  ].filter(Boolean).join(' · ');
   const reference = document.createElement('small');
   reference.textContent = booking.id;
-  card.append(title, details, reference);
+  card.append(title, details);
+  if (booking.customer_name) {
+    const customer = document.createElement('p');
+    customer.textContent = 'ผู้จอง ' + booking.customer_name;
+    card.append(customer);
+  }
+  card.append(reference);
   if (canManageTables()) {
     const attachment = document.createElement('details');
     const label = document.createElement('summary');
@@ -200,10 +208,12 @@ function bookingCard(booking, timezone, changeStatus, readSlip, client, refresh)
     });
     card.append(attachment);
   }
+  const isTable = booking.category_code === 'table' ||
+    shopResources.some(row => row.category_code === booking.category_code && row.table === true);
   const start = new Date(booking.starts_at).getTime();
   const now = Date.now();
   const options = [];
-  if (booking.status === 'confirmed' && now >= start - 1800000 && now < new Date(booking.ends_at).getTime()) {
+  if ((isTable || currentRole !== 'staff') && booking.status === 'confirmed' && now >= start - 1800000 && now < new Date(booking.ends_at).getTime()) {
     options.push(['checked_in', 'เช็กอิน']);
   }
   if (canManageTables() && !['completed', 'cancelled'].includes(booking.status)) {
@@ -212,6 +222,8 @@ function bookingCard(booking, timezone, changeStatus, readSlip, client, refresh)
     if (started && ['confirmed', 'checked_in'].includes(booking.status)) options.push(['completed', 'ใช้งานเสร็จ']);
     options.push(['cancelled', 'ยกเลิกการจอง']);
   }
+
+  if (currentRole === 'staff' && isTable && booking.status === 'checked_in') options.push(['completed', 'สิ้นสุดการใช้โต๊ะ']);
 
   if (options.length) {
     const actions = document.createElement('div');
@@ -272,7 +284,7 @@ if (typeof window.supabase?.createClient !== 'function') {
   function renderBookingList() {
     const term = search.value.trim().toLowerCase();
     const rows = displayedBookings.filter(row => !term ||
-      [row.id, row.resource_code].some(value => value.toLowerCase().includes(term)));
+      [row.id, row.resource_code, row.customer_name].some(value => value?.toLowerCase().includes(term)));
     if (rows.length) {
       bookings.replaceChildren(...rows.map(row => bookingCard(row, bookingTimezone, changeStatus, id =>
         createSupabaseStore(client, shopMenu.value).getBookingSlip(id), client, loadBookings)));
@@ -397,9 +409,20 @@ if (typeof window.supabase?.createClient !== 'function') {
     currentRole = shop.dataset.role;
     publicLink.classList.toggle('hidden', !shop.dataset.slug);
     publicLink.href = './book.html?' + new URLSearchParams({ shop: shop.dataset.slug || '' });
-    byId('merchantRole').textContent = roleLabel[currentRole] || '';
+    const roleHelp = {
+      owner: 'ตั้งค่าร้านและทีมงาน จัดการการจอง และแพ็กเกจร้าน',
+      cashier: 'จัดการการจองและดูสลิป',
+      admin: 'จัดการการจองและดูสลิป',
+      staff: 'เปิดโต๊ะ เช็กอิน และสิ้นสุดการใช้โต๊ะ'
+    };
+    byId('merchantRole').textContent = [roleLabel[currentRole],roleHelp[currentRole]].filter(Boolean).join(' · ');
     settings.classList.toggle('hidden', currentRole !== 'owner');
-    tableEditor.classList.toggle('hidden', !canManageTables());
+    tableEditor.classList.toggle('hidden', !canManageTables() && currentRole !== 'staff');
+    tableEditor.querySelector('summary').textContent = currentRole === 'staff' ? 'เปิดโต๊ะให้ลูกค้า' : 'จองแทนลูกค้า';
+    tableMode.disabled = currentRole === 'staff';
+    const tools = byId('merchantBusinessTools');
+    tools.replaceChildren();
+    if (currentRole === 'owner') renderShopBusinessTools(client, tools, shop.value);
     byId('merchantShopName').value = shop.textContent;
     byId('merchantShopSlug').value = shop.dataset.slug || '';
     byId('merchantShopOpen').checked = shop.dataset.open === 'true';
@@ -429,20 +452,19 @@ if (typeof window.supabase?.createClient !== 'function') {
 
     try {
       const store = createSupabaseStore(client, shop.value);
-      if (!canManageTables()) {
-        await loadBookings();
-        return;
-      }
-      const [categories, resources, layouts] = await Promise.all([store.getCategories(), store.getResources(), store.getLayouts()]);
+      const [categories, resources, layouts] = await Promise.all([
+        store.getCategories(), store.getResources(), canManageTables() ? store.getLayouts() : Promise.resolve([])
+      ]);
       if (request !== bookingRequest) return;
-      shopResources = resources;
-      categoryMenu.replaceChildren(...categories.map(category => {
+      const tableCodes = new Set(categories.filter(category => category.template === 'table').map(category => category.code));
+      shopResources = resources.map(resource => ({ ...resource, table: tableCodes.has(resource.category_code) }));
+      categoryMenu.replaceChildren(...categories.filter(category => currentRole !== 'staff' || category.template === 'table').map(category => {
         const option = new Option(category.name || category.code, category.code);
         option.dataset.template = category.template;
         return option;
       }));
       loadMerchantResources();
-      renderMerchantSettings(advancedSettings, { categoryContainer: categorySettings, categories, resources, layouts, owner: currentRole === 'owner',
+      if (canManageTables()) renderMerchantSettings(advancedSettings, { categoryContainer: categorySettings, categories, resources, layouts, owner: currentRole === 'owner',
         save: async (rpc, parameters) => {
           if (shopMenu.value !== shop.value) throw new Error('Shop changed');
           const { data, error } = await client.rpc(rpc, { ...parameters, p_shop_id: shop.value });
@@ -508,11 +530,13 @@ if (typeof window.supabase?.createClient !== 'function') {
       }
       byId('merchantAccountUid').textContent = data.session.user.id;
       await loadPlatformAdmin(client);
+      if (!byId('platformAdmin').classList.contains('hidden')) renderPlatformTools(client);
       const shops = await listMerchantShops(client);
       if (!shops.length) {
         login.classList.add('hidden');
         dashboard.classList.add('hidden');
         registration.classList.toggle('hidden', !byId('platformAdmin').classList.contains('hidden'));
+        void showSignupPackages(client, byId('signupPackages'));
         byId('merchantRegistrationUid').textContent = data.session.user.id;
         status.textContent = '';
         return;
@@ -544,6 +568,9 @@ if (typeof window.supabase?.createClient !== 'function') {
     status.textContent = 'กำลังเปิด LINE Login…';
     try {
       const redirectTo = new URL('./merchant.html', location.href).href;
+      const referral = new URLSearchParams(location.search).get('ref');
+      if (referral) sessionStorage.setItem('reserveflow_signup_referral',referral);
+      else if (new URLSearchParams(location.search).has('signup')) sessionStorage.removeItem('reserveflow_signup_referral');
       const { error } = await client.auth.signInWithOAuth({
         provider: 'custom:line-manual',
         options: { redirectTo }
@@ -626,20 +653,31 @@ if (typeof window.supabase?.createClient !== 'function') {
     logoutButton.disabled = true;
     status.textContent = 'กำลังสร้างร้าน…';
     try {
-      const { error } = await client.rpc('register_merchant_shop', {
+      const referral = new URLSearchParams(location.search).get('ref') || sessionStorage.getItem('reserveflow_signup_referral');
+      const plan = byId('merchantSignupPlan').value || null;
+      const { error } = await client.rpc('register_platform_shop', {
+        p_plan: plan,
+        p_referral: /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(referral || '') ? referral : null,
         p_name: registerForm.elements.shopName.value.trim(),
         p_slug: registerForm.elements.slug.value.trim()
       });
       if (error) throw error;
+      sessionStorage.removeItem('reserveflow_signup_referral');
       await loadSession();
       if (!dashboard.classList.contains('hidden')) {
         actionStatus.textContent = 'สร้างร้านแล้ว เปิดรับจองได้จากเมนูตั้งค่าร้าน';
+        const packages = byId('shopPackagePanel');
+        if (plan && packages) {
+          packages.open = true;
+          packages.scrollIntoView({block:'start'});
+        }
       }
     } catch (error) {
       const errors = {
         SHOP_SLUG_TAKEN: 'ชื่อลิงก์นี้ถูกใช้แล้ว กรุณาเลือกชื่ออื่น',
         SHOP_MEMBERSHIP_EXISTS: 'บัญชีนี้มีร้านอยู่แล้ว กรุณารีเฟรชเพื่อเปิดหลังบ้าน',
-        INVALID_SHOP_REGISTRATION: 'กรุณาตรวจชื่อร้านและชื่อสำหรับลิงก์จอง'
+        INVALID_SHOP_REGISTRATION: 'กรุณาตรวจชื่อร้านและชื่อสำหรับลิงก์จอง',
+        PACKAGE_NOT_CONFIGURED: 'แพ็กเกจยังไม่พร้อม กรุณาเลือกทดลองฟรีหรือติดต่อ Superadmin'
       };
       status.textContent = errors[error.message] || 'ยืนยันผลการสร้างร้านไม่ได้ กรุณาลองอีกครั้ง';
     } finally {
