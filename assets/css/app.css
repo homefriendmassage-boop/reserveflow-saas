@@ -485,3 +485,13 @@
 .platform-field > span { color: var(--muted); font-size: 12px; }
 #platformSignup .btn, #platformBilling .btn, #merchantBusinessTools .btn { margin: 3px; }
 #platformSignup img, #merchantBusinessTools img { max-width: 100%; }
+
+.daily-report-controls { align-items: end; margin-block: 12px 16px; }
+.daily-report .stat:first-child { background: #eaf8f3; }
+.daily-report .stat:first-child strong { color: #14634b; }
+.daily-report .stat strong { font-size: clamp(17px,2.1vw,26px); overflow-wrap: anywhere; }
+.daily-report .stat { min-width: 0; }
+.daily-report-table { width: 100%; table-layout: auto; }
+.daily-report-table td, .daily-report-table th { padding: 8px; border-bottom: 1px solid var(--line); }
+.daily-report-table td:first-child, .daily-report-table th:first-child { text-align: left; overflow-wrap: anywhere; }
+.daily-report-table td, .daily-report-table th { text-align: right; }

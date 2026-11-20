@@ -1,3 +1,4 @@
+import { renderDailyReport } from './daily-report.js';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js';
 import { addThunderCheck } from './thunder-slip.js?v=thunder-decisions-1';
 import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=slips-1';
@@ -112,7 +113,7 @@ tableMenu.addEventListener('change', updateTableCapacity);
 function showLogin(message = '') {
   byId('platformAdmin').classList.add('hidden');
   byId('platformShopList').replaceChildren();
-  for (const id of ['platformSignup','platformBilling','merchantBusinessTools']) byId(id).replaceChildren();
+  for (const id of ['platformSignup','platformBilling','merchantBusinessTools','merchantDailyReport']) byId(id).replaceChildren();
   byId('platformLineSettings').replaceChildren();
   byId('merchantLineSettings').replaceChildren();
   registration.classList.add('hidden');
@@ -407,6 +408,9 @@ if (typeof window.supabase?.createClient !== 'function') {
     if (!shop) return;
     const request = ++bookingRequest;
     currentRole = shop.dataset.role;
+    const report = byId('merchantDailyReport');
+    report.replaceChildren();
+    if (canManageTables()) renderDailyReport(client, report, shop.value, shop.dataset.timezone);
     publicLink.classList.toggle('hidden', !shop.dataset.slug);
     publicLink.href = './book.html?' + new URLSearchParams({ shop: shop.dataset.slug || '' });
     const roleHelp = {

@@ -36,6 +36,37 @@ export function fixedTimeMatch(expected: string, supplied: string) {
 }
 
 export function lineMessage(kind: string, payload: Record<string, string>, site: string) {
+  if (kind === 'daily_report') {
+    const money = (value: string) => new Intl.NumberFormat('th-TH', {style:'currency',currency:'THB'}).format(Number(value));
+    const row = (label: string, value: string) => ({ type:'box',layout:'horizontal',spacing:'sm',contents:[
+      {type:'text',text:label,size:'sm',flex:3,wrap:true,color:'#526277'},
+      {type:'text',text:String(value),size:'sm',flex:2,align:'end',weight:'bold',color:'#162E43',wrap:true}
+    ] });
+    return { type:'flex', altText:'รายงานประจำวัน · '+payload.date, contents:{
+      type:'bubble',
+      header:{type:'box',layout:'vertical',backgroundColor:'#172C43',paddingAll:'18px',spacing:'sm',contents:[
+        {type:'text',text:'รายงานประจำวัน',weight:'bold',size:'lg',color:'#FFFFFF'},
+        {type:'text',text:payload.shop_name+' · '+payload.date,size:'sm',color:'#D1E5F8',wrap:true}
+      ]},
+      body:{type:'box',layout:'vertical',spacing:'md',contents:[
+        {type:'box',layout:'vertical',backgroundColor:'#EAF8F3',cornerRadius:'12px',paddingAll:'12px',spacing:'sm',contents:[
+          {type:'text',text:'ยอดรับที่ Thunder ยืนยัน',size:'sm',color:'#24634F',wrap:true},
+          {type:'text',text:money(payload.verified_amount),weight:'bold',size:'xl',color:'#11523E',wrap:true},
+          {type:'text',text:'ตรวจรับเงิน '+payload.verified_count+' รายการ',size:'xs',color:'#24634F'}
+        ]},
+        row('ยอดจองที่ยืนยันตามวันใช้บริการ',money(payload.booking_amount)),
+        {type:'separator'},
+        row('รายการจองทั้งหมด',payload.bookings),
+        row('ยืนยัน / เข้าใช้ / เสร็จ',payload.active),
+        row('รอชำระ / รอตรวจ',payload.pending),
+        row('ยกเลิก',payload.cancelled),
+        {type:'text',text:'ยอดรับนับตามวันโอนที่ Thunder ยืนยันพร้อมเวลาโอน',wrap:true,size:'xs',color:'#68758A'}
+      ]},
+      footer:{type:'box',layout:'vertical',contents:[
+        {type:'button',action:{type:'uri',label:'เปิดหลังบ้าน',uri:new URL('merchant.html',site).href}}
+      ]}
+    }};
+  }
   if (kind === 'referral') {
     const signup = new URL('merchant.html', site);
     signup.searchParams.set('signup', '1');
