@@ -130,6 +130,19 @@ Deno.serve(async request => {
     if (!Array.isArray(events)) return new Response('Invalid events', { status: 400 });
     if (botId && botId !== destination) return new Response('Invalid LINE destination', { status: 403 });
     for (const event of events) {
+      const incoming = event as LineEvent;
+      const command = shopId && incoming?.type === 'message' && incoming.message?.type === 'text'
+        && incoming.source?.type === 'user' ? incoming.message.text?.trim() : null;
+      if (command?.startsWith('บัตร ')) {
+        const code = command.slice('บัตร '.length);
+        if (uuid.test(code)) {
+          const linked = await client.rpc('link_customer_booking_pass', {
+            p_token: code, p_shop_id: shopId, p_bot: botId, p_user: incoming.source?.userId
+          });
+          if (linked.error) throw linked.error;
+        }
+        continue;
+      }
       const pairing = getLinePairing(event);
       if (!pairing) continue;
       const result = shopId

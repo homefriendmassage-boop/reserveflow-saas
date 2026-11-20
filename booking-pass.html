@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>บัตรจอง | ReserveFlow</title>
+  <link rel="stylesheet" href="./assets/css/app.css?v=booking-pass-1">
+  <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
+  <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
+  <script type="module" src="./src/features/customer-booking-pass.js"></script>
+</head>
+<body>
+<main class="booking-pass-page">
+  <article class="panel booking-pass">
+    <header class="booking-pass-header">
+      <small>ReserveFlow</small>
+      <h1>บัตรจอง</h1>
+      <p id="passShop"></p>
+    </header>
+    <div class="booking-pass-body">
+      <p id="passStatus" role="status">กำลังโหลดบัตรจอง…</p>
+      <dl id="passDetails" class="booking-pass-details"></dl>
+      <div class="inline-actions">
+        <button id="passShowQr" class="btn primary hidden" type="button">แสดง QR เข้างาน</button>
+        <button id="passRefresh" class="btn soft hidden" type="button">อัปเดตสถานะ</button>
+        <button id="passCopyLink" class="btn soft hidden" type="button">คัดลอกลิงก์บัตร</button>
+      </div>
+      <div id="passQr" class="booking-pass-qr hidden" aria-label="QR สำหรับให้พนักงานสแกน"></div>
+      <details id="passLine" class="merchant-settings-panel hidden">
+        <summary>รับบัตรจองทาง LINE</summary>
+        <p id="passLineHelp"></p>
+        <label class="field"><span>ข้อความที่ใช้เชื่อมบัตร</span><input id="passLineCode" readonly></label>
+        <button id="passCopyCode" class="btn soft" type="button">คัดลอกข้อความ</button>
+      </details>
+      <p id="passFeedback" role="status"></p>
+    </div>
+  </article>
+</main>
+</body>
+</html>

@@ -13,6 +13,37 @@ function fixedTimeMatch(expected: string, supplied: string) {
 }
 
 function lineMessage(kind: string, payload: Record<string, string>, site: string) {
+  if (kind === 'booking_pass') {
+    const link = new URL('booking-pass.html', site);
+    link.hash = payload.pass_token;
+    const row = (label: string, value: string) => ({
+      type: 'box', layout: 'horizontal', spacing: 'sm', contents: [
+        { type: 'text', text: label, color: '#526277', size: 'sm', flex: 3, wrap: true },
+        { type: 'text', text: value, color: '#182440', size: 'sm', weight: 'bold', flex: 4, align: 'end', wrap: true }
+      ]
+    });
+    return { type: 'flex', altText: 'ยืนยันการจองแล้ว · ' + payload.shop, contents: {
+      type: 'bubble', size: 'mega',
+      header: { type: 'box', layout: 'vertical', paddingAll: '20px', spacing: 'sm', backgroundColor: '#303C80', contents: [
+        { type: 'text', text: 'ReserveFlow', color: '#DBE4FF', size: 'xs', weight: 'bold' },
+        { type: 'text', text: 'บัตรจอง · ยืนยันแล้ว', color: '#FFFFFF', size: 'xl', weight: 'bold', wrap: true },
+        { type: 'text', text: payload.shop, color: '#EBEFFF', size: 'sm', wrap: true }
+      ] },
+      body: { type: 'box', layout: 'vertical', spacing: 'md', contents: [
+        row('วันที่ใช้บริการ', payload.date),
+        row('รายการที่จอง', payload.item),
+        row('ช่วงเวลาที่จอง', payload.period),
+        row('จำนวนชั่วโมง', Number(payload.hours) + ' ชั่วโมง'),
+        { type: 'separator' },
+        row('รวมค่าจอง / บริการ', new Intl.NumberFormat('th-TH', {style:'currency',currency:'THB'}).format(Number(payload.amount)))
+      ] },
+      footer: { type: 'box', layout: 'vertical', contents: [
+        { type: 'button', style: 'primary', color: '#404FBA', action: {
+          type: 'uri', label: 'เปิดบัตรและแสดง QR', uri: link.href
+        } }
+      ] }
+    } };
+  }
   if (kind === 'daily_report') {
     const money = (value: string) => new Intl.NumberFormat('th-TH', {style:'currency',currency:'THB'}).format(Number(value));
     const row = (label: string, value: string) => ({ type:'box',layout:'horizontal',spacing:'sm',contents:[

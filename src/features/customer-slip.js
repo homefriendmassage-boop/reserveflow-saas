@@ -25,7 +25,7 @@ export function prepareSlipAttachment(client, draft, sendPayment, onComplete) {
     qr.textContent = 'เปิด QR ไม่ได้ กรุณาติดต่อร้านก่อนชำระเงิน';
   }
 
-  function close(message, id) {
+  function close(message, bookingResult) {
     selection++;
     file.onchange = submit.onclick = skip.onclick = null;
     file.value = '';
@@ -36,7 +36,7 @@ export function prepareSlipAttachment(client, draft, sendPayment, onComplete) {
     preview.classList.add('hidden');
     section.classList.add('hidden');
     status.textContent = '';
-    onComplete(message, id);
+    onComplete(message, bookingResult);
   }
 
   file.onchange = () => {
@@ -81,9 +81,9 @@ export function prepareSlipAttachment(client, draft, sendPayment, onComplete) {
       const saved = await sendPayment(image);
       status.textContent = 'ส่งสลิปแล้ว · กำลังตรวจด้วย Thunder…';
       try {
-        close(thunderStatus(await checkThunderSlip(client, saved.id, payload.p_phone)), saved.id);
+        close(thunderStatus(await checkThunderSlip(client, saved.id, payload.p_phone)), saved);
       } catch {
-        close('ส่งสลิปแล้ว · รอแอดมินตรวจ', saved.id);
+        close('ส่งสลิปแล้ว · รอแอดมินตรวจ', saved);
       }
     } catch (error) {
       status.textContent = ({

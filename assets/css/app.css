@@ -507,3 +507,16 @@
 .category-visibility .btn { white-space: nowrap; }
 
 .live-booking-plan .resource.selected:not(:disabled) { outline: 2px solid #4656c6; outline-offset: 2px; background: #eef0ff; border-color: #4656c6; color: #293583; }
+
+.booking-pass-page { max-width: 520px; margin: 32px auto; }
+.booking-pass { padding: 0; overflow: hidden; }
+.booking-pass-header { padding: 24px; background: #303c80; color: #fff; position: static; }
+.booking-pass-header h1 { margin: 6px 0; color: inherit; }
+.booking-pass-header p { margin: 0; color: #e8edff; }
+.booking-pass-body { padding: 22px; }
+.booking-pass-details { display: grid; gap: 12px; margin: 16px 0; }
+.booking-pass-details div { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.booking-pass-details dt { font-weight: 600; }
+.booking-pass-details dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.booking-pass-qr { width: fit-content; max-width: 100%; margin: 18px auto; padding: 12px; background: #fff; }
+.booking-pass-qr img, .booking-pass-qr canvas { max-width: 100%; height: auto; }

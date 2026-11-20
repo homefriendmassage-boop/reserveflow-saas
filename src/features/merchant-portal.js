@@ -1,3 +1,4 @@
+import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-details.js';
 import { renderDailyReport } from './daily-report.js?v=delivery-1';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=team-slip-credits-1';
 import { addThunderCheck } from './thunder-slip.js?v=team-slip-credits-1';
@@ -9,6 +10,16 @@ import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.
 import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=personal-actual-1';
 
 const byId = id => document.getElementById(id);
+const scanKey = 'reserveflow.merchant-scan';
+const scanFromLink = new URLSearchParams(location.hash.slice(1)).get('scan');
+let scanToken;
+if (passTokenPattern.test(scanFromLink || '')) {
+  scanToken = scanFromLink;
+  try { sessionStorage.setItem(scanKey, scanToken); } catch {}
+  history.replaceState(null, '', location.pathname + location.search);
+} else {
+  try { scanToken = sessionStorage.getItem(scanKey); } catch {}
+}
 const login = byId('merchantLogin');
 const registration = byId('merchantRegister');
 const registerForm = byId('merchantRegisterForm');
@@ -264,6 +275,49 @@ if (typeof window.supabase?.createClient !== 'function') {
   const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: { flowType: 'pkce', storage: window.sessionStorage }
   });
+
+  const passPanel = byId('merchantPassPanel');
+  const passFeedback = byId('merchantPassStatus');
+  const passDetails = byId('merchantPassDetails');
+  const passConfirm = byId('merchantPassConfirm');
+  byId('merchantPassClose').onclick = () => {
+    scanToken = null;
+    try { sessionStorage.removeItem(scanKey); } catch {}
+    passPanel.classList.add('hidden');
+  };
+
+  async function openScannedPass() {
+    if (!passTokenPattern.test(scanToken || '')) return;
+    const token = scanToken;
+    passPanel.classList.remove('hidden');
+    passPanel.focus();
+    passDetails.replaceChildren();
+    passConfirm.classList.add('hidden');
+    passFeedback.textContent = 'กำลังตรวจบัตร…';
+    const { data, error } = await client.rpc('get_merchant_booking_pass', { p_token: token });
+    if (scanToken !== token) return;
+    if (error || !data) {
+      passFeedback.textContent = 'เปิดบัตรนี้ไม่ได้ กรุณาตรวจว่าบัตรเป็นของร้านที่คุณมีสิทธิ์';
+      return;
+    }
+    renderPassDetails(passDetails, data);
+    passFeedback.textContent = data.shop + ' · ' + (data.status === 'confirmed' && !data.can_check_in
+      ? 'เช็กอินได้ตั้งแต่ 30 นาทีก่อนเริ่มจนถึงเวลาสิ้นสุด' : passStatus(data));
+    passConfirm.classList.toggle('hidden', !data.can_check_in);
+    passConfirm.onclick = async () => {
+      passConfirm.disabled = true;
+      try {
+        const result = await client.rpc('check_in_booking_pass', { p_token: token });
+        if (result.error) throw result.error;
+        await openScannedPass();
+        await loadBookings();
+      } catch {
+        if (scanToken === token) passFeedback.textContent = 'ยืนยันเช็กอินไม่ได้ กรุณาตรวจสถานะบัตรและช่วงเวลา';
+      } finally {
+        passConfirm.disabled = false;
+      }
+    };
+  }
 
   async function runAction(operation, success) {
     if (saving || !shopMenu.value) return;
@@ -571,6 +625,7 @@ if (typeof window.supabase?.createClient !== 'function') {
       dashboard.classList.remove('hidden');
       status.textContent = '';
       await loadShop();
+      await openScannedPass();
     } catch {
       showLogin('ตรวจสิทธิ์ร้านค้าไม่สำเร็จ กรุณาลองอีกครั้ง');
     } finally {

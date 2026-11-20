@@ -1,4 +1,4 @@
-import { prepareSlipAttachment } from './customer-slip.js?v=team-slip-credits-1';
+import { prepareSlipAttachment } from './customer-slip.js?v=booking-pass-1';
 import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=team-slip-credits-1';
 import { bookingTimeOptions, dateAtShop, nextBookingDate, timeAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
@@ -67,11 +67,16 @@ function updateEstimate() {
     .map(value => String(value).padStart(2, '0')).join(':') + (endMinutes >= 1440 ? ' (+1 วัน)' : '');
   const endField = document.getElementById('bookingEnd');
   endField.parentElement.classList.toggle('hidden', !hasDuration);
-  endField.value = fields.hours.validity.valid && Number.isFinite(endMinutes) ? end : '—';
-  document.getElementById('bookingSummaryCategory').textContent = category.name;
-  document.getElementById('bookingSummaryResource').textContent = resource?.name || 'ยังไม่ได้เลือก';
-  document.getElementById('bookingSummaryDate').textContent = [fields.date.value, fields.hour.value].join(' · ');
-  estimate.textContent = resource
+  const validPeriod = Boolean(fields.hour.value) && duration > 0 &&
+    (fields.hours.disabled || fields.hours.validity.valid);
+  endField.value = validPeriod ? end : '—';
+  document.getElementById('bookingSummaryResource').textContent = resource
+    ? category.name + ' · ' + resource.name : 'ยังไม่ได้เลือก';
+  document.getElementById('bookingSummaryDate').textContent = fields.date.value.split('-').reverse().join('/') || '—';
+  document.getElementById('bookingSummaryTime').textContent = validPeriod
+    ? fields.hour.value + ' – ' + end : '—';
+  document.getElementById('bookingSummaryHours').textContent = validPeriod ? duration + ' ชั่วโมง' : '—';
+  estimate.textContent = resource && validPeriod
     ? money.format(Number(category.price) * Number(units) + Number(category.service_fee))
     : '—';
   submit.disabled = !resource || floorLoading || sending;
@@ -140,6 +145,14 @@ async function start() {
   categories = data.categories;
   const dataCatalogTimezone = data.timezone;
   const draftKey = 'reserveflow.payment.v1:' + shopSlug;
+  const passKey = 'reserveflow.last-pass:' + shopSlug;
+  const passLink = document.getElementById('customerBookingPass');
+  function showPass(token) {
+    if (!token) return;
+    passLink.href = './booking-pass.html#' + encodeURIComponent(token);
+    passLink.classList.remove('hidden');
+  }
+  try { showPass(localStorage.getItem(passKey)); } catch {}
   let awaitingSlip = false;
   title.textContent = `ส่งคำขอจอง · ${data.name}`;
   fields.category.replaceChildren(...categories.map(category => new Option(category.name, category.code)));
@@ -328,6 +341,7 @@ async function start() {
     paymentGrid.classList.add('booking-payment-active');
     for (const element of paymentHidden) element.classList.add('hidden');
     submit.classList.add('hidden');
+    passLink.classList.add('hidden');
     submitStatus.textContent = 'รอแนบสลิปเพื่อส่งคำขอจอง';
     prepareSlipAttachment(client, draft, async image => {
       const { data, error } = await client.rpc('submit_customer_payment', {
@@ -335,7 +349,7 @@ async function start() {
       });
       if (error) throw error;
       return data;
-    }, (message, id) => {
+    }, (message, saved) => {
       try { localStorage.removeItem(draftKey); } catch {}
       pendingRequest = undefined;
       awaitingSlip = false;
@@ -349,7 +363,13 @@ async function start() {
       refreshCustomerSlot();
       updateResources();
       void loadFloor();
-      submitStatus.textContent = id ? message + ' · เลขจอง ' + id : message;
+      if (saved?.pass_token) {
+        try { localStorage.setItem(passKey, saved.pass_token); } catch {}
+        showPass(saved.pass_token);
+      } else if (passLink.hasAttribute('href')) {
+        passLink.classList.remove('hidden');
+      }
+      submitStatus.textContent = saved ? message + ' · เลขจอง ' + saved.id : message;
       submitStatus.focus();
     });
   }
@@ -395,7 +415,9 @@ async function start() {
     submitStatus.textContent = 'กำลังเตรียม QR ชำระเงิน…';
     const category = selectedCategory();
     const resource = category.resources.find(row => row.code === payload.p_resource_code);
-    const label = [category.name, resource?.name || payload.p_resource_code, payload.p_date, fields.hour.value].join(' · ');
+    const label = [category.name, resource?.name || payload.p_resource_code, document.getElementById('bookingSummaryDate').textContent,
+      document.getElementById('bookingSummaryTime').textContent,
+      document.getElementById('bookingSummaryHours').textContent].join(' · ');
 
     try {
       const request = { p_request_id: pendingRequest.id, ...payload };

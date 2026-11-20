@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>จองคิว | ReserveFlow</title>
-  <link rel="stylesheet" href="./assets/css/app.css?v=team-slip-credits-1">
+  <link rel="stylesheet" href="./assets/css/app.css?v=booking-pass-1">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/customer-portal.js?v=team-slip-credits-1"></script>
+  <script type="module" src="./src/features/customer-portal.js?v=booking-pass-1"></script>
 </head>
 <body>
 <header>
@@ -60,13 +60,15 @@
         </div>
         <h2 class="booking-summary-title">สรุปการจอง</h2>
         <div class="summary" aria-live="polite">
-          <div><strong>หมวด</strong><span id="bookingSummaryCategory"></span></div>
-          <div><strong>รายการที่เลือก</strong><span id="bookingSummaryResource">ยังไม่ได้เลือก</span></div>
-          <div><strong>วันที่ / เวลา</strong><span id="bookingSummaryDate"></span></div>
-          <div><strong>ยอดโดยประมาณ</strong><span id="bookingEstimate">—</span></div>
+          <div><strong>วันที่ใช้บริการ</strong><span id="bookingSummaryDate">—</span></div>
+          <div><strong>รายการที่จอง</strong><span id="bookingSummaryResource">ยังไม่ได้เลือก</span></div>
+          <div><strong>ช่วงเวลาที่จอง</strong><span id="bookingSummaryTime">—</span></div>
+          <div><strong>จำนวนชั่วโมง</strong><span id="bookingSummaryHours">—</span></div>
+          <div><strong>รวมค่าจอง / บริการ</strong><span id="bookingEstimate">—</span></div>
         </div>
         <button id="sendBooking" type="submit" class="btn primary full" disabled>แสดง QR ชำระเงิน</button>
         <p id="bookingSubmitStatus" role="status" tabindex="-1"></p>
+        <a id="customerBookingPass" class="btn soft hidden">เปิดบัตรจอง</a>
         <section class="inline-booking-payment hidden" id="bookingSlip" tabindex="-1">
           <h2>ชำระเงินและส่งสลิป</h2>
           <p id="bookingPaymentSelection"></p>

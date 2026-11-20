@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>จัดการร้าน | ReserveFlow</title>
-  <link rel="stylesheet" href="./assets/css/app.css?v=team-slip-credits-1">
+  <link rel="stylesheet" href="./assets/css/app.css?v=booking-pass-1">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/merchant-portal.js?v=team-slip-credits-1"></script>
+  <script type="module" src="./src/features/merchant-portal.js?v=booking-pass-1"></script>
 </head>
 <body>
 <header>
@@ -112,6 +112,15 @@
         <button type="submit" class="btn primary" disabled>บันทึกการจอง</button>
       </form>
     </details>
+    <section id="merchantPassPanel" class="booking hidden" tabindex="-1">
+      <h2>ตรวจบัตรจอง</h2>
+      <p id="merchantPassStatus" role="status"></p>
+      <dl id="merchantPassDetails" class="booking-pass-details"></dl>
+      <div class="inline-actions">
+        <button class="btn primary hidden" id="merchantPassConfirm" type="button">ยืนยันเช็กอิน</button>
+        <button class="btn soft" id="merchantPassClose" type="button">ปิดบัตร</button>
+      </div>
+    </section>
     <p id="merchantActionStatus" role="status"></p>
     <div class="field">
       <label for="merchantBookingSearch">ค้นหาด้วยชื่อผู้จอง เลขจอง หรือรหัสรายการ</label>
