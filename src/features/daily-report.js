@@ -38,19 +38,58 @@ export function renderDailyReport(client, container, shopId, timezone) {
   refresh.className = 'btn soft';
   const status = node('p');
   status.setAttribute('role','status');
+  const delivery = node('p');
+  delivery.className = 'daily-report-delivery';
+  delivery.setAttribute('role','status');
   const summary = node('div');
   const currency = new Intl.NumberFormat('th-TH', { style:'currency', currency:'THB' });
   const number = new Intl.NumberFormat('th-TH');
   let request = 0;
   let loadedDate = '';
   let sending = false;
+  let tracking = 0;
+  let timer;
 
   controls.append(dateField,groupField,refresh,send);
-  panel.append(node('h2','รายงานประจำวัน'),controls,summary,status);
+  panel.append(node('h2','รายงานประจำวัน'),controls,summary,status,delivery);
   container.replaceChildren(panel);
 
   function updateSend() {
     send.disabled = sending || !group.value || loadedDate !== date.value;
+  }
+
+  async function trackDelivery() {
+    const current = ++tracking;
+    clearTimeout(timer);
+    delivery.textContent = '';
+    if (!group.value || !date.value || !date.checkValidity() || !container.contains(panel)) return;
+    const { data,error } = await client.rpc('shop_daily_report_delivery',{
+      p_shop_id:shopId,p_date:date.value,p_target_id:group.value
+    });
+    if (current !== tracking || !container.contains(panel)) return;
+    if (error) {
+      delivery.textContent = error.code === 'PGRST202'
+        ? 'ติดตามผลการส่งได้หลังเปิด SQL ไฟล์ 24'
+        : 'ตรวจสถานะไม่ได้ ลองกดรีเฟรชรายงาน';
+      return;
+    }
+    if (!data) return;
+    const timestamp = new Intl.DateTimeFormat('th-TH',{dateStyle:'short',timeStyle:'short',timeZone:timezone});
+    const failedDetails = ({
+      401:'ตรวจ Channel access token ของ OA ร้าน',
+      403:'ตรวจสิทธิ์ของ OA ร้านและกลุ่ม LINE',
+      404:'ตรวจว่า OA ร้านยังอยู่ในกลุ่ม LINE',
+      429:'ถึงข้อจำกัดการส่งของ LINE'
+    })[data.http_status];
+    const text = {
+      accepted:'LINE รับข้อความแล้ว · '+(data.delivered_at ? timestamp.format(new Date(data.delivered_at)) : ''),
+      failed:'ส่งไม่สำเร็จ'+(data.http_status ? ' · HTTP '+data.http_status : '')+(failedDetails ? ' · '+failedDetails : ''),
+      sending:'กำลังส่งรายงานไป LINE',
+      retrying:'ส่งยังไม่สำเร็จ · ระบบจะลองใหม่',
+      queued:'อยู่ในคิว · รอรอบส่ง LINE'
+    };
+    delivery.textContent = text[data.state] || '';
+    if (['queued','sending','retrying'].includes(data.state)) timer = setTimeout(trackDelivery,10000);
   }
 
   async function load() {
@@ -103,9 +142,10 @@ export function renderDailyReport(client, container, shopId, timezone) {
     updateSend();
   }
 
-  date.addEventListener('change', load);
-  refresh.addEventListener('click',load);
-  group.addEventListener('change', updateSend);
+  const reload = () => { void load(); void trackDelivery(); };
+  date.addEventListener('change', reload);
+  refresh.addEventListener('click',reload);
+  group.addEventListener('change', () => { updateSend(); void trackDelivery(); });
   send.addEventListener('click', async () => {
     if (send.disabled || !confirm('ส่งสรุปวันที่ ' + date.value + ' ไปยังกลุ่ม LINE ที่เลือกหรือไม่?')) return;
     const selected = date.value;
@@ -117,6 +157,7 @@ export function renderDailyReport(client, container, shopId, timezone) {
       });
       status.textContent = error ? 'ส่งรายงานเข้าคิวไม่ได้ กรุณาตรวจการเชื่อมกลุ่ม LINE'
         : 'รายงานวันที่ ' + selected + ' เข้าคิวส่ง LINE แล้ว';
+      if (!error) void trackDelivery();
     } catch {
       status.textContent = 'ส่งรายงานเข้าคิวไม่ได้ กรุณาลองอีกครั้ง';
     } finally {

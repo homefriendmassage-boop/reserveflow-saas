@@ -1,4 +1,4 @@
-import { renderDailyReport } from './daily-report.js';
+import { renderDailyReport } from './daily-report.js?v=delivery-1';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js';
 import { addThunderCheck } from './thunder-slip.js?v=thunder-decisions-1';
 import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=promptpay-id-1';
