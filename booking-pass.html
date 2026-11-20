@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
   <title>บัตรจอง | ReserveFlow</title>
-  <link rel="stylesheet" href="./assets/css/app.css?v=business-day-1">
+  <link rel="stylesheet" href="./assets/css/app.css?v=pass-review-1">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/customer-booking-pass.js?v=business-day-1"></script>
+  <script type="module" src="./src/features/customer-booking-pass.js?v=pass-review-1"></script>
 </head>
 <body>
 <main class="booking-pass-page">
@@ -22,10 +22,11 @@
       <p id="passStatus" role="status">กำลังโหลดบัตรจอง…</p>
       <dl id="passDetails" class="booking-pass-details"></dl>
       <div class="inline-actions">
-        <button id="passShowQr" class="btn primary hidden" type="button">แสดง QR เข้างาน</button>
+        <button id="passShowQr" class="btn primary hidden" type="button" aria-describedby="passQrHelp">แสดง QR เข้างาน</button>
         <button id="passRefresh" class="btn soft hidden" type="button">อัปเดตสถานะ</button>
         <button id="passCopyLink" class="btn soft hidden" type="button">คัดลอกลิงก์บัตร</button>
       </div>
+      <p id="passQrHelp" class="sub"></p>
       <div id="passQr" class="booking-pass-qr hidden" aria-label="QR สำหรับให้พนักงานสแกน"></div>
       <section id="passLine" class="merchant-settings-panel pass-line hidden" aria-labelledby="passLineTitle">
         <h2 id="passLineTitle">รับบัตรจองทาง LINE</h2>

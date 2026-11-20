@@ -37,7 +37,13 @@ async function load() {
     status.textContent = passStatus(data);
     renderPassDetails(get('passDetails'), data);
     get('passCopyLink').classList.remove('hidden');
+    const pending = ['pending_payment','pending_confirm','slip_review'].includes(data.status) && !data.expired;
     showQr.classList.toggle('hidden', !data.scan_token);
+    showQr.textContent = pending ? 'แสดง QR ให้ร้านตรวจสอบ' : 'แสดง QR เข้างาน';
+    get('passQrHelp').textContent = pending
+      ? (data.scan_token ? 'พนักงานสแกนเพื่อเปิดดูรายการได้ เช็กอินได้หลังยืนยันการจอง'
+        : 'QR เข้างานจะแสดงหลังร้านยืนยันการจอง')
+      : '';
     if (!data.scan_token) {
       qr.replaceChildren();
       qr.classList.add('hidden');
@@ -62,7 +68,7 @@ async function load() {
       ? (data.status === 'confirmed'
         ? 'เชื่อม LINE แล้ว · โปรดตรวจข้อความยืนยันในแชตกับ LINE OA ของร้าน'
         : 'เชื่อม LINE แล้ว · ระบบจะส่งบัตรเมื่อร้านยืนยันการจอง')
-      : data.line_code ? 'สถานะ LINE · รอลูกค้าส่งข้อความเชื่อมบัตร'
+      : data.line_code ? 'สถานะ LINE · รอเชื่อมบัตร ระบบจะส่งข้อความยืนยันหลังเชื่อม LINE และร้านยืนยันการจอง'
         : !data.expired && ['pending_payment','pending_confirm','slip_review','confirmed'].includes(data.status)
           ? 'ร้านยังไม่เปิดรับบัตรผ่าน LINE คุณเปิดบัตรจากหน้านี้ได้' : '');
 
