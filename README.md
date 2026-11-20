@@ -203,9 +203,11 @@ New registrations send a Flex message to the Superadmin destination. New booking
 
 ### ตรวจสลิปด้วย Thunder v2
 
-1. รัน migration `20261120000015_resources_and_slip_attachments.sql` เพื่อเปิดแนบสลิปในหน้าจอง
-2. ตั้ง Edge Function Secret ชื่อ `THUNDER_API_KEY` ใน Supabase ด้วยคีย์จากบัญชี Thunder
-3. จากโฟลเดอร์โปรเจกต์ ให้ deploy ด้วย `supabase functions deploy thunder-verify-slip --project-ref zotgxsimkrofqxkhjjak --no-verify-jwt` ฟังก์ชันยืนยันผู้ใช้และตรวจสิทธิ์อ่านสลิปของร้านเอง
-4. ในหลังบ้าน เปิด **รายการจอง → ดูสลิปที่แนบ → ตรวจ QR ด้วย Thunder**
+1. รัน migration `20261120000017_thunder_booking_decisions.sql` หลังไฟล์ 15 และ 16
+2. ตั้ง Edge Function Secret ชื่อ `THUNDER_API_KEY` ใน Supabase
+3. เผยแพร่ฟังก์ชันใหม่ด้วย `supabase functions deploy thunder-verify-slip --project-ref zotgxsimkrofqxkhjjak --no-verify-jwt`
+4. ตั้งเบอร์มือถือพร้อมเพย์ของร้านในหลังบ้าน แล้วทดสอบด้วยการจองใหม่และแนบสลิปจริง
 
-ระบบอ่าน QR จากรูปในเบราว์เซอร์ ส่งเฉพาะข้อความ QR ไปที่ [Thunder v2](https://document.thunder.in.th/th/) และใช้ยอดจากรายการจองใน Supabase เปรียบเทียบกับผลที่ได้ ระบบแสดงยอด เลขอ้างอิง และชื่อผู้รับจาก Thunder ให้ร้านตรวจบัญชีผู้รับและตรวจว่ารายการโอนยังไม่เคยใช้ก่อนยืนยันการจอง ผลตรวจแสดงในหน้าที่เปิดอยู่และไม่เปลี่ยนสถานะการชำระอัตโนมัติ
+เมื่อส่งรูปสลิป ระบบอ่าน QR จากรูป JPG หรือ PNG ที่แนบและส่งเฉพาะ QR payload ไปที่ [Thunder v2](https://document.thunder.in.th/th/) กรณียอดไม่ตรง ระบบเก็บผลไว้ให้แอดมินตรวจและยืนยันเอง ตรวจซ้ำได้จาก **รายการจอง → ดูสลิปที่แนบ → ตรวจสลิปด้วย Thunder**
+
+การยืนยันอัตโนมัติต้องได้ยอดที่ตรง เลขอ้างอิงที่ยังไม่ใช้ เวลาโอนหลังสร้างการจอง และข้อมูลมือถือผู้รับแบบเต็มที่ตรงกับพร้อมเพย์ของร้าน ฟังก์ชันอ่านข้อมูลผู้รับจาก `receiver.account.proxy` ชนิด `MSISDN` และเวลาโอนจาก `date` ที่ระบุเขตเวลา หาก Thunder ส่งเฉพาะชื่อผู้รับหรือเบอร์ที่ปิดบางหลัก ระบบส่งให้แอดมินตรวจ รูป WebP เก็บเป็นหลักฐานให้แอดมินเปิดดูได้

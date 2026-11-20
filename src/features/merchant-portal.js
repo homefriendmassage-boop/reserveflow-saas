@@ -1,10 +1,10 @@
-import { addThunderCheck } from './thunder-slip.js';
+import { addThunderCheck } from './thunder-slip.js?v=thunder-decisions-1';
 import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=slips-1';
 import { renderMerchantTeam } from './merchant-team.js';
 import { renderMerchantSettings } from './merchant-settings.js?v=slips-1';
 import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
-import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=slips-1';
+import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=thunder-decisions-1';
 
 const byId = id => document.getElementById(id);
 const login = byId('merchantLogin');
@@ -147,7 +147,7 @@ function showLogin(message = '') {
   status.textContent = message;
 }
 
-function bookingCard(booking, timezone, changeStatus, readSlip, client) {
+function bookingCard(booking, timezone, changeStatus, readSlip, client, refresh) {
   const card = document.createElement('article');
   card.className = 'booking';
   const title = document.createElement('h3');
@@ -192,7 +192,7 @@ function bookingCard(booking, timezone, changeStatus, readSlip, client) {
         image.alt = 'รูปสลิปที่ลูกค้าแนบ';
         image.src = data.image;
         attachment.append(image);
-        addThunderCheck(attachment, client, booking.id, image);
+        addThunderCheck(attachment, client, booking.id, data, refresh);
       } catch {
         note.remove();
         label.textContent = 'เปิดสลิปอีกครั้งเพื่อโหลดใหม่';
@@ -275,7 +275,7 @@ if (typeof window.supabase?.createClient !== 'function') {
       [row.id, row.resource_code].some(value => value.toLowerCase().includes(term)));
     if (rows.length) {
       bookings.replaceChildren(...rows.map(row => bookingCard(row, bookingTimezone, changeStatus, id =>
-        createSupabaseStore(client, shopMenu.value).getBookingSlip(id), client)));
+        createSupabaseStore(client, shopMenu.value).getBookingSlip(id), client, loadBookings)));
     } else {
       bookings.textContent = term ? 'ไม่พบรายการจองที่ค้นหา' : 'ยังไม่มีรายการจอง';
     }

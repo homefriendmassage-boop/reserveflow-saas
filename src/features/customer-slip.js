@@ -1,3 +1,4 @@
+import { checkThunderSlip, thunderStatus } from './thunder-slip.js?v=thunder-decisions-1';
 import { promptPayPayload } from './promptpay.js';
 
 export function prepareSlipAttachment(client, booking, phone, mobile, onComplete) {
@@ -84,7 +85,12 @@ export function prepareSlipAttachment(client, booking, phone, mobile, onComplete
         p_booking_id: booking.id, p_phone: phone, p_image: image
       });
       if (error) throw error;
-      close('ส่งสลิปแล้ว · รอร้านตรวจ');
+      status.textContent = 'ส่งสลิปแล้ว · กำลังตรวจด้วย Thunder…';
+      try {
+        close(thunderStatus(await checkThunderSlip(client, booking.id, phone)));
+      } catch {
+        close('ส่งสลิปแล้ว · รอแอดมินตรวจ');
+      }
     } catch (error) {
       status.textContent = ({
         SLIP_BOOKING_UNAVAILABLE: 'รายการจองนี้รับสลิปไม่ได้แล้ว กรุณาติดต่อร้าน',
