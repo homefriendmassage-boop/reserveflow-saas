@@ -42,6 +42,7 @@ export function createSupabaseStore(client, shopId) {
     getCategories: () => read(client.from('categories').select('*').eq('shop_id', shopId).order('sort_order').order('code')),
     getResources: () => read(client.from('resources').select('*').eq('shop_id', shopId).order('code')),
     getLayouts: () => read(client.from('layouts').select('*').eq('shop_id', shopId)),
+    getBookingSlip: id => read(client.from('booking_slip_attachments').select('image').eq('booking_id', id).maybeSingle()),
     getBookings: () => read(client.from('bookings').select('id,category_code,resource_code,starts_at,ends_at,amount,status').eq('shop_id', shopId).order('created_at', { ascending: false }))
   };
 }

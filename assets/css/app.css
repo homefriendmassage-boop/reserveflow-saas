@@ -432,3 +432,12 @@
   border-radius: 8px;
   font-family: monospace;
 }
+
+.booking-slip-image {
+  display: block;
+  max-width: min(100%, 420px);
+  max-height: 560px;
+  object-fit: contain;
+  margin-block: 12px;
+}
+#bookingSlipForm button { margin-top: 10px; }

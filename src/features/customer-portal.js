@@ -1,3 +1,4 @@
+import { enableSlipAttachment } from './customer-slip.js';
 import { highlightTable, renderFloor, showFloorMessage } from './customer-floor.js?v=floor-line-2';
 import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
@@ -136,6 +137,7 @@ async function start() {
   }
 
   categories = data.categories;
+  const slipAttachmentsEnabled = data.slip_attachments_enabled === true;
   title.textContent = `ส่งคำขอจอง · ${data.name}`;
   fields.category.replaceChildren(...categories.map(category => new Option(category.name, category.code)));
   categoryTabs.replaceChildren(...categories.map(category => {
@@ -259,6 +261,7 @@ async function start() {
       form.classList.add('hidden');
       pendingRequest = undefined;
       status.textContent = `ส่งคำขอแล้ว · รอร้านยืนยัน · ${money.format(data.amount)} · เลขจอง ${data.id}`;
+      if (slipAttachmentsEnabled && Number(data.amount) > 0) enableSlipAttachment(client, data.id, payload.p_phone);
     } catch (error) {
       submitStatus.textContent = errorMessages[error.message]
         || 'ยืนยันผลการส่งไม่ได้ ลองส่งข้อมูลเดิมอีกครั้งเพื่อป้องกันการจองซ้ำ';

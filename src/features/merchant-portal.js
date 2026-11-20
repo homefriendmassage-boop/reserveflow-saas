@@ -1,9 +1,9 @@
-import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=floor-line-2';
+import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=slips-1';
 import { renderMerchantTeam } from './merchant-team.js';
-import { renderMerchantSettings } from './merchant-settings.js?v=floor-line-2';
+import { renderMerchantSettings } from './merchant-settings.js?v=slips-1';
 import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
-import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=floor-line-2';
+import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=slips-1';
 
 const byId = id => document.getElementById(id);
 const login = byId('merchantLogin');
@@ -93,7 +93,7 @@ function updateTableCapacity() {
 }
 
 function loadMerchantResources() {
-  tableMenu.replaceChildren(...shopResources.filter(resource => resource.category_code === categoryMenu.value).map(resource => {
+  tableMenu.replaceChildren(...shopResources.filter(resource => resource.category_code === categoryMenu.value && resource.display?.archived !== true).map(resource => {
     const option = new Option(resource.name, resource.code);
     option.dataset.capacity = resource.capacity || 100;
     return option;
@@ -146,7 +146,7 @@ function showLogin(message = '') {
   status.textContent = message;
 }
 
-function bookingCard(booking, timezone, changeStatus) {
+function bookingCard(booking, timezone, changeStatus, readSlip) {
   const card = document.createElement('article');
   card.className = 'booking';
   const title = document.createElement('h3');
@@ -169,6 +169,35 @@ function bookingCard(booking, timezone, changeStatus) {
   const reference = document.createElement('small');
   reference.textContent = booking.id;
   card.append(title, details, reference);
+  if (canManageTables()) {
+    const attachment = document.createElement('details');
+    const label = document.createElement('summary');
+    label.textContent = 'ดูสลิปที่แนบ';
+    attachment.append(label);
+    attachment.addEventListener('toggle', async () => {
+      if (!attachment.open || attachment.childElementCount > 1) return;
+      const note = document.createElement('p');
+      note.textContent = 'กำลังโหลดรูปสลิป…';
+      attachment.append(note);
+      try {
+        const data = await readSlip(booking.id);
+        if (!data?.image) {
+          note.textContent = 'ยังไม่มีสลิปแนบ';
+          return;
+        }
+        note.textContent = 'สลิปที่ลูกค้าแนบ · รอตรวจ';
+        const image = document.createElement('img');
+        image.className = 'booking-slip-image';
+        image.alt = 'รูปสลิปที่ลูกค้าแนบ';
+        image.src = data.image;
+        attachment.append(image);
+      } catch {
+        note.remove();
+        label.textContent = 'เปิดสลิปอีกครั้งเพื่อโหลดใหม่';
+      }
+    });
+    card.append(attachment);
+  }
   const start = new Date(booking.starts_at).getTime();
   const now = Date.now();
   const options = [];
@@ -243,7 +272,8 @@ if (typeof window.supabase?.createClient !== 'function') {
     const rows = displayedBookings.filter(row => !term ||
       [row.id, row.resource_code].some(value => value.toLowerCase().includes(term)));
     if (rows.length) {
-      bookings.replaceChildren(...rows.map(row => bookingCard(row, bookingTimezone, changeStatus)));
+      bookings.replaceChildren(...rows.map(row => bookingCard(row, bookingTimezone, changeStatus, id =>
+        createSupabaseStore(client, shopMenu.value).getBookingSlip(id))));
     } else {
       bookings.textContent = term ? 'ไม่พบรายการจองที่ค้นหา' : 'ยังไม่มีรายการจอง';
     }

@@ -1,4 +1,4 @@
-import { renderListResources } from './merchant-list-resources.js';
+import { renderListResources } from './merchant-list-resources.js?v=slips-1';
 import { decorTypes, floorGeometry, legacyFloor, sampleTableFloor, templatePositions } from './floor-design.js';
 
 function node(tag, text = '') {
@@ -70,14 +70,17 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
         categorySelect.value = categoryCode;
         categorySelect.dispatchEvent(new Event('change'));
         const resourceSelect = replacement.querySelector(section === 'resources' ? '[data-list-resource]' : '[data-floor-item]');
-        if (selectedCode && [...resourceSelect.options].some(option => option.value === selectedCode)) {
-          resourceSelect.value = selectedCode;
+        const savedOption = [...resourceSelect.options].find(option =>
+          selectedCode ? option.value === selectedCode :
+            rpc === 'save_merchant_list_resource' && option.value && option.text === args.p_name);
+        if (savedOption) {
+          resourceSelect.value = savedOption.value;
           resourceSelect.dispatchEvent(new Event('change'));
         }
         if (blockIndex != null) replacement.querySelectorAll('.editor-decor')[blockIndex]?.click();
       }
       const freshMessage = feedbackArea.querySelector(`[data-section="${section}"] [role=status]`);
-      if (freshMessage) freshMessage.textContent = 'บันทึกแล้ว';
+      if (freshMessage) freshMessage.textContent = rpc === 'archive_merchant_list_resource' ? 'ลบออกจากหน้าจองแล้ว' : 'บันทึกแล้ว';
       return true;
     } catch (error) {
       feedback.textContent = error?.message === 'RESOURCE_NAME_EXISTS'
@@ -507,7 +510,8 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     const listPanel = panel('จัดการพนักงานและโซนบัตร');
     listPanel.dataset.section = 'resources';
     renderListResources(listPanel, listCategories, resources, args =>
-      persist('save_merchant_list_resource', args, 'resources', args.p_category_code, args.p_code));
+      persist('save_merchant_list_resource', args, 'resources', args.p_category_code, args.p_code),
+    args => persist('archive_merchant_list_resource', args, 'resources', args.p_category_code));
     container.prepend(listPanel);
   }
 }

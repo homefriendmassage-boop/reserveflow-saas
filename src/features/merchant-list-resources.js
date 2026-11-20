@@ -1,4 +1,4 @@
-export function renderListResources(panel, categories, resources, save) {
+export function renderListResources(panel, categories, resources, save, archive) {
   const create = (tag, text = '') => Object.assign(document.createElement(tag), { textContent: text });
   const form = create('form');
   form.className = 'fields merchant-resource-fields';
@@ -36,7 +36,13 @@ export function renderListResources(panel, categories, resources, save) {
   submit.className = 'btn primary';
   const status = create('p');
   status.setAttribute('role', 'status');
-  form.append(preview, remove, submit);
+  const removeEntry = create('button', 'ลบรายการออกจากหน้าจอง');
+  removeEntry.className = 'btn danger';
+  removeEntry.type = 'button';
+  const info = create('p', 'รายการที่บันทึกแล้วอยู่ในช่องรายการที่ต้องการแก้ไข และแสดงในหมวดเดียวกันบนหน้าลูกค้าเมื่อหมวดเปิดแสดง');
+  info.className = 'sub';
+  form.append(preview, remove, submit, removeEntry);
+  panel.append(info);
   panel.append(form, status);
   let photo = null;
   let fileRead = 0;
@@ -51,6 +57,7 @@ export function renderListResources(panel, categories, resources, save) {
     submit.disabled = false;
     const staff = categories.find(row => row.code === category.value).template === 'staff';
     const row = resources.find(row => row.code === resource.value && row.category_code === category.value);
+    removeEntry.classList.toggle('hidden', !row);
     name.value = row?.name || '';
     position.value = row?.display?.position || '';
     description.value = row?.description || '';
@@ -64,10 +71,19 @@ export function renderListResources(panel, categories, resources, save) {
     showPhoto();
   }
   function loadCategory() {
-    const rows = resources.filter(row => row.category_code === category.value);
+    const rows = resources.filter(row => row.category_code === category.value && row.display?.archived !== true);
     resource.replaceChildren(new Option('+ เพิ่มรายการใหม่', ''), ...rows.map(row => new Option(row.name, row.code)));
     loadResource();
   }
+  removeEntry.addEventListener('click', async () => {
+    if (!resource.value || !confirm('ลบรายการนี้ออกจากหน้าจอง? ประวัติการจองเดิมจะยังอยู่')) return;
+    removeEntry.disabled = true;
+    try {
+      await archive({ p_category_code: category.value, p_code: resource.value });
+    } finally {
+      removeEntry.disabled = false;
+    }
+  });
   category.addEventListener('change', loadCategory);
   resource.addEventListener('change', loadResource);
   remove.addEventListener('click', () => { fileRead++; photo = null; file.value = ''; submit.disabled = false; showPhoto(); });
