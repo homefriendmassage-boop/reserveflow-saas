@@ -64,6 +64,16 @@ Deno.serve(async request => {
   if (claim.error || !claim.data) return json({state:'unavailable'});
   if (claim.data.state !== 'claimed') return json(claim.data);
   const payload = decodeSlipQr(claim.data.image);
+  if (payload) {
+    const debit = await admin.rpc('consume_booking_slip_credit', { p_booking_id: bookingId });
+    if (debit.error || !debit.data) {
+      await admin.rpc('finish_thunder_booking_slip', {
+        p_booking_id: bookingId, p_outcome: 'retry', p_reference: null,
+        p_amount: null, p_mobile: null, p_paid_at: null
+      });
+      return json({state:debit.error ? 'retry' : 'no_credit'});
+    }
+  }
   let result;
   try {
     result = payload ? await verifySlip(payload, key) : { outcome:'qr_unreadable' };

@@ -1,4 +1,4 @@
-import { checkThunderSlip, thunderStatus } from './thunder-slip.js?v=thunder-decisions-1';
+import { checkThunderSlip, thunderStatus } from './thunder-slip.js?v=team-slip-credits-1';
 
 export function prepareSlipAttachment(client, draft, sendPayment, onComplete) {
   const section = document.getElementById('bookingSlip');

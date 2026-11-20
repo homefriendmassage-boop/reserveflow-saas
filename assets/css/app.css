@@ -505,3 +505,5 @@
 .category-visibility { display: grid; gap: 4px; align-self: center; }
 .category-visibility small { color: var(--muted); }
 .category-visibility .btn { white-space: nowrap; }
+
+.live-booking-plan .resource.selected:not(:disabled) { outline: 2px solid #4656c6; outline-offset: 2px; background: #eef0ff; border-color: #4656c6; color: #293583; }

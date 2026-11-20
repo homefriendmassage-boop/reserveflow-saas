@@ -1,5 +1,5 @@
 const roleNames = {
-  owner: 'เจ้าของร้าน', admin: 'แคชเชียร์ (แอดมินเดิม)',
+  owner: 'เจ้าของร้าน', admin: 'แอดมินร้าน',
   cashier: 'แคชเชียร์', staff: 'พนักงาน', pending: 'รออนุมัติ', remove: 'ถอนสิทธิ์', reject: 'ปฏิเสธ'
 };
 
@@ -28,13 +28,13 @@ export function renderMerchantTeam(container, rows, search, apply) {
     }
     if (member.role === 'owner') return card;
 
-    const options = member.role === 'pending' ? ['staff', 'cashier', 'reject'] : ['staff', 'cashier', 'remove'];
+    const options = member.role === 'pending' ? ['staff', 'cashier', 'admin', 'reject'] : ['staff', 'cashier', 'admin', 'remove'];
     const form = document.createElement('form');
     form.className = 'inline-actions';
     const select = document.createElement('select');
     select.setAttribute('aria-label', 'สิทธิ์ของ ' + name.textContent);
     select.replaceChildren(...options.map(value => new Option(roleNames[value], value)));
-    if (member.role !== 'pending') select.value = member.role === 'admin' ? 'cashier' : member.role;
+    if (member.role !== 'pending') select.value = member.role;
     const button = document.createElement('button');
     button.className = 'btn soft small';
     button.textContent = member.role === 'pending' ? 'ดำเนินการคำขอ' : 'บันทึกสิทธิ์';

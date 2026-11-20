@@ -42,6 +42,10 @@ export function renderFloor(plan, resources, resourceField, template) {
     button.className = 'resource';
     button.style.setProperty('--floor-label-length', Math.max(2, [...resource.name].length * .56));
     button.disabled = Boolean(table.occupied);
+  if (button.disabled) {
+    button.classList.remove('selected');
+    button.setAttribute('aria-pressed','false');
+  }
     const name = document.createElement('strong');
     name.textContent = resource.name;
     const availability = document.createElement('small');
@@ -58,18 +62,24 @@ export function renderFloor(plan, resources, resourceField, template) {
   });
   floor.replaceChildren(...labels, ...buttons);
   floor.classList.remove('hidden');
-  status.textContent = ({ seat: 'เลือกที่นั่งว่างจากผัง', vip: 'เลือกห้องว่างจากผัง', table: 'เลือกโต๊ะว่างจากผัง' })[template];
+  status.dataset.availability = ({ seat: 'เลือกที่นั่งว่างจากผัง', vip: 'เลือกห้องว่างจากผัง', table: 'เลือกโต๊ะว่างจากผัง' })[template];
   highlightTable(resourceField.value);
 }
 
 function paintAvailability(button, table) {
   const state = table.availability || (table.occupied ? 'booked' : 'available');
   button.disabled = Boolean(table.occupied);
+  if (button.disabled) {
+    button.classList.remove('selected');
+    button.setAttribute('aria-pressed','false');
+  }
   for (const name of ['booked', 'review', 'unpaid', 'selecting']) button.classList.toggle(name, state === name);
   const status = button.querySelector('.floor-availability');
-  status.textContent = ({
+  status.dataset.availability = ({
     booked: 'จองแล้ว', review: 'รอตรวจสลิป', unpaid: 'รอชำระ', selecting: 'กำลังเลือก'
   })[state] || 'ว่าง';
+  status.textContent = button.classList.contains('selected') && !button.disabled
+    ? 'คุณเลือกอยู่' : status.dataset.availability;
   button.title = button.querySelector('strong').textContent + ' · ' + status.textContent;
 }
 
@@ -85,6 +95,9 @@ export function highlightTable(code) {
   for (const button of floor.querySelectorAll('button[data-code]')) {
     const selected = button.dataset.code === code && !button.disabled;
     button.classList.toggle('selected', selected);
+    const status = button.querySelector('.floor-availability');
+    status.textContent = selected ? 'คุณเลือกอยู่' : status.dataset.availability;
+    button.title = button.querySelector('strong').textContent + ' · ' + status.textContent;
     button.setAttribute('aria-pressed', String(selected));
   }
 }

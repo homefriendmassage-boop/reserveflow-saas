@@ -19,6 +19,7 @@ export function thunderStatus(result) {
     booking_review: 'ตรวจพบรายการโอน · รอแอดมินตรวจสถานะจอง',
     qr_unreadable: 'ระบบอ่าน QR ไม่ได้ · รอแอดมินตรวจรูปสลิป',
     not_verified: 'Thunder ยังยืนยันรายการนี้ไม่ได้ · รอแอดมินตรวจ',
+    no_credit: 'เครดิตตรวจสลิปหมด · รอร้านตรวจด้วยตนเอง',
     checking: 'ระบบกำลังตรวจสลิป',
     retry: 'ติดต่อ Thunder ไม่สำเร็จ · รอแอดมินตรวจ',
     not_configured: 'ร้านยังไม่ได้ตั้งค่า Thunder · รอแอดมินตรวจ'

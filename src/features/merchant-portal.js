@@ -1,8 +1,8 @@
 import { renderDailyReport } from './daily-report.js?v=delivery-1';
-import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js';
-import { addThunderCheck } from './thunder-slip.js?v=thunder-decisions-1';
+import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=team-slip-credits-1';
+import { addThunderCheck } from './thunder-slip.js?v=team-slip-credits-1';
 import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=personal-actual-1';
-import { renderMerchantTeam } from './merchant-team.js';
+import { renderMerchantTeam } from './merchant-team.js?v=team-slip-credits-1';
 import { renderMerchantSettings } from './merchant-settings.js?v=payment-drafts-1';
 import { bookingTimeOptions, dateAtShop, timeAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
@@ -49,10 +49,11 @@ const search = byId('merchantBookingSearch');
 const publicLink = byId('merchantPublicLink');
 const emailForm = byId('merchantEmailForm');
 const emailSignIn = byId('merchantEmailSignIn');
-const roleLabel = { owner: 'เจ้าของร้าน', admin: 'แคชเชียร์ (แอดมินเดิม)', cashier: 'แคชเชียร์', staff: 'พนักงาน' };
+const roleLabel = { owner: 'เจ้าของร้าน', admin: 'แอดมินร้าน', cashier: 'แคชเชียร์', staff: 'พนักงาน' };
 let currentRole;
 let displayedBookings = [];
 let bookingTimezone;
+const canEditLayout = () => ['owner', 'admin'].includes(currentRole);
 const canManageTables = () => ['owner', 'admin', 'cashier'].includes(currentRole);
 
 let bookingRequest = 0;
@@ -426,8 +427,8 @@ if (typeof window.supabase?.createClient !== 'function') {
     publicLink.href = './book.html?' + new URLSearchParams({ shop: shop.dataset.slug || '' });
     const roleHelp = {
       owner: 'ตั้งค่าร้านและทีมงาน จัดการการจอง และแพ็กเกจร้าน',
-      cashier: 'จัดการการจองและดูสลิป',
-      admin: 'จัดการการจองและดูสลิป',
+      cashier: 'จัดการจอง สลิป และรายงานรายวัน',
+      admin: 'จัดการจอง สลิป รายงาน ผัง และรายการจอง',
       staff: 'เปิดโต๊ะ เช็กอิน และสิ้นสุดการใช้โต๊ะ'
     };
     byId('merchantRole').textContent = [roleLabel[currentRole],roleHelp[currentRole]].filter(Boolean).join(' · ');
@@ -467,7 +468,7 @@ if (typeof window.supabase?.createClient !== 'function') {
     try {
       const store = createSupabaseStore(client, shop.value);
       const [categories, resources, layouts] = await Promise.all([
-        store.getCategories(), store.getResources(), canManageTables() ? store.getLayouts() : Promise.resolve([])
+        store.getCategories(), store.getResources(), canEditLayout() ? store.getLayouts() : Promise.resolve([])
       ]);
       if (request !== bookingRequest) return;
       const tableCodes = new Set(categories.filter(category => category.template === 'table').map(category => category.code));
@@ -478,7 +479,7 @@ if (typeof window.supabase?.createClient !== 'function') {
         return option;
       }));
       loadMerchantResources();
-      if (canManageTables()) renderMerchantSettings(advancedSettings, { categoryContainer: categorySettings, categories, resources, layouts, owner: currentRole === 'owner',
+      if (canEditLayout()) renderMerchantSettings(advancedSettings, { categoryContainer: categorySettings, categories, resources, layouts, owner: currentRole === 'owner',
         save: async (rpc, parameters) => {
           if (shopMenu.value !== shop.value) throw new Error('Shop changed');
           const { data, error } = await client.rpc(rpc, { ...parameters, p_shop_id: shop.value });
