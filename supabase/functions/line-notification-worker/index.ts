@@ -95,36 +95,41 @@ type Delivery = {
   kind: string;
   payload: Record<string, string>;
   lease_id: string;
+  owner_scope: string;
+  access_token: string | null;
 };
 
 Deno.serve(async request => {
   if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
   const workerSecret = Deno.env.get('LINE_WORKER_SECRET');
-  const accessToken = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN');
-  if (!workerSecret || !accessToken) return new Response('Not configured', { status: 503 });
+  const platformToken = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN');
+  if (!workerSecret) return new Response('Not configured', { status: 503 });
   if (!fixedTimeMatch(workerSecret, request.headers.get('x-rf-worker-secret') || '')) {
     return new Response('Forbidden', { status: 403 });
   }
   const client = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  const { data, error } = await client.rpc('claim_line_notifications');
+  const { data, error } = await client.rpc('claim_line_notifications_scoped', { p_platform_enabled: Boolean(platformToken) });
   if (error) return new Response('Could not claim jobs', { status: 500 });
   const results = await Promise.allSettled((data as Delivery[]).map(async job => {
-    let status = 0;
+    const accessToken = job.owner_scope === 'platform' ? platformToken : job.access_token;
+    let status = accessToken ? 0 : 503;
     let delivered = false;
     try {
-      const response = await fetch('https://api.line.me/v2/bot/message/push', {
-        method: 'POST',
-        headers: {
-          Authorization: 'Bearer ' + accessToken,
-          'Content-Type': 'application/json',
-          'X-Line-Retry-Key': job.id
-        },
-        body: JSON.stringify({ to: job.target, messages: [lineMessage(job.kind, job.payload, site)] }),
-        signal: AbortSignal.timeout(10000)
-      });
-      status = response.status;
-      delivered = response.ok || (status === 409 && response.headers.has('x-line-accepted-request-id'));
-      await response.body?.cancel();
+      if (accessToken) {
+        const response = await fetch('https://api.line.me/v2/bot/message/push', {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+            'X-Line-Retry-Key': job.id
+          },
+          body: JSON.stringify({ to: job.target, messages: [lineMessage(job.kind, job.payload, site)] }),
+          signal: AbortSignal.timeout(10000)
+        });
+        status = response.status;
+        delivered = response.ok || (status === 409 && response.headers.has('x-line-accepted-request-id'));
+        await response.body?.cancel();
+      }
     } catch {
       // A retry uses the same LINE retry key, even if the prior response was lost.
     }

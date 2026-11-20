@@ -15,16 +15,84 @@ function errorMessage() {
   return 'ยังตั้งค่า LINE ไม่ได้ กรุณาตรวจการเชื่อมต่อแล้วลองใหม่';
 }
 
+function shopChannelSettings(client, shopId, refresh) {
+  const section = element('div');
+  const status = element('p');
+  status.setAttribute('role','status');
+  const form = element('form');
+  form.className = 'fields';
+  const secret = element('input');
+  const token = element('input');
+  const webhook = element('input');
+  webhook.readOnly = true;
+  webhook.value = 'https://zotgxsimkrofqxkhjjak.supabase.co/functions/v1/line-webhook?shop=' + encodeURIComponent(shopId);
+  for (const input of [secret,token]) {
+    input.type = 'password';
+    input.autocomplete = 'off';
+    input.required = true;
+  }
+  function label(text, input) {
+    const result = element('label',text);
+    result.className = 'field';
+    result.append(input);
+    return result;
+  }
+  const save = action('บันทึก LINE OA ของร้าน');
+  save.type = 'submit';
+  form.append(label('Channel secret',secret),label('Channel access token',token),save);
+  const copy = action('คัดลอก Webhook URL');
+  copy.addEventListener('click',async()=>{
+    try { await navigator.clipboard.writeText(webhook.value); status.textContent = 'คัดลอก Webhook URL แล้ว'; }
+    catch { webhook.focus(); webhook.select(); status.textContent = 'เลือก URL แล้ว กดคัดลอกจากเบราว์เซอร์'; }
+  });
+  section.append(element('h3','LINE OA ของร้านนี้'),
+    element('p','ใช้ Channel secret และ Channel access token จาก Messaging API ของ OA ร้านเดียวกัน'),
+    form,label('Webhook URL สำหรับใส่ใน LINE Developers',webhook),copy,status,
+    element('p','หลังบันทึก ให้วาง Webhook URL นี้ใน Messaging API ของร้าน กด Verify และเปิด Use webhook แล้วจึงสร้างรหัส RF เพื่อเชื่อมปลายทาง'));
+  async function load() {
+    const { data,error } = await client.rpc('shop_line_channel_status',{p_shop_id:shopId});
+    status.textContent = error ? 'เปิด SQL ไฟล์ 21 เพื่อใช้ LINE OA รายร้าน'
+      : data?.bot_name ? 'OA ที่บันทึกไว้ · '+data.bot_name : 'ยังไม่ได้บันทึก LINE OA ของร้าน';
+    return !error && Boolean(data?.bot_name);
+  }
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();
+    save.disabled = true;
+    status.textContent = 'กำลังตรวจ Token กับ LINE…';
+    try {
+      const {data,error}=await client.functions.invoke('line-webhook?configure=1',{
+        body:{shop_id:shopId,secret:secret.value.trim(),token:token.value.trim()}
+      });
+      if (error) throw error;
+      if (data.result !== 'saved') {
+        status.textContent = ({
+          invalid_token:'LINE แจ้งว่า Channel access token ใช้ไม่ได้',
+          invalid_credentials:'ตรวจ Channel secret และ Channel access token',
+          bot_already_linked:'LINE OA นี้ถูกตั้งให้ร้านอื่นแล้ว',
+          unauthorized:'เฉพาะเจ้าของร้านที่ตั้งค่า LINE OA ได้'
+        })[data.result] || 'บันทึกไม่สำเร็จ กรุณาตรวจการเชื่อมต่อ';
+        return;
+      }
+      form.reset();
+      await refresh();
+    } catch {status.textContent = 'เผยแพร่ line-webhook เวอร์ชันล่าสุดใน Supabase ก่อนตั้งค่า';}
+    finally {save.disabled = false;}
+  });
+  return {section,load};
+}
+
 export function renderLineSettings(client, container, shopId) {
   const panel = element('details');
   panel.className = 'merchant-settings-panel';
   const pair = action('สร้างรหัสเชื่อม LINE');
+  const shopChannel = shopId ? shopChannelSettings(client,shopId,load) : null;
+  if (shopChannel) pair.disabled = true;
   const reload = action('รีเฟรชปลายทาง');
   const help = element('ol');
   help.append(
     element('li', 'กดสร้างรหัส แล้วกดคัดลอกข้อความให้ครบ รวม RF ด้านหน้า'),
     element('li', shopId
-      ? 'ส่งข้อความในแชตกับ LINE Official Account (OA) ของระบบ หรือในกลุ่ม LINE ที่เชิญ OA เข้ากลุ่มแล้ว'
+      ? 'ส่งข้อความในแชตกับ LINE Official Account (OA) ของร้าน หรือในกลุ่ม LINE ที่เชิญ OA ร้านเข้ากลุ่มแล้ว'
       : 'ส่งข้อความในแชตส่วนตัวกับ LINE Official Account (OA) ของระบบ'),
     element('li', 'กลับมากดตรวจการเชื่อม แล้วดูว่ามีปลายทางขึ้นในรายการ')
   );
@@ -42,12 +110,15 @@ export function renderLineSettings(client, container, shopId) {
   const docs = element('a', 'คู่มือเปิดระบบแจ้งเตือน LINE สำหรับผู้ดูแล');
   docs.href = 'https://github.com/homefriendmassage-boop/reserveflow-saas/blob/main/README.md#superadmin-and-line-notifications';
   codeRow.append(code, copy);
-  panel.append(element('summary', 'แจ้งเตือนผ่าน LINE'), help, pair, reload, codeRow, status, destinations, docs);
+  panel.append(element('summary', 'แจ้งเตือนผ่าน LINE'));
+  if (shopChannel) panel.append(shopChannel.section);
+  panel.append(help, pair, reload, codeRow, status, destinations, docs);
   container.replaceChildren(panel);
 
   async function load() {
     reload.disabled = true;
     try {
+      if (shopChannel) pair.disabled = !await shopChannel.load();
       const { data, error } = await client.rpc('list_line_targets', { p_shop_id: shopId });
       if (error) throw error;
       destinations.replaceChildren(...data.map(destination => {
@@ -94,7 +165,7 @@ export function renderLineSettings(client, container, shopId) {
       codeRow.classList.remove('hidden');
       code.select();
       status.textContent = shopId
-        ? 'ส่งข้อความนี้ให้ LINE Official Account ในแชตส่วนตัวหรือกลุ่มที่เชิญ OA แล้ว ภายใน 15 นาที'
+        ? 'ส่งข้อความนี้ในแชตกับ LINE OA ของร้านหรือกลุ่มที่เชิญ OA ร้านแล้ว ภายใน 15 นาที'
         : 'ส่งข้อความนี้ในแชตส่วนตัวกับ LINE Official Account ภายใน 15 นาที';
     } catch {
       status.textContent = errorMessage();

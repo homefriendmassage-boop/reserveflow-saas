@@ -1,7 +1,7 @@
 import { renderDailyReport } from './daily-report.js';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js';
 import { addThunderCheck } from './thunder-slip.js?v=thunder-decisions-1';
-import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=slips-1';
+import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=shop-line-1';
 import { renderMerchantTeam } from './merchant-team.js';
 import { renderMerchantSettings } from './merchant-settings.js?v=platform-onboarding-1';
 import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
