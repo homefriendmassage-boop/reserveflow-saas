@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
   <title>บัตรจอง | ReserveFlow</title>
-  <link rel="stylesheet" href="./assets/css/app.css?v=booking-pass-1">
+  <link rel="stylesheet" href="./assets/css/app.css?v=booking-pass-placement-1">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/customer-booking-pass.js"></script>
+  <script type="module" src="./src/features/customer-booking-pass.js?v=booking-pass-placement-1"></script>
 </head>
 <body>
 <main class="booking-pass-page">
@@ -27,12 +27,13 @@
         <button id="passCopyLink" class="btn soft hidden" type="button">คัดลอกลิงก์บัตร</button>
       </div>
       <div id="passQr" class="booking-pass-qr hidden" aria-label="QR สำหรับให้พนักงานสแกน"></div>
-      <details id="passLine" class="merchant-settings-panel hidden">
-        <summary>รับบัตรจองทาง LINE</summary>
+      <section id="passLine" class="merchant-settings-panel pass-line hidden" aria-labelledby="passLineTitle">
+        <h2 id="passLineTitle">รับบัตรจองทาง LINE</h2>
         <p id="passLineHelp"></p>
         <label class="field"><span>ข้อความที่ใช้เชื่อมบัตร</span><input id="passLineCode" readonly></label>
-        <button id="passCopyCode" class="btn soft" type="button">คัดลอกข้อความ</button>
-      </details>
+        <button id="passCopyCode" class="btn soft" type="button">คัดลอกข้อความเชื่อมบัตร</button>
+      </section>
+      <p id="passLineStatus" role="status"></p>
       <p id="passFeedback" role="status"></p>
     </div>
   </article>

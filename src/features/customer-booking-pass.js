@@ -8,6 +8,7 @@ const showQr = get('passShowQr');
 const refresh = get('passRefresh');
 const qr = get('passQr');
 const line = get('passLine');
+const lineStatus = get('passLineStatus');
 const feedback = get('passFeedback');
 const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: { persistSession: false, detectSessionInUrl: false, autoRefreshToken: false }
@@ -49,10 +50,17 @@ async function load() {
       qr.classList.remove('hidden');
     };
     line.classList.toggle('hidden', !data.line_code);
-    get('passLineHelp').textContent = 'ส่งข้อความนี้ในแชตส่วนตัวกับ LINE OA ' + (data.bot_name || data.shop)
-      + ' เพื่อรับ Flex เมื่อรายการยืนยันแล้ว';
+    get('passLineHelp').textContent = 'คัดลอกข้อความด้านล่างแล้วกดส่งในแชตส่วนตัวกับ LINE OA «'
+      + (data.bot_name || data.shop) + '» จากนั้นกลับมากดอัปเดตสถานะ';
     get('passLineCode').value = data.line_code ? 'บัตร ' + data.line_code : '';
-    if (data.line_linked) feedback.textContent = 'เชื่อม LINE สำหรับบัตรนี้แล้ว';
+    lineStatus.textContent = data.line_linked
+      ? (data.status === 'confirmed'
+        ? 'เชื่อม LINE แล้ว · โปรดตรวจข้อความยืนยันในแชตกับ LINE OA ของร้าน'
+        : 'เชื่อม LINE แล้ว · ระบบจะส่งบัตรเมื่อร้านยืนยันการจอง')
+      : data.line_code ? 'สถานะ LINE · รอลูกค้าส่งข้อความเชื่อมบัตร'
+        : !data.expired && ['pending_payment','pending_confirm','slip_review','confirmed'].includes(data.status)
+          ? 'ร้านยังไม่เปิดรับบัตรผ่าน LINE คุณเปิดบัตรจากหน้านี้ได้' : '';
+
   } catch {
     status.textContent = 'โหลดสถานะบัตรไม่ได้ กรุณากดอัปเดตสถานะอีกครั้ง';
   } finally {
@@ -64,5 +72,8 @@ async function load() {
 get('passCopyLink').onclick = () => copy(location.href);
 get('passCopyCode').onclick = () => copy(get('passLineCode').value, get('passLineCode'));
 refresh.onclick = load;
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && !line.classList.contains('hidden') && !refresh.disabled) void load();
+});
 if (passTokenPattern.test(token)) void load();
 else status.textContent = 'ลิงก์บัตรจองไม่ถูกต้อง กรุณาเปิดจากหน้าจองหรือจาก LINE';

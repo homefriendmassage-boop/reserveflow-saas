@@ -520,3 +520,8 @@
 .booking-pass-details dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
 .booking-pass-qr { width: fit-content; max-width: 100%; margin: 18px auto; padding: 12px; background: #fff; }
 .booking-pass-qr img, .booking-pass-qr canvas { max-width: 100%; height: auto; }
+
+.booking-result { max-width: 640px; margin: 24px auto; }
+.booking-result p { overflow-wrap: anywhere; }
+.pass-line { margin-top: 18px; }
+.pass-line h2 { margin-top: 0; }

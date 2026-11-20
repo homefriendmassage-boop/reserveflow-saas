@@ -147,12 +147,22 @@ async function start() {
   const draftKey = 'reserveflow.payment.v1:' + shopSlug;
   const passKey = 'reserveflow.last-pass:' + shopSlug;
   const passLink = document.getElementById('customerBookingPass');
-  function showPass(token) {
+  const lastPass = document.getElementById('lastCustomerBookingPass');
+  const result = document.getElementById('customerBookingResult');
+  const resultTitle = document.getElementById('customerBookingResultTitle');
+  function showLastPass(token) {
     if (!token) return;
-    passLink.href = './booking-pass.html#' + encodeURIComponent(token);
-    passLink.classList.remove('hidden');
+    lastPass.href = './booking-pass.html#' + encodeURIComponent(token);
+    lastPass.classList.remove('hidden');
   }
-  try { showPass(localStorage.getItem(passKey)); } catch {}
+  try { showLastPass(localStorage.getItem(passKey)); } catch {}
+  document.getElementById('customerStartNewBooking').onclick = () => {
+    result.classList.add('hidden');
+    lastPass.classList.remove('hidden');
+    form.classList.remove('hidden');
+    void loadFloor();
+    document.getElementById('date').focus();
+  };
   let awaitingSlip = false;
   title.textContent = `ส่งคำขอจอง · ${data.name}`;
   fields.category.replaceChildren(...categories.map(category => new Option(category.name, category.code)));
@@ -341,7 +351,6 @@ async function start() {
     paymentGrid.classList.add('booking-payment-active');
     for (const element of paymentHidden) element.classList.add('hidden');
     submit.classList.add('hidden');
-    passLink.classList.add('hidden');
     submitStatus.textContent = 'รอแนบสลิปเพื่อส่งคำขอจอง';
     prepareSlipAttachment(client, draft, async image => {
       const { data, error } = await client.rpc('submit_customer_payment', {
@@ -362,13 +371,18 @@ async function start() {
       fields.hour.value = '';
       refreshCustomerSlot();
       updateResources();
-      void loadFloor();
       if (saved?.pass_token) {
         try { localStorage.setItem(passKey, saved.pass_token); } catch {}
-        showPass(saved.pass_token);
-      } else if (passLink.hasAttribute('href')) {
-        passLink.classList.remove('hidden');
+        showLastPass(saved.pass_token);
+        passLink.href = lastPass.href;
+        lastPass.classList.add('hidden');
+        form.classList.add('hidden');
+        result.classList.remove('hidden');
+        document.getElementById('customerBookingResultStatus').textContent = message + ' · เลขจอง ' + saved.id;
+        resultTitle.focus();
+        return;
       }
+      void loadFloor();
       submitStatus.textContent = saved ? message + ' · เลขจอง ' + saved.id : message;
       submitStatus.focus();
     });

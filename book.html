@@ -4,20 +4,29 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>จองคิว | ReserveFlow</title>
-  <link rel="stylesheet" href="./assets/css/app.css?v=booking-pass-1">
+  <link rel="stylesheet" href="./assets/css/app.css?v=booking-pass-placement-1">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/customer-portal.js?v=booking-pass-1"></script>
+  <script type="module" src="./src/features/customer-portal.js?v=booking-pass-placement-1"></script>
 </head>
 <body>
 <header>
   <div class="top">
     <div class="logo"><b>R</b><div>ReserveFlow <small id="bookingTitle">จองคิวออนไลน์</small></div></div>
-    <div class="inline-actions"><a href="./merchant.html" class="btn soft small">หลังบ้านร้านค้า</a></div>
+    <div class="inline-actions"><a id="lastCustomerBookingPass" class="btn soft small hidden">บัตรจองล่าสุด</a><a href="./merchant.html" class="btn soft small">หลังบ้านร้านค้า</a></div>
   </div>
 </header>
 <main>
   <p id="bookingStatus" role="status">กำลังโหลดข้อมูลร้าน…</p>
+  <section id="customerBookingResult" class="panel booking-result hidden" aria-labelledby="customerBookingResultTitle">
+    <h2 id="customerBookingResultTitle" tabindex="-1">ส่งคำขอจองแล้ว</h2>
+    <p id="customerBookingResultStatus" role="status"></p>
+    <p>เปิดบัตรเพื่อดูสถานะและเชื่อม LINE OA ของร้านสำหรับรับข้อความยืนยัน</p>
+    <div class="inline-actions">
+      <a id="customerBookingPass" class="btn primary">เปิดบัตรจอง</a>
+      <button id="customerStartNewBooking" class="btn soft" type="button">จองรายการใหม่</button>
+    </div>
+  </section>
   <form id="publicBookingForm" class="hidden">
     <div class="tabs live-category-tabs" id="liveCategoryTabs" role="group" aria-label="หมวดการจอง"></div>
     <div class="grid live-booking-grid">
@@ -68,7 +77,6 @@
         </div>
         <button id="sendBooking" type="submit" class="btn primary full" disabled>แสดง QR ชำระเงิน</button>
         <p id="bookingSubmitStatus" role="status" tabindex="-1"></p>
-        <a id="customerBookingPass" class="btn soft hidden">เปิดบัตรจอง</a>
         <section class="inline-booking-payment hidden" id="bookingSlip" tabindex="-1">
           <h2>ชำระเงินและส่งสลิป</h2>
           <p id="bookingPaymentSelection"></p>
