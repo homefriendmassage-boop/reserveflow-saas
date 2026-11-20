@@ -1,4 +1,4 @@
-import { highlightTable, renderFloor, showFloorMessage } from './customer-floor.js';
+import { highlightTable, renderFloor, showFloorMessage } from './customer-floor.js?v=floor-line-2';
 import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 

@@ -82,6 +82,10 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     } catch (error) {
       feedback.textContent = error?.message === 'RESOURCE_NAME_EXISTS'
         ? 'ชื่อนี้มีอยู่แล้วในหมวดนี้ กรุณาใช้ชื่ออื่น'
+        : error?.message === 'INVALID_TABLE_POSITION' && rpc === 'save_merchant_floor_item' &&
+          (args.p_width < 24 || args.p_height < 24 || args.p_width > 320 || args.p_height > 320 ||
+            args.p_x < 5 || args.p_y < 5 || args.p_x > 95 || args.p_y > 95)
+          ? 'ฐานข้อมูลร้านยังจำกัดขนาดผัง กรุณารัน SQL ปรับขนาดผัง (ไฟล์ 14) แล้วลองอีกครั้ง'
         : error?.code === '23503' && args.p_design?.remove_item
         ? 'ลบจุดไม่ได้ เพราะจุดนี้มีประวัติการจอง'
         : error?.code === 'PGRST202' ? 'ต้องอัปเดต SQL ระบบผังก่อนใช้เครื่องมือนี้'
@@ -178,7 +182,7 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     item.dataset.floorItem = '';
     const name = field(editor, 'ชื่อจุดจอง', input('text', ''));
     name.maxLength = 100;
-    const capacity = field(editor, 'ความจุ', input('number', 1, 1, 100));
+    const capacity = field(editor, 'จำนวนคนสูงสุดต่อจุด', input('number', 1, 1, 100));
     const x = field(editor, 'ซ้าย → ขวา (%)', input('number', 50, 0, 100));
     const y = field(editor, 'บน → ล่าง (%)', input('number', 50, 0, 100));
     const itemWidth = field(editor, 'กว้าง (px)', input('number', 84, 1));
@@ -253,7 +257,7 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       const tiles = items.map((resource, index) => {
         const selected = resource.code === item.value;
         const tile = button('');
-        tile.append(node('strong', resource.code.startsWith('F-') ? '' : resource.code), node('small', resource.name));
+        tile.append(node('strong', resource.name));
         tile.setAttribute('aria-label', resource.name);
         tile.className = 'resource' + (selected ? ' selected' : '');
         const geometry = selected ? { x: Number(x.value), y: Number(y.value), w: Number(itemWidth.value), h: Number(itemHeight.value) }
@@ -458,22 +462,25 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       const prefix = ({ table: 'โต๊ะ', seat: 'ที่นั่ง', vip: 'ห้อง' })[kind];
       let sequence = items.length + 1;
       while (items.some(resource => resource.name === prefix + ' ' + sequence)) sequence++;
-      const base = (name.value.slice(0, 85) + ' (สำเนา)').trim();
+      const original = items.find(row => row.code === item.value);
+      if (copy && !original) return;
+      const geometry = floorGeometry(original?.display, items.indexOf(original));
+      const base = ((original?.name || '').slice(0, 85) + ' (สำเนา)').trim();
       let copyName = base;
       let copyIndex = 2;
       while (items.some(row => row.name.trim().toLowerCase() === copyName.toLowerCase())) copyName = base + ' ' + copyIndex++;
       const temp = {
         code: 'F-pending', pending: true,
         name: copy ? copyName : prefix + ' ' + sequence,
-        capacity: copy ? Number(capacity.value) : kind === 'seat' ? 1 : 4,
-        display: copy ? floorGeometry({ x: Number(x.value) + 8, y: Number(y.value) + 5, w: Number(itemWidth.value), h: Number(itemHeight.value) })
+        capacity: copy ? original.capacity ?? (kind === 'seat' ? 1 : 4) : kind === 'seat' ? 1 : 4,
+        display: copy ? { ...geometry, x: geometry.x + (geometry.x > 87 ? -8 : 8), y: geometry.y + (geometry.y > 90 ? -5 : 5) }
           : { x: 50, y: 50, w: 84, h: 72 }
       };
       items.push(temp);
       setItemOptions(temp.code);
       if (!await savePoint(null, temp.name, temp.capacity, temp.display)) {
         items = items.filter(resource => resource !== temp);
-        setItemOptions();
+        setItemOptions(original?.code);
       }
     }
     addItem.addEventListener('click', () => void addPoint(false));
@@ -486,7 +493,7 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       event.preventDefault();
       void saveSelectedItem();
     });
-    const hint = node('p', 'กดเพิ่มจุดจองแล้วลากไปวางได้เลย คลิกจุดหรือบล็อกบนผังเพื่อแก้ไข');
+    const hint = node('p', 'เลือกจุดเพื่อแก้ชื่อ ขนาด หรือตำแหน่ง แล้วกดบันทึกจุดจอง คัดลอกเพื่อเพิ่มจุดใหม่จากค่าที่บันทึกไว้');
     hint.className = 'sub';
     floorPanel.append(hint, categoryArea, restoreHelp, frame, canvas, editor, blockEditor);
     loadFloor();

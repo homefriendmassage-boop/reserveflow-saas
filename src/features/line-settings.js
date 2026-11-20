@@ -20,14 +20,29 @@ export function renderLineSettings(client, container, shopId) {
   panel.className = 'merchant-settings-panel';
   const pair = action('สร้างรหัสเชื่อม LINE');
   const reload = action('รีเฟรชปลายทาง');
+  const help = element('ol');
+  help.append(
+    element('li', 'กดสร้างรหัส แล้วกดคัดลอกข้อความให้ครบ รวม RF ด้านหน้า'),
+    element('li', shopId
+      ? 'ส่งข้อความในแชตกับ LINE Official Account (OA) ของระบบ หรือในกลุ่ม LINE ที่เชิญ OA เข้ากลุ่มแล้ว'
+      : 'ส่งข้อความในแชตส่วนตัวกับ LINE Official Account (OA) ของระบบ'),
+    element('li', 'กลับมากดตรวจการเชื่อม แล้วดูว่ามีปลายทางขึ้นในรายการ')
+  );
+  reload.textContent = 'ตรวจการเชื่อม';
+  const copy = action('คัดลอกข้อความ RF');
   const code = element('input');
+  const codeRow = element('div');
+  codeRow.className = 'line-pairing-code hidden';
   code.readOnly = true;
-  code.className = 'hidden';
+  code.spellcheck = false;
   code.setAttribute('aria-label', 'ข้อความสำหรับส่งให้ LINE Official Account');
   const status = element('p');
   status.setAttribute('role', 'status');
   const destinations = element('ul');
-  panel.append(element('summary', 'แจ้งเตือนผ่าน LINE'), pair, reload, code, status, destinations);
+  const docs = element('a', 'คู่มือเปิดระบบแจ้งเตือน LINE สำหรับผู้ดูแล');
+  docs.href = 'https://github.com/homefriendmassage-boop/reserveflow-saas/blob/main/README.md#superadmin-and-line-notifications';
+  codeRow.append(code, copy);
+  panel.append(element('summary', 'แจ้งเตือนผ่าน LINE'), help, pair, reload, codeRow, status, destinations, docs);
   container.replaceChildren(panel);
 
   async function load() {
@@ -50,7 +65,7 @@ export function renderLineSettings(client, container, shopId) {
         item.append(' ', remove);
         return item;
       }));
-      if (!data.length) destinations.append(element('li', 'ยังไม่มีปลายทางที่เชื่อม'));
+      if (!data.length) destinations.append(element('li', 'ยังไม่มีปลายทางที่เชื่อม หากส่งข้อความ RF แล้ว ให้ผู้ดูแลตรวจว่าเปิด Webhook ของ LINE OA แล้ว'));
     } catch {
       status.textContent = errorMessage();
     } finally {
@@ -60,13 +75,23 @@ export function renderLineSettings(client, container, shopId) {
 
   panel.addEventListener('toggle', () => { if (panel.open) void load(); });
   reload.addEventListener('click', load);
+  copy.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(code.value);
+      status.textContent = 'คัดลอกแล้ว ส่งข้อความนี้ไปที่แชตภายใน 15 นาทีหลังสร้างรหัส';
+    } catch {
+      code.focus();
+      code.select();
+      status.textContent = 'เลือกข้อความแล้ว กดคัดลอกจากเบราว์เซอร์';
+    }
+  });
   pair.addEventListener('click', async () => {
     pair.disabled = true;
     try {
       const { data, error } = await client.rpc('create_line_pairing', { p_shop_id: shopId });
       if (error) throw error;
       code.value = 'RF ' + data;
-      code.classList.remove('hidden');
+      codeRow.classList.remove('hidden');
       code.select();
       status.textContent = shopId
         ? 'ส่งข้อความนี้ให้ LINE Official Account ในแชตส่วนตัวหรือกลุ่มที่เชิญ OA แล้ว ภายใน 15 นาที'

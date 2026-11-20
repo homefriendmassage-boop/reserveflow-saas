@@ -355,7 +355,7 @@
 .merchant-category-row .inline-actions { align-self: center; }
 .merchant-editor .merchant-floor-canvas {
   margin: 12px auto;
-  max-width: min(100%, calc(var(--floor-max-width) * .9));
+  max-width: min(100%, var(--floor-max-width));
 }
 .merchant-editor .merchant-floor-canvas + .fields {
   padding: 14px;
@@ -415,4 +415,20 @@
   top: var(--table-y);
   padding: 0;
   overflow: hidden;
+}
+
+.line-pairing-code {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block: 10px;
+}
+.line-pairing-code input {
+  flex: 0 1 42ch;
+  width: 42ch;
+  max-width: 100%;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: monospace;
 }

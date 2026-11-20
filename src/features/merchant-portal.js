@@ -1,9 +1,9 @@
-import { loadPlatformAdmin, renderLineSettings } from './line-settings.js';
+import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=floor-line-2';
 import { renderMerchantTeam } from './merchant-team.js';
-import { renderMerchantSettings } from './merchant-settings.js';
+import { renderMerchantSettings } from './merchant-settings.js?v=floor-line-2';
 import { bookingTimeOptions, dateAtShop } from './booking-slots.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
-import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js';
+import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=floor-line-2';
 
 const byId = id => document.getElementById(id);
 const login = byId('merchantLogin');
