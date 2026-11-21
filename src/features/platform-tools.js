@@ -25,8 +25,18 @@ function button(text, action, status) {
   el.addEventListener('click', async () => {
     el.disabled = true;
     try { await action(); }
-    catch {
-      status.textContent = 'ทำรายการไม่สำเร็จ ตรวจการตั้งค่า สิทธิ์ หรือเลขอ้างอิงซ้ำ แล้วลองอีกครั้ง';
+    catch (error) {
+      const messages = {
+        INVALID_PLATFORM_PROMPTPAY:'ใช้เบอร์มือถือพร้อมเพย์ 10 หลักหรือเลขบัตรประชาชน 13 หลัก',
+        INVALID_PLATFORM_REFERRAL:'ใส่ค่าแนะนำระหว่าง 0 ถึง 100%',
+        INVALID_PLATFORM_PRICES:'ตรวจราคาทุกช่อง ราคาที่ระบุเริ่มต้นที่ 1 บาท',
+        PGRST202:'Supabase ยังไม่พบฟังก์ชันนี้ ตรวจว่า SQL ไฟล์ 33 และ 34 รันสำเร็จในโปรเจกต์ reserveflow',
+        '42501':'บัญชีนี้ไม่มีสิทธิ์ทำรายการ',
+        '23505':'เลขอ้างอิงนี้เคยถูกใช้แล้ว',
+        '23514':'ฐานข้อมูลปฏิเสธข้อมูลตามเงื่อนไขเดิม ถ้าใส่เลขบัตร 13 หลัก ให้ตรวจ SQL ไฟล์ 34',
+        '22023':'ข้อมูลไม่ผ่านการตรวจสอบ ถ้าใช้พร้อมเพย์เลขบัตร 13 หลัก ให้ตรวจ SQL ไฟล์ 34'
+      };
+      status.textContent = messages[error.message] || messages[error.code] || 'ทำรายการไม่สำเร็จ กรุณาลองอีกครั้ง';
     } finally { el.disabled = false; }
   });
   return el;
@@ -117,6 +127,8 @@ function slipCreditPanel(client, shopId) {
     const packLabel = pack => pack.credits + ' สลิป · ' + money(pack.amount)
       + ' (' + money(pack.amount / pack.credits) + ' ต่อสลิป)';
     body.replaceChildren(node('p','เครดิตตรวจสลิปไม่มีค่าแนะนำ'));
+    if (!data.offers && !shopId) body.append(node('p',
+      'ฐานข้อมูลยังแสดงแพ็กเกจเดิม 1 แบบ ตรวจว่า SQL ไฟล์ 33 รันสำเร็จในโปรเจกต์ reserveflow'));
     if (shopId) {
       if (data.allowance) body.append(node('p','โควต้ารวมในแพ็กเกจคงเหลือ ' + data.allowance.remaining
         + ' / ' + data.allowance.included_limit + ' สลิป'));
@@ -329,7 +341,7 @@ export function renderPlatformTools(client) {
     mobile.type='tel';
     mobile.value=billing.mobile || '';
     const referralPercent = node('input');
-    referralPercent.type='number';
+    Object.assign(referralPercent,{type:'number',min:'0',max:'100',step:'0.01',required:true});
     referralPercent.value=billing.referral_percent || 0;
     const rows = Object.entries(labels).map(([key,label]) => {
       const input=node('input');
@@ -347,8 +359,15 @@ export function renderPlatformTools(client) {
       for (const row of rows) row.input.value = suggestedPrices[row.key];
       feedback.textContent = 'ใส่ราคาแนะนำแล้ว ตรวจราคาแล้วกดบันทึกเพื่อใช้จริง';
     },feedback),button('บันทึกราคาและบัญชีรับเงิน',async () => {
+      const proxy = mobile.value.replace(/[\s-]/g,'');
+      if (proxy && !/^(0[689][0-9]{8}|[0-9]{13})$/.test(proxy)) {
+        feedback.textContent = 'ใช้เบอร์มือถือพร้อมเพย์ 10 หลักหรือเลขบัตรประชาชน 13 หลัก';
+        mobile.focus();
+        return;
+      }
+      if (!referralPercent.reportValidity() || rows.some(row => !row.input.reportValidity())) return;
       await rpc(client,'save_platform_package_settings',{
-        p_mobile:mobile.value.replace(/[\s-]/g,''),
+        p_mobile:proxy,
         p_prices:Object.fromEntries(rows.filter(row=>row.input.value).map(row=>[row.key,Number(row.input.value)])),
         p_referral:Number(referralPercent.value)
       });
