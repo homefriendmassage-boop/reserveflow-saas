@@ -538,3 +538,31 @@
 .payment-slip-picker .booking-slip-image { display: block; margin-top: 10px; }
 .payment-bank-details { padding: 12px; margin: 12px 0; border: 1px solid var(--line); border-radius: 12px; }
 .payment-bank-details h3 { margin-top: 0; }
+
+.merchant-template-example {
+  position: relative;
+  width: min(100%, 320px);
+  aspect-ratio: 16 / 9;
+  background: #f6f8fc;
+  border: 1px dashed #ced8ee;
+  border-radius: 12px;
+}
+.merchant-template-example span {
+  position: absolute;
+  left: var(--table-x);
+  top: var(--table-y);
+  transform: translate(-50%,-50%);
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  border: 1px solid #9dd8bd;
+  background: #e5f6ee;
+  color: #126451;
+  font-size: .62rem;
+  font-weight: 700;
+}
+.merchant-template-example .template-example-entrance {
+  background: #fff2d9;
+  border-color: #e9b769;
+  color: #754a18;
+}

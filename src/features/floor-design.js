@@ -103,3 +103,29 @@ export function sampleTableFloor(items, decorations) {
     })
   };
 }
+
+export function starterTemplateFloor(kind, template, items = [], decorations = []) {
+  const [prefix, name, capacity] = ({
+    table:['T','โต๊ะ',4], seat:['S','ที่นั่ง',1], vip:['V','ห้อง',4]
+  })[kind];
+  const sample = kind === 'table' ? sampleTableFloor(items,decorations).items
+    : Array.from({length:6}, (_, index) => {
+      const code = prefix + '0' + (index + 1);
+      return {code,name:name + ' ' + code,capacity};
+    });
+  const points = sample.map((point, index) => {
+    const existing = items.find(row => row.code===point.code);
+    return existing || { ...point,display:floorGeometry(point,index) };
+  });
+  return {
+    width:960,
+    height:540,
+    decorations:decorations.length ? decorations
+      : [{type:'entrance',label:'ทางเข้า',x:10,y:82,w:90,h:40}],
+    items:templatePositions(points,template).map((position,index) => {
+      const point = points[index];
+      return items.some(row => row.code===point.code)
+        ? position : { ...position,name:point.name,capacity:point.capacity || capacity };
+    })
+  };
+}

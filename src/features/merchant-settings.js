@@ -1,5 +1,5 @@
 import { renderListResources } from './merchant-list-resources.js?v=payment-drafts-1';
-import { decorTypes, floorGeometry, legacyFloor, sampleTableFloor, templatePositions } from './floor-design.js';
+import { decorTypes, floorGeometry, legacyFloor, sampleTableFloor, starterTemplateFloor, templatePositions } from './floor-design.js?v=floor-template-41';
 
 function node(tag, text = '') {
   const element = document.createElement(tag);
@@ -212,6 +212,11 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       ['u','รูปตัว U'], ['circle','ครึ่งวงกลม / รอบเวที']
     ]));
     const grid = button('ใช้ Template');
+    const example = node('div');
+    example.className = 'merchant-template-example';
+    example.setAttribute('aria-label','ตัวอย่างตำแหน่งในแม่แบบ');
+    const templateName = node('p');
+    templateName.className = 'sub';
     const canvas = node('div');
     canvas.className = 'plan customer-plan merchant-floor-canvas';
 
@@ -268,6 +273,7 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     let background;
     let recovery;
     let items = [];
+    let starter = false;
     let decor = [];
     let dragging;
 
@@ -388,6 +394,22 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       loadItem();
     }
 
+    function drawTemplateExample() {
+      const kind = floorCategories.find(row => row.code === category.value).template;
+      const design = starterTemplateFloor(kind,template.value);
+      templateName.textContent = 'ตัวอย่างแม่แบบ · ' + template.selectedOptions[0].textContent;
+      const points = design.items.map(point => {
+        const tile = node('span',point.code);
+        tile.className = 'template-example-point';
+        place(tile,point);
+        return tile;
+      });
+      const entrance = node('span','ทางเข้า');
+      entrance.className = 'template-example-entrance';
+      place(entrance,design.decorations[0]);
+      example.replaceChildren(entrance,...points);
+    }
+
     function loadFloor() {
       const data = layouts.find(layout => layout.category_code === category.value);
       width.value = data?.width ?? 960;
@@ -398,6 +420,12 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       background = data?.background_image;
       items = resources.filter(resource => resource.category_code === category.value);
       const definition = floorCategories.find(row => row.code === category.value);
+      const original = items[0];
+      starter = items.length === 0 || (definition.template === 'table' && items.length === 1
+        && original.code === 'T01' && original.name === 'โต๊ะ T01'
+        && original.display?.x === 50 && original.display?.y === 40
+        && data?.width === 540 && data?.height === 720 && !background && !decor.length);
+      drawTemplateExample();
       sample.classList.toggle('hidden', definition.template !== 'table');
       recovery = legacyFloor(definition);
       restore.disabled = !recovery;
@@ -416,8 +444,20 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       void saveDesign({ width: Number(width.value), height: Number(height.value) });
     }
     saveFrame.addEventListener('click', saveFrameSize);
+    template.addEventListener('change', drawTemplateExample);
     grid.addEventListener('click', () => {
-      if (items.length && !saving && confirm('จัดตำแหน่งจุดทั้งหมดตาม Template นี้หรือไม่?')) {
+      if (saving) return;
+      const kind = floorCategories.find(row => row.code === category.value).template;
+      if (starter) {
+        if (confirm('เพิ่มจุดตัวอย่าง 6 จุดตามแม่แบบนี้หรือไม่?')) {
+          const design = starterTemplateFloor(kind,template.value,items,decor);
+          if (items.length === 0 && layouts.some(layout => layout.category_code === category.value)) {
+            delete design.width;
+            delete design.height;
+          }
+          void saveDesign(design);
+        }
+      } else if (confirm('จัดตำแหน่งจุดทั้งหมดตาม Template นี้หรือไม่?')) {
         void saveDesign({ items: templatePositions([...items].sort((a, b) => a.code.localeCompare(b.code)), template.value) });
       }
     });
@@ -540,7 +580,7 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     });
     const hint = node('p', 'เลือกจุดเพื่อแก้ชื่อ ขนาด หรือตำแหน่ง แล้วกดบันทึกจุดจอง คัดลอกเพื่อเพิ่มจุดใหม่จากค่าที่บันทึกไว้');
     hint.className = 'sub';
-    floorPanel.append(hint, categoryArea, restoreHelp, frame, canvas, editor, blockEditor);
+    floorPanel.append(hint, categoryArea, templateName, example, restoreHelp, frame, canvas, editor, blockEditor);
     loadFloor();
   } else {
     floorPanel.append(node('p', 'เพิ่มหมวดโต๊ะหรือที่นั่งเพื่อเริ่มสร้างผัง'));
