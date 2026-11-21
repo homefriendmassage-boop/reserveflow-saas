@@ -15,14 +15,17 @@ Deno.serve(async request => {
   let bookingId: unknown;
   let phone: unknown;
   let packageOrder: unknown;
+  let creditOrder: unknown;
   try {
     const raw = await request.text();
     if (raw.length > 500) return json({state:'unavailable'},400);
-    ({ booking_id: bookingId, phone, package_order_id: packageOrder } = JSON.parse(raw));
+    ({ booking_id: bookingId, phone, package_order_id: packageOrder, credit_order_id: creditOrder } = JSON.parse(raw));
   } catch {
     return json({state:'unavailable'},400);
   }
-  const id = packageOrder ?? bookingId;
+  if (packageOrder != null && creditOrder != null) return json({state:'unavailable'},400);
+  const kind = packageOrder != null ? 'subscription' : creditOrder != null ? 'credits' : null;
+  const id = packageOrder ?? creditOrder ?? bookingId;
   if (typeof id !== 'string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id) ||
       (phone != null && (typeof phone !== 'string' || !/^[0-9\s-]{9,20}$/.test(phone)))) {
     return json({state:'unavailable'},400);
@@ -30,7 +33,7 @@ Deno.serve(async request => {
   const url = Deno.env.get('SUPABASE_URL')!;
   const key = Deno.env.get('THUNDER_API_KEY')?.trim();
   let staffId = null;
-  if (!phone || packageOrder) {
+  if (!phone || kind) {
     const authorization = request.headers.get('Authorization');
     if (!authorization?.startsWith('Bearer ')) return json({state:'unavailable'},401);
     const client = createClient(url, Deno.env.get('SUPABASE_ANON_KEY')!, {
@@ -39,20 +42,36 @@ Deno.serve(async request => {
     const { data, error } = await client.auth.getUser(authorization.slice(7));
     if (error || !data.user) return json({state:'unavailable'},401);
     staffId = data.user.id;
-    if (packageOrder) {
-      const {data: order,error: orderError}=await client.rpc('platform_package_verification_input',{p_order_id:id});
-      if (orderError || !order) return json({state:'unavailable'},403);
-      if (!key) return json({state:'not_configured'});
-      const payload = decodeSlipQr(order.image);
-      if (!payload) return json({state:'qr_unreadable'});
-      try {
-        const result = await verifySlip(payload,key);
-        if (result.outcome !== 'provider_verified') return json({state:result.providerState || result.outcome});
-        if (result.amount !== Number(order.amount)) return json({state:'amount_review',amount:result.amount});
-        if (result.mobile !== order.mobile || !result.paidAt || Date.parse(result.paidAt)<Date.parse(order.created_at)
-          || Date.parse(result.paidAt)>Date.now()+120000) return json({state:'receiver_review',amount:result.amount});
-        return json({state:'package_match',amount:result.amount,reference:result.reference});
-      } catch { return json({state:'retry'}); }
+    if (kind) {
+      const admin = createClient(url,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      const {data: claim,error: claimError} = await admin.rpc('claim_platform_slip',{
+        p_kind:kind,p_order_id:id,p_actor:staffId
+      });
+      if (claimError || !claim) return json({state:'unavailable'},claimError?.code==='42501' ? 403 : 503);
+      if (claim.state!=='claimed') return json(claim);
+      let outcome = 'not_configured';
+      let reference = null;
+      let amount = null;
+      let receiver = null;
+      let paidAt = null;
+      if (key) {
+        try {
+          const payload = decodeSlipQr(claim.image);
+          if (payload) {
+            const result = await verifySlip(payload,key);
+            outcome = result.providerState || result.outcome;
+            reference = result.reference || null;
+            amount = result.amount ?? null;
+            receiver = result.nationalId || result.mobile || null;
+            paidAt = result.paidAt || null;
+          } else outcome = 'qr_unreadable';
+        } catch { outcome = 'retry'; }
+      }
+      const {data: result,error: finishError} = await admin.rpc('finish_platform_slip',{
+        p_kind:kind,p_order_id:id,p_lease:claim.lease,p_outcome:outcome,p_reference:reference,
+        p_amount:amount,p_receiver:receiver,p_paid_at:paidAt
+      });
+      return json(finishError ? {state:'retry'} : result);
     }
   }
   if (!key) return json({state:'not_configured'});

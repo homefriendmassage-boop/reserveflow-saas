@@ -163,6 +163,35 @@ function slipPicker() {
   return {panel,get image() { return image; }};
 }
 
+async function checkPlatformPayment(client, kind, id) {
+  const body = kind === 'credits' ? {credit_order_id:id} : {package_order_id:id};
+  try {
+    const {data,error} = await client.functions.invoke('thunder-verify-slip',{body});
+    return error || !data ? {state:'retry'} : data;
+  } catch {
+    return {state:'retry'};
+  }
+}
+
+function platformPaymentStatus(result, kind) {
+  const amount = result.amount == null ? '' : ' · ยอดในสลิป ' + money(result.amount);
+  return ({
+    approved:kind==='credits' ? 'ตรวจผ่านและเติมเครดิตแล้ว' : 'ตรวจผ่านและต่ออายุแพ็กเกจแล้ว',
+    amount_review:'ยอดเงินไม่ตรง' + amount + ' · รอ Superadmin ตรวจ',
+    receiver_review:'รอ Superadmin ตรวจผู้รับหรือเวลาโอน',
+    duplicate_review:'พบสลิปหรือรายการโอนซ้ำ · รอ Superadmin ตรวจ',
+    checking:'กำลังตรวจสลิป',
+    rejected:'รายการถูกปฏิเสธแล้ว'
+  })[result.state] || 'ส่งสลิปแล้ว · รอ Superadmin ตรวจ';
+}
+
+async function verifyAndRefresh(client, kind, id, refresh, status, refreshPending = false) {
+  status.textContent = 'กำลังตรวจสลิป…';
+  const result = await checkPlatformPayment(client,kind,id);
+  if (refreshPending || result.state==='approved' || result.state==='rejected') await refresh();
+  status.textContent = platformPaymentStatus(result,kind);
+}
+
 function slipCreditPanel(client, shopId) {
   const panel = detail(shopId ? 'เติมเครดิตตรวจสลิป' : 'แพ็กเกจเครดิตตรวจสลิป');
   const body = node('div');
@@ -201,7 +230,11 @@ function slipCreditPanel(client, shopId) {
         return;
       }
       body.append(node('h3','รายการเติมเครดิต · ' + current.credits + ' สลิป · ' + money(current.amount)));
-      if (current.has_slip) { body.append(node('p','ส่งสลิปแล้ว · รอ Superadmin ตรวจ')); return; }
+      if (current.has_slip) {
+        body.append(node('p','ส่งสลิปแล้ว · รอตรวจผล'),button('ตรวจสถานะสลิป',() =>
+          verifyAndRefresh(client,'credits',current.id,load,feedback),feedback));
+        return;
+      }
 
       const image = node('div');
       qr(image,promptPayPayload(current.receiving_mobile,Number(current.amount)));
@@ -212,8 +245,7 @@ function slipCreditPanel(client, shopId) {
           return;
         }
         await rpc(client,'submit_slip_credit_payment',{p_order_id:current.id,p_image:picker.image});
-        await load();
-        feedback.textContent = 'ส่งสลิปแล้ว';
+        await verifyAndRefresh(client,'credits',current.id,load,feedback,true);
       },feedback),button('ยกเลิกรายการที่ยังไม่ชำระ',async () => {
         if (!confirm('ยกเลิกการเติมเครดิตนี้หรือไม่? หากโอนแล้วให้ส่งสลิปแทน')) return;
         await rpc(client,'submit_slip_credit_payment',{p_order_id:current.id,p_image:null});
@@ -269,22 +301,21 @@ function slipCreditPanel(client, shopId) {
       const image = node('img');
       image.alt = 'สลิปเติมเครดิต';
       image.className = 'booking-slip-image hidden';
-      const reference = node('input');
-      reference.maxLength = 200;
       entry.append(node('p',order.name + ' · ' + order.credits + ' สลิป · ' + money(order.amount) + ' · พร้อมเพย์ ' + order.receiving_mobile),
         button('เปิดรูปสลิป',async () => {
           const slip = await rpc(client,'platform_slip_credit_image',{p_order_id:order.id});
           if (!slip) throw new Error('Missing slip');
           image.src = slip;
           image.classList.remove('hidden');
-        },feedback),image,field('เลขอ้างอิงที่ตรวจสอบแล้ว',reference),
+        },feedback),image,
+        button('ตรวจสลิป',() => verifyAndRefresh(client,'credits',order.id,load,feedback),feedback),
         button('อนุมัติและเติมเครดิต',async () => {
-          if (!image.getAttribute('src') || reference.value.trim().length < 4) {
-            feedback.textContent = 'เปิดสลิป ตรวจยอดและผู้รับ แล้วกรอกเลขอ้างอิงก่อนอนุมัติ';
+          if (!image.getAttribute('src')) {
+            feedback.textContent = 'เปิดรูปสลิปและตรวจยอดกับบัญชีผู้รับก่อนอนุมัติ';
             return;
           }
-          if (!confirm('ยืนยันว่าตรวจยอด ผู้รับ และเลขอ้างอิงของสลิปเติมเครดิตแล้วหรือไม่?')) return;
-          await rpc(client,'review_slip_credit_order',{p_order_id:order.id,p_approve:true,p_reference:reference.value});
+          if (!confirm('ยืนยันว่าตรวจยอดและบัญชีผู้รับของสลิปเติมเครดิตแล้วหรือไม่?')) return;
+          await rpc(client,'review_slip_credit_order',{p_order_id:order.id,p_approve:true,p_reference:null});
           await load();
           feedback.textContent = 'เติมเครดิตแล้ว';
         },feedback),button('ปฏิเสธสลิป',async () => {
@@ -331,7 +362,11 @@ export function renderShopBusinessTools(client, container, shopId) {
     }
     if (current) {
       body.append(node('h3',labels[current.plan]+' · '+money(current.amount)));
-      if (current.has_slip) { body.append(node('p','ส่งสลิปแล้ว · รอ Superadmin ตรวจ')); return; }
+      if (current.has_slip) {
+        body.append(node('p','ส่งสลิปแล้ว · รอตรวจผล'),button('ตรวจสถานะสลิป',() =>
+          verifyAndRefresh(client,'subscription',current.id,load,feedback),feedback));
+        return;
+      }
       const image = node('div');
       qr(image,promptPayPayload(current.receiving_mobile,Number(current.amount)));
       const picker = slipPicker();
@@ -345,8 +380,7 @@ export function renderShopBusinessTools(client, container, shopId) {
           return;
         }
         await rpc(client,'submit_package_slip',{p_order_id:current.id,p_image:picker.image});
-        await load();
-        feedback.textContent = 'ส่งสลิปแล้ว';
+        await verifyAndRefresh(client,'subscription',current.id,load,feedback,true);
       },feedback));
     }
   }
@@ -497,35 +531,19 @@ export function renderPlatformTools(client) {
       const image = node('img');
       image.alt='สลิปชำระแพ็กเกจ';
       image.className='booking-slip-image hidden';
-      const reference=node('input');
-      reference.maxLength=200;
       entry.append(node('p',order.name+' · '+labels[order.plan]+' · '+money(order.amount)+' · พร้อมเพย์ '+order.receiving_mobile),
         button('เปิดรูปสลิป',async()=>{
           image.src=await rpc(client,'platform_package_slip',{p_order_id:order.id});
           image.classList.remove('hidden');
         },feedback),image,
-        button('ตรวจสลิปแพ็กเกจ',async()=>{
-          const {data,error}=await client.functions.invoke('thunder-verify-slip',{body:{package_order_id:order.id}});
-          if (error) throw error;
-          if (data.state==='package_match') {
-            reference.value=data.reference;
-            feedback.textContent='ระบบตรวจยอดและผู้รับตรงแล้ว ตรวจรายการก่อนกดอนุมัติ';
-          } else {
-            feedback.textContent=({
-              not_configured:'ระบบตรวจสลิปอัตโนมัติยังไม่พร้อม',
-              amount_review:'ยอดสลิปไม่ตรงกับยอดแพ็กเกจ',
-              receiver_review:'ยอดตรง แต่ยังต้องตรวจผู้รับหรือเวลาโอน',
-              qr_unreadable:'อ่าน QR ไม่ได้ กรุณาตรวจจากรูปสลิป'
-            })[data.state] || 'ระบบยังตรวจรายการนี้ไม่ได้';
-          }
-        },feedback),field('เลขอ้างอิงที่ตรวจสอบแล้ว',reference),
+        button('ตรวจสลิปแพ็กเกจ',() => verifyAndRefresh(client,'subscription',order.id,load,feedback),feedback),
         button('อนุมัติและต่ออายุ',async()=>{
-          if (!image.getAttribute('src') || reference.value.trim().length<4) {
-            feedback.textContent='เปิดสลิป ตรวจยอดและผู้รับ แล้วกรอกเลขอ้างอิงก่อนอนุมัติ';
+          if (!image.getAttribute('src')) {
+            feedback.textContent='เปิดรูปสลิปและตรวจยอดกับบัญชีผู้รับก่อนอนุมัติ';
             return;
           }
-          if (!confirm('ยืนยันว่าตรวจยอด ผู้รับ และเลขอ้างอิงของสลิปนี้แล้วหรือไม่?')) return;
-          await rpc(client,'review_package_order',{p_order_id:order.id,p_approve:true,p_reference:reference.value});
+          if (!confirm('ยืนยันว่าตรวจยอดและบัญชีผู้รับของสลิปนี้แล้วหรือไม่?')) return;
+          await rpc(client,'review_package_order',{p_order_id:order.id,p_approve:true,p_reference:null});
           await load();
           feedback.textContent='อนุมัติและต่ออายุแล้ว';
         },feedback),
