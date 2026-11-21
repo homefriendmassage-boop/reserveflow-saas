@@ -1,3 +1,4 @@
+import { bindSlipImage } from './slip-image-picker.js';
 import { promptPayPayload } from './promptpay.js?v=team-slip-credits-1';
 
 const labels = { monthly:'รายเดือน', quarterly:'3 เดือน', half_year:'6 เดือน', yearly:'รายปี' };
@@ -64,6 +65,7 @@ function field(label, control) {
 function qr(container, text) {
   container.replaceChildren();
   new window.QRCode(container, { text, width:180,height:180 });
+  container.removeAttribute('title');
 }
 
 function referralPanel(client, shopId) {
@@ -141,6 +143,26 @@ export async function showSignupPackages(client, container) {
   } catch { container.textContent = 'ทดลองฟรี 7 วัน'; }
 }
 
+function slipPicker() {
+  const panel = node('div');
+  panel.className = 'payment-slip-picker';
+  const input = node('input');
+  Object.assign(input,{type:'file',accept:'image/jpeg,image/png,image/webp',hidden:true});
+  const choose = node('button','เลือกรูปสลิป');
+  Object.assign(choose,{type:'button',className:'btn soft'});
+  const preview = node('img');
+  Object.assign(preview,{alt:'ตัวอย่างสลิปที่แนบ',className:'booking-slip-image hidden'});
+  const help = node('p');
+  help.setAttribute('role','status');
+  let image = '';
+  bindSlipImage(input,choose,preview,(selected,error = '') => {
+    image = selected;
+    help.textContent = error;
+  });
+  panel.append(choose,input,preview,help);
+  return {panel,get image() { return image; }};
+}
+
 function slipCreditPanel(client, shopId) {
   const panel = detail(shopId ? 'เติมเครดิตตรวจสลิป' : 'แพ็กเกจเครดิตตรวจสลิป');
   const body = node('div');
@@ -183,22 +205,13 @@ function slipCreditPanel(client, shopId) {
 
       const image = node('div');
       qr(image,promptPayPayload(current.receiving_mobile,Number(current.amount)));
-      const file = node('input');
-      file.type = 'file';
-      file.accept = 'image/jpeg,image/png,image/webp';
-      body.append(image,field('แนบสลิปเติมเครดิต',file),button('ส่งสลิปเติมเครดิต',async () => {
-        const chosen = file.files[0];
-        if (!chosen || chosen.size > 1024*1024 || !['image/jpeg','image/png','image/webp'].includes(chosen.type)) {
-          feedback.textContent = 'เลือกภาพ JPG, PNG หรือ WebP ขนาดไม่เกิน 1 MB';
+      const picker = slipPicker();
+      body.append(image,picker.panel,button('ส่งสลิปเติมเครดิต',async () => {
+        if (!picker.image) {
+          feedback.textContent = 'กรุณาเลือกรูปสลิปก่อนส่ง';
           return;
         }
-        const reader = new FileReader();
-        const contents = await new Promise((resolve,reject) => {
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(chosen);
-        });
-        await rpc(client,'submit_slip_credit_payment',{p_order_id:current.id,p_image:contents});
+        await rpc(client,'submit_slip_credit_payment',{p_order_id:current.id,p_image:picker.image});
         await load();
         feedback.textContent = 'ส่งสลิปแล้ว';
       },feedback),button('ยกเลิกรายการที่ยังไม่ชำระ',async () => {
@@ -321,36 +334,17 @@ export function renderShopBusinessTools(client, container, shopId) {
       if (current.has_slip) { body.append(node('p','ส่งสลิปแล้ว · รอ Superadmin ตรวจ')); return; }
       const image = node('div');
       qr(image,promptPayPayload(current.receiving_mobile,Number(current.amount)));
-      const file = node('input');
-      file.type = 'file';
-      file.accept = 'image/jpeg,image/png,image/webp';
-      const preview = node('img');
-      preview.alt = 'ตัวอย่างสลิป';
-      preview.className = 'booking-slip-image hidden';
-      file.addEventListener('change', () => {
-        const previous = preview.getAttribute('src');
-        if (previous) URL.revokeObjectURL(previous);
-        if (file.files[0]) preview.src = URL.createObjectURL(file.files[0]);
-        preview.classList.toggle('hidden',!file.files[0]);
-      });
-      body.append(image,field('แนบสลิปแพ็กเกจ',file),preview,button('ยกเลิกรายการที่ยังไม่ชำระ',async () => {
+      const picker = slipPicker();
+      body.append(image,picker.panel,button('ยกเลิกรายการที่ยังไม่ชำระ',async () => {
         if (!confirm('ยกเลิกรายการแพ็กเกจนี้หรือไม่? หากโอนแล้วให้ส่งสลิปแทน')) return;
         await rpc(client,'cancel_unpaid_package_order',{p_order_id:current.id});
         await load();
       },feedback),button('ส่งสลิปแพ็กเกจ',async () => {
-        const chosen = file.files[0];
-        if (!chosen || chosen.size > 1024*1024 || !['image/jpeg','image/png','image/webp'].includes(chosen.type)) {
-          feedback.textContent = 'เลือกภาพ JPG, PNG หรือ WebP ขนาดไม่เกิน 1 MB';
+        if (!picker.image) {
+          feedback.textContent = 'กรุณาเลือกรูปสลิปก่อนส่ง';
           return;
         }
-        const reader = new FileReader();
-        const contents = await new Promise((resolve,reject) => {
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(chosen);
-        });
-        await rpc(client,'submit_package_slip',{p_order_id:current.id,p_image:contents});
-        URL.revokeObjectURL(preview.src);
+        await rpc(client,'submit_package_slip',{p_order_id:current.id,p_image:picker.image});
         await load();
         feedback.textContent = 'ส่งสลิปแล้ว';
       },feedback));
@@ -510,19 +504,19 @@ export function renderPlatformTools(client) {
           image.src=await rpc(client,'platform_package_slip',{p_order_id:order.id});
           image.classList.remove('hidden');
         },feedback),image,
-        button('ตรวจสลิปแพ็กเกจด้วย Thunder',async()=>{
+        button('ตรวจสลิปแพ็กเกจ',async()=>{
           const {data,error}=await client.functions.invoke('thunder-verify-slip',{body:{package_order_id:order.id}});
           if (error) throw error;
           if (data.state==='package_match') {
             reference.value=data.reference;
-            feedback.textContent='Thunder ตรวจยอดและผู้รับตรงแล้ว ตรวจรายการก่อนกดอนุมัติ';
+            feedback.textContent='ระบบตรวจยอดและผู้รับตรงแล้ว ตรวจรายการก่อนกดอนุมัติ';
           } else {
             feedback.textContent=({
-              not_configured:'ยังไม่ได้ตั้งค่า Thunder',
+              not_configured:'ระบบตรวจสลิปอัตโนมัติยังไม่พร้อม',
               amount_review:'ยอดสลิปไม่ตรงกับยอดแพ็กเกจ',
               receiver_review:'ยอดตรง แต่ยังต้องตรวจผู้รับหรือเวลาโอน',
               qr_unreadable:'อ่าน QR ไม่ได้ กรุณาตรวจจากรูปสลิป'
-            })[data.state] || 'Thunder ยังตรวจรายการนี้ไม่ได้';
+            })[data.state] || 'ระบบยังตรวจรายการนี้ไม่ได้';
           }
         },feedback),field('เลขอ้างอิงที่ตรวจสอบแล้ว',reference),
         button('อนุมัติและต่ออายุ',async()=>{

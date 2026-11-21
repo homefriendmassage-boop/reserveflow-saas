@@ -1,8 +1,8 @@
 import { editBookingRecipient, renderBookingHistory } from './merchant-booking-tools.js?v=merchant-tools-1';
 import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-details.js';
-import { renderDailyReport } from './daily-report.js?v=business-day-1';
-import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=shop-entitlements-36';
-import { addThunderCheck } from './thunder-slip.js?v=merchant-tools-1';
+import { renderDailyReport } from './daily-report.js?v=bank-slip-preview-37';
+import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=bank-slip-preview-37';
+import { addThunderCheck } from './thunder-slip.js?v=bank-slip-preview-37';
 import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=personal-actual-1';
 import { renderMerchantTeam } from './merchant-team.js?v=team-slip-credits-1';
 import { renderMerchantSettings } from './merchant-settings.js?v=payment-drafts-1';
@@ -485,6 +485,45 @@ if (typeof window.supabase?.createClient !== 'function') {
 
   teamSearch.addEventListener('input', renderTeam);
 
+  const bankForm = byId('merchantBankAccountForm');
+  const bankStatus = byId('merchantBankAccountStatus');
+  const bankSave = bankForm.querySelector('button');
+
+  async function loadBankAccount(shopId) {
+    bankForm.reset();
+    bankStatus.textContent = '';
+    bankSave.disabled = true;
+    if (currentRole !== 'owner') return;
+    const {data,error} = await client.rpc('get_shop_bank_account',{p_shop_id:shopId});
+    if (shopMenu.value !== shopId) return;
+    if (error) {
+      bankStatus.textContent = error.code === 'PGRST202' ? 'รัน SQL ไฟล์ 37 เพื่อเปิดการตั้งค่าบัญชีธนาคาร' : 'โหลดข้อมูลบัญชีธนาคารไม่ได้';
+      return;
+    }
+    bankForm.elements.bank.value = data?.bank_name || '';
+    bankForm.elements.holder.value = data?.holder_name || '';
+    bankForm.elements.account.value = data?.account_number || '';
+    bankSave.disabled = false;
+  }
+
+  bankForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (bankSave.disabled || currentRole !== 'owner') return;
+    const shopId = shopMenu.value;
+    const fields = bankForm.elements;
+    const number = fields.account.value.replace(/[\s-]/g,'');
+    bankSave.disabled = true;
+    const {error} = await client.rpc('save_shop_bank_account',{
+      p_shop_id:shopId,p_bank:fields.bank.value,p_holder:fields.holder.value,p_number:number
+    });
+    if (shopMenu.value !== shopId) return;
+    bankSave.disabled = false;
+    bankStatus.textContent = error ? (error.message === 'INVALID_SHOP_BANK_ACCOUNT'
+      ? 'ระบุธนาคาร ชื่อบัญชี และเลขบัญชี 6–20 หลักให้ครบ' : 'บันทึกบัญชีธนาคารไม่ได้')
+      : number ? 'บันทึกบัญชีธนาคารแล้ว' : 'ปิดรับโอนทางบัญชีธนาคารแล้ว';
+    if (!error) fields.account.value = number;
+  });
+
   const promptPayForm = byId('merchantPromptPayForm');
   const promptPayMobile = byId('merchantPromptPayMobile');
   const promptPayStatus = byId('merchantPromptPayStatus');
@@ -574,6 +613,7 @@ if (typeof window.supabase?.createClient !== 'function') {
     lineSettings.replaceChildren();
     if (currentRole === 'owner') renderLineSettings(client, lineSettings, shop.value);
     void loadPromptPay(shop.value);
+    void loadBankAccount(shop.value);
 
     try {
       const store = createSupabaseStore(client, shop.value);

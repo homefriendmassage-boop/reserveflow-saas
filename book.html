@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>จองคิว | ReserveFlow</title>
-  <link rel="stylesheet" href="./assets/css/app.css?v=occupied-floor-1">
+  <link rel="stylesheet" href="./assets/css/app.css?v=bank-slip-preview-37">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/customer-portal.js?v=merchant-tools-1"></script>
+  <script type="module" src="./src/features/customer-portal.js?v=bank-slip-preview-37"></script>
 </head>
 <body>
 <header>
@@ -77,15 +77,25 @@
           <div><strong>จำนวนชั่วโมง</strong><span id="bookingSummaryHours">—</span></div>
           <div><strong>รวมค่าจอง / บริการ</strong><span id="bookingEstimate">—</span></div>
         </div>
-        <button id="sendBooking" type="submit" class="btn primary full" disabled>แสดง QR ชำระเงิน</button>
+        <button id="sendBooking" type="submit" class="btn primary full" disabled>แสดงช่องทางชำระเงิน</button>
         <p id="bookingSubmitStatus" role="status" tabindex="-1"></p>
         <section class="inline-booking-payment hidden" id="bookingSlip" tabindex="-1">
           <h2>ชำระเงินและส่งสลิป</h2>
           <p id="bookingPaymentSelection"></p>
           <strong id="bookingPaymentAmount"></strong>
+          <div id="bookingPaymentBank" class="payment-bank-details hidden">
+            <h3>โอนเข้าบัญชีธนาคาร</h3>
+            <p id="bookingPaymentBankHolder"></p>
+            <label class="field"><span>เลขบัญชี</span><input id="bookingPaymentBankNumber" type="text" readonly></label>
+            <button id="bookingPaymentBankCopy" class="btn soft small" type="button">คัดลอกเลขบัญชี</button>
+            <p id="bookingPaymentBankStatus" role="status"></p>
+          </div>
           <div id="bookingPaymentQr" aria-describedby="bookingPaymentNote" aria-label="QR ชำระเงินพร้อมเพย์"></div>
           <p class="sub" id="bookingPaymentNote">คนอื่นยังเลือกเวลาเดียวกันได้จนกว่าจะมีผู้แนบสลิปหรือแอดมินยืนยัน กรุณาแนบสลิปทันทีหลังโอน ตรวจชื่อผู้รับในแอปธนาคารให้ตรงกับร้าน แล้วแนบรูปสลิป JPG, PNG หรือ WebP ไม่เกิน 1 MB</p>
-          <div class="field"><label for="bookingSlipFile">รูปสลิป</label><input id="bookingSlipFile" type="file" accept="image/jpeg,image/png,image/webp"></div>
+          <div class="inline-actions">
+            <button id="bookingSlipChoose" class="btn soft" type="button">เลือกรูปสลิป</button>
+            <input id="bookingSlipFile" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+          </div>
           <img class="booking-slip-image hidden" id="bookingSlipPreview" alt="ตัวอย่างรูปสลิป">
           <button class="btn primary" id="bookingSlipSubmit" type="button" disabled>ยืนยันและส่งสลิปตรวจ</button>
           <button class="btn soft" id="bookingSlipSkip" type="button">ยกเลิกฉบับร่าง</button>

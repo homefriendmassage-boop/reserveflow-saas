@@ -1,4 +1,4 @@
-import { prepareSlipAttachment } from './customer-slip.js?v=merchant-tools-1';
+import { prepareSlipAttachment } from './customer-slip.js?v=bank-slip-preview-37';
 import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=occupied-floor-1';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, nextBookingDate, timeAtShop } from './booking-slots.js?v=business-day-1';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
@@ -26,7 +26,7 @@ let pendingRequest;
 
 const errorMessages = {
   BOOKING_PAYMENT_UNAVAILABLE: 'ร้านยังไม่ได้เปิดรับชำระพร้อมเพย์สำหรับรายการนี้',
-  BOOKING_QUOTE_MISMATCH: 'กรุณาเริ่มรายการใหม่เพื่อสร้าง QR ชำระเงิน',
+  BOOKING_QUOTE_MISMATCH: 'กรุณาเริ่มรายการใหม่เพื่อเปิดช่องทางชำระเงิน',
   BOOKING_OPTION_UNAVAILABLE: 'รายการนี้ไม่เปิดให้จองแล้ว กรุณารีเฟรชหน้า',
   INVALID_CAPACITY: 'จำนวนคนหรือจำนวนบัตรเกินที่กำหนด',
   INVALID_BOOKING_DATE: 'เลือกเวลาในอนาคตและจองล่วงหน้าได้สูงสุด 90 วัน',
@@ -399,7 +399,7 @@ async function start() {
   try {
     savedDraft = JSON.parse(localStorage.getItem(draftKey));
     if (savedDraft && (savedDraft.expires <= Date.now() || savedDraft.payload?.p_shop_slug !== shopSlug ||
-        !savedDraft.booking?.qr || !savedDraft.label)) {
+        (!savedDraft.booking?.qr && !savedDraft.booking?.bank_account) || !savedDraft.label)) {
       localStorage.removeItem(draftKey);
       savedDraft = null;
     }
@@ -433,7 +433,7 @@ async function start() {
     const editable = [...fields, ...categoryTabs.children, ...document.querySelectorAll('#bookingFloor button, #bookingResourceCards button')]
       .filter(field => !field.disabled && !field.closest('#bookingSlip'));
     editable.forEach(field => { field.disabled = true; });
-    submitStatus.textContent = 'กำลังเตรียม QR ชำระเงิน…';
+    submitStatus.textContent = 'กำลังเตรียมช่องทางชำระเงิน…';
     const category = selectedCategory();
     const resource = category.resources.find(row => row.code === payload.p_resource_code);
     const label = [category.name, resource?.name || payload.p_resource_code, document.getElementById('bookingSummaryDate').textContent,
@@ -449,7 +449,7 @@ async function start() {
       openPayment(draft);
     } catch (error) {
       submitStatus.textContent = errorMessages[error.message]
-        || (error.code === 'PGRST202' ? 'ร้านยังไม่ได้เปิดใช้หน้าชำระเงิน' : 'เปิด QR ไม่สำเร็จ กรุณาลองอีกครั้ง');
+        || (error.code === 'PGRST202' ? 'ร้านยังไม่ได้เปิดใช้หน้าชำระเงิน' : 'โหลดช่องทางชำระเงินไม่ได้ กรุณาลองอีกครั้ง');
     } finally {
       sending = false;
       editable.forEach(field => { field.disabled = false; });

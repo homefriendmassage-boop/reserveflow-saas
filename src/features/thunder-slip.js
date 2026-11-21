@@ -13,18 +13,19 @@ export function thunderStatus(result) {
     : '';
   const messages = {
     confirmed: 'ตรวจผ่านและยืนยันการจองแล้ว',
-    amount_review: 'Thunder พบรายการโอน แต่ยอดไม่ตรง · รอแอดมินยืนยัน',
-    receiver_review: 'Thunder พบรายการโอน · รอตรวจผู้รับหรือเวลาโอน',
+    amount_review: 'ระบบพบรายการโอน แต่ยอดไม่ตรง · รอแอดมินยืนยัน',
+    receiver_review: 'ระบบพบรายการโอน · รอตรวจผู้รับหรือเวลาโอน',
     duplicate_review: 'เลขอ้างอิงนี้ผูกกับรายการจองอื่นแล้ว · รอแอดมินตรวจ',
     booking_review: 'ตรวจพบรายการโอน · รอแอดมินตรวจสถานะจอง',
     qr_unreadable: 'ระบบอ่าน QR ไม่ได้ · รอแอดมินตรวจรูปสลิป',
-    not_verified: 'Thunder ยังยืนยันรายการนี้ไม่ได้ · รอแอดมินตรวจ',
-    thunder_limit: 'Thunder จำกัดการตรวจในขณะนี้ · ตรวจโควต้าในบัญชี Thunder แล้วลองใหม่',
-    thunder_access: 'Thunder ปฏิเสธสิทธิ์ · ตรวจ API Key และสิทธิ์ของบัญชี Thunder',
+    not_verified: 'ระบบยังยืนยันรายการนี้ไม่ได้ · รอแอดมินตรวจ',
+    thunder_limit: 'ระบบตรวจสลิปอัตโนมัติจำกัดการตรวจในขณะนี้ · กรุณาลองใหม่',
+    thunder_access: 'ระบบตรวจสลิปอัตโนมัติปฏิเสธสิทธิ์ · ติดต่อผู้ดูแล',
+    manual_review: 'รอร้านตรวจสอบสลิปโอนเข้าบัญชีธนาคาร',
     no_credit: 'เครดิตตรวจสลิปหมด · รอร้านตรวจด้วยตนเอง',
     checking: 'ระบบกำลังตรวจสลิป',
-    retry: 'ติดต่อ Thunder ไม่สำเร็จ · รอแอดมินตรวจ',
-    not_configured: 'ร้านยังไม่ได้ตั้งค่า Thunder · รอแอดมินตรวจ'
+    retry: 'ติดต่อระบบตรวจสลิปไม่สำเร็จ · รอแอดมินตรวจ',
+    not_configured: 'ระบบตรวจสลิปอัตโนมัติยังไม่พร้อม · รอแอดมินตรวจ'
   };
   return (messages[result?.state] || 'ส่งสลิปแล้ว · รอแอดมินตรวจ') + amountText;
 }
@@ -33,7 +34,7 @@ export function addThunderCheck(container, client, bookingId, initial, refresh) 
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'btn soft small';
-  button.textContent = 'ตรวจสลิปด้วย Thunder';
+  button.textContent = 'ตรวจสลิป';
   const feedback = document.createElement('p');
   feedback.setAttribute('role', 'status');
   feedback.textContent = thunderStatus({ state: initial.verification_state, amount: initial.verified_amount });
@@ -47,7 +48,7 @@ export function addThunderCheck(container, client, bookingId, initial, refresh) 
       feedback.textContent = thunderStatus(result);
       if (result?.state === 'confirmed' && initial.verification_state !== 'confirmed') await refresh();
     } catch {
-      feedback.textContent = 'ตรวจสลิปไม่ได้ กรุณาตรวจว่าติดตั้งฟังก์ชัน Thunder ใน Supabase แล้ว';
+      feedback.textContent = 'ตรวจสลิปไม่ได้ กรุณาลองใหม่หรือตรวจสลิปด้วยตนเอง';
     } finally {
       button.disabled = false;
     }

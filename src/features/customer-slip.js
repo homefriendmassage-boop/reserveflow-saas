@@ -1,8 +1,10 @@
-import { checkThunderSlip, thunderStatus } from './thunder-slip.js?v=merchant-tools-1';
+import { bindSlipImage } from './slip-image-picker.js';
+import { checkThunderSlip, thunderStatus } from './thunder-slip.js?v=bank-slip-preview-37';
 
 export function prepareSlipAttachment(client, draft, sendPayment, onComplete) {
   const section = document.getElementById('bookingSlip');
   const file = document.getElementById('bookingSlipFile');
+  const choose = document.getElementById('bookingSlipChoose');
   const preview = document.getElementById('bookingSlipPreview');
   const status = document.getElementById('bookingSlipStatus');
   const submit = document.getElementById('bookingSlipSubmit');
@@ -12,61 +14,56 @@ export function prepareSlipAttachment(client, draft, sendPayment, onComplete) {
   const { booking, label, payload } = draft;
   document.getElementById('bookingPaymentSelection').textContent = label;
   let image = '';
-  let selection = 0;
+  const resetPicker = bindSlipImage(file, choose, preview, (selected, error = '') => {
+    image = selected;
+    status.textContent = error;
+    submit.disabled = !image;
+  });
 
-  file.disabled = skip.disabled = false;
+  file.disabled = choose.disabled = skip.disabled = false;
   submit.disabled = true;
   section.classList.remove('hidden');
   qr.replaceChildren();
   amount.textContent = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(booking.amount);
-  try {
-    new window.QRCode(qr, { text: booking.qr, width: 192, height: 192 });
-  } catch {
-    qr.textContent = 'เปิด QR ไม่ได้ กรุณาติดต่อร้านก่อนชำระเงิน';
+  qr.classList.toggle('hidden', !booking.qr);
+  if (booking.qr) {
+    try {
+      new window.QRCode(qr, { text: booking.qr, width: 192, height: 192 });
+      qr.removeAttribute('title');
+    } catch {
+      qr.textContent = 'เปิด QR ไม่ได้ กรุณาติดต่อร้านก่อนชำระเงิน';
+    }
+  }
+  const bank = booking.bank_account;
+  const bankDetails = document.getElementById('bookingPaymentBank');
+  const bankNumber = document.getElementById('bookingPaymentBankNumber');
+  const bankStatus = document.getElementById('bookingPaymentBankStatus');
+  bankDetails.classList.toggle('hidden', !bank);
+  bankStatus.textContent = '';
+  if (bank) {
+    document.getElementById('bookingPaymentBankHolder').textContent = bank.bank_name + ' · ' + bank.holder_name;
+    bankNumber.value = bank.account_number;
+    document.getElementById('bookingPaymentBankCopy').onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(bankNumber.value);
+        bankStatus.textContent = 'คัดลอกเลขบัญชีแล้ว';
+      } catch {
+        bankNumber.select();
+        bankStatus.textContent = 'เลือกเลขบัญชีแล้ว กดคัดลอกจากเบราว์เซอร์';
+      }
+    };
   }
 
   function close(message, bookingResult) {
-    selection++;
-    file.onchange = submit.onclick = skip.onclick = null;
-    file.value = '';
-    file.disabled = false;
+    resetPicker();
+    file.onchange = choose.onclick = submit.onclick = skip.onclick = null;
+    file.disabled = choose.disabled = false;
     submit.disabled = true;
     skip.disabled = false;
-    preview.removeAttribute('src');
-    preview.classList.add('hidden');
     section.classList.add('hidden');
     status.textContent = '';
     onComplete(message, bookingResult);
   }
-
-  file.onchange = () => {
-    const current = ++selection;
-    image = '';
-    submit.disabled = true;
-    preview.classList.add('hidden');
-    preview.removeAttribute('src');
-    status.textContent = '';
-    const chosen = file.files[0];
-    if (!chosen) return;
-    if (chosen.size > 1024 * 1024 || !['image/jpeg','image/png','image/webp'].includes(chosen.type)) {
-      file.value = '';
-      status.textContent = 'กรุณาเลือกไฟล์ JPG, PNG หรือ WebP ขนาดไม่เกิน 1 MB';
-      return;
-    }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (current !== selection) return;
-      if (reader.error) {
-        status.textContent = 'อ่านรูปไม่ได้ กรุณาเลือกภาพใหม่';
-        return;
-      }
-      image = reader.result;
-      preview.src = image;
-      preview.classList.remove('hidden');
-      submit.disabled = false;
-    };
-    reader.readAsDataURL(chosen);
-  };
 
   skip.onclick = () => {
     if (!confirm('ยกเลิกฉบับร่าง? หากโอนแล้ว ให้แนบสลิปหรือติดต่อร้านก่อน')) return;
@@ -75,11 +72,15 @@ export function prepareSlipAttachment(client, draft, sendPayment, onComplete) {
 
   submit.onclick = async () => {
     if (!image || submit.disabled) return;
-    submit.disabled = file.disabled = skip.disabled = true;
+    submit.disabled = file.disabled = choose.disabled = skip.disabled = true;
     status.textContent = 'กำลังส่งสลิป…';
     try {
       const saved = await sendPayment(image);
-      status.textContent = 'ส่งสลิปแล้ว · กำลังตรวจด้วย Thunder…';
+      if (!booking.qr) {
+        close('ส่งสลิปแล้ว · รอร้านตรวจสอบบัญชีธนาคาร', saved);
+        return;
+      }
+      status.textContent = 'ส่งสลิปแล้ว · กำลังตรวจสลิป…';
       try {
         close(thunderStatus(await checkThunderSlip(client, saved.id, payload.p_phone)), saved);
       } catch {
@@ -96,7 +97,7 @@ export function prepareSlipAttachment(client, draft, sendPayment, onComplete) {
         SLIP_BOOKING_UNAVAILABLE: 'รายการจองนี้รับสลิปไม่ได้แล้ว กรุณาติดต่อร้าน',
         SLIP_ALREADY_ATTACHED: 'รายการจองนี้มีสลิปแล้ว กรุณาติดต่อร้านหากต้องการเปลี่ยน'
       })[error.message] || (error.code === 'PGRST202' ? 'ร้านยังไม่ได้เปิดใช้การแนบสลิป' : 'ส่งรูปไม่ได้ กรุณาลองอีกครั้ง');
-      submit.disabled = file.disabled = skip.disabled = false;
+      submit.disabled = file.disabled = choose.disabled = skip.disabled = false;
     }
   };
 

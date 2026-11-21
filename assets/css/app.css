@@ -533,3 +533,8 @@
 
 .live-booking-plan .resource.in_use { background: #ffdbac; border-color: #d47921; color: #783a0d; }
 .dot.in_use { background: #df761e; }
+
+.payment-slip-picker { margin: 12px 0; }
+.payment-slip-picker .booking-slip-image { display: block; margin-top: 10px; }
+.payment-bank-details { padding: 12px; margin: 12px 0; border: 1px solid var(--line); border-radius: 12px; }
+.payment-bank-details h3 { margin-top: 0; }

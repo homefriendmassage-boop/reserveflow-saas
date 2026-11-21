@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>จัดการร้าน | ReserveFlow</title>
-  <link rel="stylesheet" href="./assets/css/app.css?v=scan-checkin-status-1">
+  <link rel="stylesheet" href="./assets/css/app.css?v=bank-slip-preview-37">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/merchant-portal.js?v=shop-entitlements-36"></script>
+  <script type="module" src="./src/features/merchant-portal.js?v=bank-slip-preview-37"></script>
 </head>
 <body>
 <header>
@@ -103,6 +103,17 @@
           <button class="btn soft" type="submit" disabled>บันทึกพร้อมเพย์</button>
         </form>
         <p id="merchantPromptPayStatus" role="status"></p>
+      </details>
+      <details class="merchant-settings-panel">
+        <summary>บัญชีธนาคารสำหรับรับโอน</summary>
+        <p class="sub">ลูกค้าจะเห็นข้อมูลนี้ในหน้าชำระเงินและกดคัดลอกเลขบัญชีได้ ล้างทั้งสามช่องแล้วบันทึกเพื่อปิดรับโอนทางบัญชี</p>
+        <form class="fields" id="merchantBankAccountForm">
+          <label class="field"><span>ธนาคาร</span><input name="bank" maxlength="100"></label>
+          <label class="field"><span>ชื่อบัญชี</span><input name="holder" maxlength="120"></label>
+          <label class="field"><span>เลขบัญชี</span><input name="account" type="text" inputmode="numeric" maxlength="28" autocomplete="off"></label>
+          <button class="btn soft" type="submit" disabled>บันทึกบัญชีธนาคาร</button>
+        </form>
+        <p id="merchantBankAccountStatus" role="status"></p>
       </details>
       <div id="merchantLineSettings"></div>
       <h3>กำหนดสิทธิ์ทีมงาน</h3>
