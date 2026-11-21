@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="./assets/css/app.css?v=floor-template-41">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/merchant-portal.js?v=floor-template-41"></script>
+  <script type="module" src="./src/features/merchant-portal.js?v=multiple-shops-42"></script>
 </head>
 <body>
 <header>
@@ -35,9 +35,9 @@
     </details>
   </section>
   <section class="panel hidden" id="merchantRegister">
-    <h2>สมัครร้านค้าใหม่</h2>
+    <h2 id="merchantRegisterTitle">สมัครร้านค้าใหม่</h2>
     <p id="signupPackages" class="sub">ทดลองฟรี 7 วัน</p>
-    <p class="sub">ถ้าคุณเป็นทีมงาน ให้ส่งคำขอเข้าร้านแทนการสร้างร้านใหม่</p>
+    <p id="merchantRegisterHelp" class="sub">ถ้าคุณเป็นทีมงาน ให้ส่งคำขอเข้าร้านแทนการสร้างร้านใหม่</p>
     <p>UID ของคุณ <code id="merchantRegistrationUid"></code></p>
     <form id="merchantRegisterForm" class="fields">
       <div class="field"><label for="merchantRegisterName">ชื่อร้าน</label><input name="shopName" id="merchantRegisterName" maxlength="100" required></div>
@@ -54,6 +54,7 @@
       </form>
       <p id="merchantJoinStatus" role="status"></p>
     </details>
+    <button id="merchantAddShopCancel" class="btn soft hidden" type="button">กลับไปร้านเดิม</button>
     <button id="merchantRegisterSignOut" class="btn soft" type="button">ออกจากระบบ</button>
   </section>
     <section id="merchantPassPanel" class="panel hidden" tabindex="-1">
@@ -169,6 +170,7 @@
         <select id="merchantShop"></select>
       </div>
       <p id="merchantRole"></p>
+      <button type="button" id="merchantAddShop" class="btn primary hidden">เพิ่มร้านค้า</button>
       <details><summary>UID บัญชีของฉัน</summary><p><code id="merchantAccountUid"></code></p></details>
       <button type="button" id="merchantSignOut" class="btn soft">ออกจากระบบ</button>
     </section>
