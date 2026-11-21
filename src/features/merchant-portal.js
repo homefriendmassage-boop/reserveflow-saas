@@ -1,4 +1,4 @@
-import { counterPaymentRpc, openMerchantCounterPayment } from './counter-payment.js';
+import { counterPaymentRpc, openMerchantCounterPayment } from './counter-payment.js?v=customer-qr-handoff';
 import { editBookingRecipient, renderBookingHistory } from './merchant-booking-tools.js?v=merchant-tools-1';
 import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-details.js';
 import { renderDailyReport } from './daily-report.js?v=report-labels-45';
@@ -253,7 +253,7 @@ function bookingCard(booking, timezone, changeStatus, readSlip, client, refresh,
       const payment = document.createElement('button');
       payment.type = 'button';
       payment.className = 'btn soft small';
-      payment.textContent = 'เปิด QR / แนบสลิป';
+      payment.textContent = 'เปิด QR ให้ลูกค้า';
       payment.onclick = () => showCounter(token);
       card.append(payment);
       if (booking.status === 'slip_review' && canManageTables()) {
@@ -456,7 +456,7 @@ if (typeof window.supabase?.createClient !== 'function') {
   }
 
   function showCounter(token) {
-    return openMerchantCounterPayment(client,byId('merchantCounterPayment'),token,loadBookings);
+    return openMerchantCounterPayment(client,byId('merchantCounterPayment'),token);
   }
 
   function changeStatus(id, next) {

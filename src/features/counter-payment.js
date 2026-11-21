@@ -100,32 +100,23 @@ export function renderCounterPayment(client, panel, payment, token, submitted) {
   panel.append(input,preview,actions,status);
 }
 
-export async function openMerchantCounterPayment(client, panel, token, refresh) {
+export async function openMerchantCounterPayment(client, panel, token) {
   const payment = await counterPaymentRpc(client,'counter_booking_payment_details',{p_token:token});
-  if (!payment) throw new Error('SLIP_BOOKING_UNAVAILABLE');
+  if (!payment || (!payment.can_pay && !payment.has_slip)) throw new Error('SLIP_BOOKING_UNAVAILABLE');
   const link = new URL('./booking-pass.html',location.href);
-  link.hash=token;
-  const customer = document.createElement('div');
+  link.hash = token;
   const title = document.createElement('h3');
-  title.textContent = 'QR เปิดหน้าชำระเงินบนเครื่องลูกค้า';
+  title.textContent = 'ให้ลูกค้าสแกน QR เปิดหน้าชำระเงิน';
   const qr = document.createElement('div');
   qr.className = 'booking-pass-qr';
   qr.setAttribute('aria-label','QR เปิดหน้าชำระเงินบนเครื่องลูกค้า');
   new window.QRCode(qr,{text:link.href,width:192,height:192});
   qr.removeAttribute('title');
-  const visit = document.createElement('a');
-  visit.textContent = 'เปิดหน้าชำระเงินของลูกค้า';
-  visit.href = link.href;
-  visit.target = '_blank';
-  visit.rel = 'noopener';
-  customer.append(title,qr,visit);
-  const paymentPanel = document.createElement('div');
-  renderCounterPayment(client,paymentPanel,payment,token,async () => {
-    const current = await counterPaymentRpc(client,'counter_booking_payment_details',{p_token:token});
-    renderCounterPayment(client,paymentPanel,current,token,refresh);
-    await refresh();
-  });
-  panel.replaceChildren(paymentPanel,customer);
+  const help = document.createElement('p');
+  help.textContent = payment.has_slip
+    ? 'ลูกค้าแนบสลิปแล้ว สแกน QR เพื่อตรวจสถานะบนเครื่องลูกค้าได้'
+    : 'ลูกค้าชำระเงินและแนบสลิปจากหน้าที่เปิดบนเครื่องตัวเอง';
+  panel.replaceChildren(title,qr,help);
   panel.classList.remove('hidden');
   panel.scrollIntoView({block:'nearest'});
 }

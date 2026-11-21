@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="./assets/css/app.css?v=floor-template-41">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/merchant-portal.js?v=line-id-feedback"></script>
+  <script type="module" src="./src/features/merchant-portal.js?v=customer-qr-handoff"></script>
 </head>
 <body>
 <header>
@@ -154,7 +154,7 @@
         </div>
         <p class="sub">จองตอนนี้จะบันทึกเป็นเช็กอินแล้ว การจองล่วงหน้าจะบันทึกเป็นยืนยันแล้ว</p>
         <button type="submit" class="btn primary" disabled>บันทึกการจอง</button>
-        <button id="merchantCounterCreate" type="submit" class="btn soft">สร้าง QR รับชำระ</button>
+        <button id="merchantCounterCreate" type="submit" class="btn soft">สร้าง QR ให้ลูกค้าชำระ</button>
       </form>
     </details>
     <section id="merchantCounterPayment" class="merchant-settings-panel hidden"></section>
