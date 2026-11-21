@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="./assets/css/app.css?v=floor-template-41">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/merchant-portal.js?v=customer-qr-handoff"></script>
+  <script type="module" src="./src/features/merchant-portal.js?v=merchant-cash-47"></script>
 </head>
 <body>
 <header>
@@ -151,10 +151,10 @@
           <div class="field hidden"><label for="merchantTableActualTime">เวลาเริ่มจริง</label><input id="merchantTableActualTime" type="time" required disabled></div>
           <div class="field"><label for="merchantTableName">ชื่อผู้จอง (ไม่บังคับ)</label><input id="merchantTableName" maxlength="100"></div>
           <div class="field"><label for="merchantTablePhone">เบอร์โทรศัพท์ (จำเป็นสำหรับ QR รับชำระ)</label><input id="merchantTablePhone" type="tel" maxlength="20"></div>
+          <div class="field"><label for="merchantBookingPayment">วิธีรับชำระ</label><select id="merchantBookingPayment"><option value="transfer">เงินโอน</option><option value="cash">เงินสด</option></select></div>
         </div>
-        <p class="sub">จองตอนนี้จะบันทึกเป็นเช็กอินแล้ว การจองล่วงหน้าจะบันทึกเป็นยืนยันแล้ว</p>
-        <button type="submit" class="btn primary" disabled>บันทึกการจอง</button>
-        <button id="merchantCounterCreate" type="submit" class="btn soft">สร้าง QR ให้ลูกค้าชำระ</button>
+        <p id="merchantBookingPaymentHelp" class="sub">ให้ลูกค้าสแกน QR เพื่อชำระเงินและแนบสลิปบนเครื่องของลูกค้า</p>
+        <button id="merchantCounterCreate" type="submit" class="btn primary" disabled>สร้าง QR ให้ลูกค้าชำระ</button>
       </form>
     </details>
     <section id="merchantCounterPayment" class="merchant-settings-panel hidden"></section>
