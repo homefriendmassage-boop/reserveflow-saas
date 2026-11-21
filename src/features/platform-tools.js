@@ -27,6 +27,9 @@ function button(text, action, status) {
     try { await action(); }
     catch (error) {
       const messages = {
+        INVALID_REFERRAL_LIFF:'กรอก LIFF ID ที่ได้จาก LINE Developers',
+        INVALID_SLIP_PACK_PRICE:'จำนวนสลิปหรือราคาอยู่นอกช่วงที่กำหนด',
+        SLIP_PACK_NOT_FOUND:'ไม่พบแพ็กเกจนี้ กรุณาเปิดหน้านี้ใหม่',
         INVALID_PLATFORM_PROMPTPAY:'ใช้เบอร์มือถือพร้อมเพย์ 10 หลักหรือเลขบัตรประชาชน 13 หลัก',
         INVALID_PLATFORM_REFERRAL:'ใส่ค่าแนะนำระหว่าง 0 ถึง 100%',
         INVALID_PLATFORM_PRICES:'ตรวจราคาทุกช่อง ราคาที่ระบุเริ่มต้นที่ 1 บาท',
@@ -72,30 +75,50 @@ function referralPanel(client, shopId) {
   const feedback = node('p');
   feedback.setAttribute('role','status');
   const image = node('div');
-  const line = node('select');
   const visit = node('a','เปิดใบสมัครร้านค้า');
   visit.href = link.href;
   visit.className = 'btn soft small';
+  const share = node('a','เลือกรายชื่อเพื่อนใน LINE');
+  share.className = 'btn primary small';
+  const linkShare = 'https://line.me/R/share?text=' + encodeURIComponent('สมัครร้านค้าบน ReserveFlow\n' + link.href);
+  share.href = linkShare;
+  const help = node('p','แชร์ลิงก์ใบสมัครผ่านรายชื่อเพื่อนใน LINE');
+  help.className = 'sub';
   panel.append(field('ลิงก์สมัครร้าน',url),
     button('คัดลอกลิงก์',async () => {
       try { await navigator.clipboard.writeText(link.href); feedback.textContent = 'คัดลอกแล้ว'; }
       catch { url.select(); feedback.textContent = 'เลือกข้อความแล้ว กดคัดลอกจากเบราว์เซอร์'; }
     },feedback),
     button('แสดง QR ใบสมัคร',() => qr(image,link.href),feedback),
-    visit, image, field('ปลายทาง LINE ที่เชื่อมไว้',line),
-    button('ส่ง Flex ไป LINE เพื่อส่งต่อ',async () => {
-      if (!line.value) { feedback.textContent = 'เชื่อมปลายทาง LINE และเลือกผู้รับก่อนส่ง'; return; }
-      if (!confirm('ส่ง Flex ใบสมัครไปยังปลายทาง LINE ที่เลือกหรือไม่?')) return;
-      await rpc(client,'send_referral_flex',{p_shop_id:shopId,p_target_id:line.value});
-      feedback.textContent = 'เข้าคิวส่ง Flex แล้ว เปิดแชต LINE เพื่อส่งต่อใบสมัครให้เพื่อน';
-    },feedback),feedback);
+    visit, share, help, image, feedback);
+  const liffId = node('input');
+  if (!shopId) {
+    liffId.placeholder = '1234567890-abcdefgh';
+    panel.append(field('LIFF ID สำหรับแชร์ Flex',liffId),button('บันทึก LIFF ID',async () => {
+      await rpc(client,'save_platform_referral_share_liff',{p_liff_id:liffId.value.trim()});
+      configureShare(liffId.value.trim());
+      feedback.textContent = 'บันทึกการตั้งค่าแชร์ LINE แล้ว';
+    },feedback));
+  }
+
+  function configureShare(id) {
+    const configured = /^[0-9]{6,16}-[A-Za-z0-9]{4,24}$/.test(id || '');
+    const liff = configured ? new URL('https://liff.line.me/' + id) : null;
+    if (liff && shopId) liff.searchParams.set('ref',shopId);
+    share.textContent = configured ? 'เลือกเพื่อนเพื่อส่ง Flex' : 'เลือกรายชื่อเพื่อนใน LINE';
+    share.href = liff?.href || linkShare;
+    help.textContent = configured ? 'LINE จะให้เลือกรายชื่อผู้รับเมื่อกดส่ง Flex'
+      : 'ตอนนี้แชร์เป็นลิงก์ได้ หากต้องการแชร์เป็น Flex ให้ตั้ง LIFF ID ใน Superadmin';
+  }
   panel.addEventListener('toggle',async () => {
     if (!panel.open) return;
     try {
-      const targets = await rpc(client,'list_line_targets',{p_shop_id:shopId});
-      line.replaceChildren(new Option('เลือกปลายทาง',''),...targets.map(target => new Option(
-        (target.target_type==='group'?'กลุ่ม LINE':'LINE ส่วนตัว')+' · '+date(target.created_at),target.id)));
-    } catch { feedback.textContent = 'โหลดปลายทาง LINE ไม่ได้'; }
+      const configured = await rpc(client,'platform_referral_share_liff');
+      liffId.value = configured || '';
+      configureShare(configured);
+    } catch {
+      configureShare(null);
+    }
   });
   return panel;
 }
@@ -190,14 +213,16 @@ function slipCreditPanel(client, shopId) {
       const fields = node('div');
       fields.className = 'fields';
       fields.append(field('จำนวนสลิป',quantity),field('ราคาแพ็กเกจ (บาท)',price));
+      const packStatus = node('p');
+      packStatus.setAttribute('role','status');
       body.append(node('h3',packLabel(pack)),fields,button('บันทึกราคาเครดิตตรวจสลิป',async () => {
         if (!quantity.reportValidity() || !price.reportValidity()) return;
         const args = {p_credits:Number(quantity.value),p_amount:Number(price.value)};
         if (data.offers) await rpc(client,'save_slip_credit_pack',{...args,p_code:pack.code});
         else await rpc(client,'save_slip_credit_offer',args);
         await load();
-        feedback.textContent = 'บันทึกราคาเครดิตแล้ว';
-      },feedback));
+        feedback.textContent = 'บันทึกราคาแพ็กเกจ ' + args.p_credits + ' สลิปแล้ว';
+      },packStatus),packStatus);
     }
     body.append(node('h3','สลิปเติมเครดิตรอตรวจ'));
     if (!data.orders.length) body.append(node('p','ไม่มีสลิปเติมเครดิตรอตรวจ'));

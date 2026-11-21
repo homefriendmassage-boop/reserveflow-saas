@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>แชร์ใบสมัคร | ReserveFlow</title>
+  <link rel="stylesheet" href="./assets/css/app.css?v=platform-billing-34">
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer></script>
+  <script src="./assets/vendor/supabase-js/supabase.js" defer></script>
+  <script type="module" src="./src/features/share-signup.js"></script>
+</head>
+<body>
+<main class="booking-pass-page">
+  <section class="panel">
+    <h1>แชร์ใบสมัคร ReserveFlow</h1>
+    <p id="shareStatus" role="status">กำลังเปิด LINE…</p>
+    <div class="inline-actions">
+      <button id="shareFlex" type="button" class="btn primary hidden">เลือกเพื่อนเพื่อส่ง Flex</button>
+      <a id="shareLink" class="btn soft">แชร์ลิงก์ใน LINE</a>
+    </div>
+  </section>
+</main>
+</body>
+</html>
