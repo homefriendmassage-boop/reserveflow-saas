@@ -65,10 +65,10 @@ async function load() {
       failed: 'LINE ส่งบัตรไม่สำเร็จ · กรุณาติดต่อร้าน'
     };
     lineStatus.textContent = deliveryStatus[data.line_delivery] || (data.line_linked
-      ? (data.status === 'confirmed'
+      ? (['confirmed','checked_in','completed'].includes(data.status)
         ? 'เชื่อม LINE แล้ว · โปรดตรวจข้อความยืนยันในแชตกับ LINE OA ของร้าน'
         : 'เชื่อม LINE แล้ว · ระบบจะส่งบัตรเมื่อร้านยืนยันการจอง')
-      : data.line_code ? 'สถานะ LINE · รอเชื่อมบัตร ระบบจะส่งข้อความยืนยันหลังเชื่อม LINE และร้านยืนยันการจอง'
+      : data.line_code ? 'สถานะ LINE · รอเชื่อมบัตรเพื่อจัดส่ง Flex ในแชตของร้าน'
         : !data.expired && ['pending_payment','pending_confirm','slip_review','confirmed'].includes(data.status)
           ? 'ร้านยังไม่เปิดรับบัตรผ่าน LINE คุณเปิดบัตรจากหน้านี้ได้' : '');
 

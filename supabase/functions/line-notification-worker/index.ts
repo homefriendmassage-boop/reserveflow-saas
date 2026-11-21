@@ -39,7 +39,7 @@ function lineMessage(kind: string, payload: Record<string, string>, site: string
       ] },
       footer: { type: 'box', layout: 'vertical', contents: [
         { type: 'button', style: 'primary', color: '#404FBA', action: {
-          type: 'uri', label: 'เปิดบัตรและแสดง QR', uri: link.href
+          type: 'uri', label: 'เปิดบัตรจอง', uri: link.href
         } }
       ] }
     } };
