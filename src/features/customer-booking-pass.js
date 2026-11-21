@@ -1,3 +1,4 @@
+import { counterPaymentRpc, renderCounterPayment } from './counter-payment.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-details.js';
 
@@ -27,7 +28,10 @@ async function copy(value, fallback) {
 async function load() {
   refresh.disabled = true;
   try {
-    const { data, error } = await client.rpc('get_customer_booking_pass', { p_token: token });
+    const [{ data, error }, payment] = await Promise.all([
+      client.rpc('get_customer_booking_pass',{p_token:token}),
+      counterPaymentRpc(client,'counter_booking_payment_details',{p_token:token}).catch(() => null)
+    ]);
     if (error) throw error;
     if (!data) {
       status.textContent = 'เปิดบัตรไม่ได้ กรุณาตรวจลิงก์หรือติดต่อร้าน';
@@ -55,7 +59,18 @@ async function load() {
       new window.QRCode(qr, { text: link.href, width: 240, height: 240 });
       qr.classList.remove('hidden');
     };
+    renderCounterPayment(client,get('counterPayment'),payment,token,load);
     line.classList.toggle('hidden', !data.line_code);
+    const friend = get('passLineFriend');
+    const chat = get('passLineChat');
+    const basicId = payment?.line_friend_id;
+    const canLink = !!data.line_code && /^@[A-Za-z0-9._-]{1,49}$/.test(basicId || '');
+    friend.classList.toggle('hidden',!canLink);
+    chat.classList.toggle('hidden',!canLink);
+    if (canLink) {
+      friend.href = 'https://line.me/R/ti/p/' + encodeURIComponent(basicId);
+      chat.href = 'https://line.me/R/oaMessage/' + encodeURIComponent(basicId) + '/?' + encodeURIComponent('บัตร ' + data.line_code);
+    }
     get('passLineHelp').textContent = 'คัดลอกข้อความด้านล่างแล้วกดส่งในแชตส่วนตัวกับ LINE OA «'
       + (data.bot_name || data.shop) + '» จากนั้นกลับมากดอัปเดตสถานะ';
     get('passLineCode').value = data.line_code ? 'บัตร ' + data.line_code : '';

@@ -49,6 +49,29 @@ function shopChannelSettings(client, shopId, refresh) {
     element('p','ใช้ Channel secret และ Channel access token จาก Messaging API ของ OA ร้านเดียวกัน'),
     form,label('Webhook URL สำหรับใส่ใน LINE Developers',webhook),copy,status,
     element('p','ถ้า OA มี Webhook ใช้งานอยู่ ให้ใช้ช่องเชื่อมกลุ่มหรือ LINE ส่วนตัวด้วย ID ด้านล่าง ถ้าจะเชื่อมด้วย RF ให้วาง Webhook URL ของร้านใน LINE Developers แล้วกด Verify'));
+  const friendForm = element('form');
+  const friendId = element('input');
+  friendId.placeholder = '@ร้านค้า';
+  friendId.maxLength = 50;
+  friendId.autocapitalize = 'none';
+  const friendSave = action('บันทึก LINE ID สำหรับเพิ่มเพื่อน');
+  friendSave.type = 'submit';
+  friendForm.append(label('LINE ID ของ OA ที่ขึ้นต้นด้วย @',friendId),friendSave);
+  section.append(friendForm);
+  void client.rpc('shop_line_friend_id',{p_shop_id:shopId}).then(({data}) => { if (!friendId.value) friendId.value=data || ''; });
+  friendForm.onsubmit = async event => {
+    event.preventDefault();
+    const id = friendId.value.trim();
+    if (id && !/^@[A-Za-z0-9._-]{1,49}$/.test(id)) {
+      status.textContent = 'ใส่ LINE ID ของ OA ตามที่แสดงใน LINE Official Account Manager';
+      return;
+    }
+    friendSave.disabled = true;
+    try {
+      const {error} = await client.rpc('save_shop_line_friend_id',{p_shop_id:shopId,p_basic_id:id});
+      status.textContent = error ? 'บันทึกไม่ได้ ตรวจการเชื่อม LINE OA และ SQL 46' : 'บันทึก LINE ID แล้ว';
+    } finally { friendSave.disabled = false; }
+  };
   function directConnection(isGroup) {
     const direct = element('details');
     const targetForm = element('form');
