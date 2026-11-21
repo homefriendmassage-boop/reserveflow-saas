@@ -5,7 +5,7 @@ import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from
 import { addThunderCheck } from './thunder-slip.js?v=bank-slip-preview-37';
 import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=personal-actual-1';
 import { renderMerchantTeam } from './merchant-team.js?v=team-slip-credits-1';
-import { renderMerchantSettings } from './merchant-settings.js?v=payment-drafts-1';
+import { renderMerchantSettings } from './merchant-settings.js?v=category-template-39';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, timeAtShop } from './booking-slots.js?v=business-day-1';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=personal-actual-1';
@@ -617,10 +617,13 @@ if (typeof window.supabase?.createClient !== 'function') {
 
     try {
       const store = createSupabaseStore(client, shop.value);
-      const [categories, resources, layouts] = await Promise.all([
-        store.getCategories(), store.getResources(), canEditLayout() ? store.getLayouts() : Promise.resolve([])
+      const [categories, resources, layouts, templateAccess] = await Promise.all([
+        store.getCategories(), store.getResources(), canEditLayout() ? store.getLayouts() : Promise.resolve([]),
+        currentRole === 'owner' ? client.rpc('editable_merchant_category_templates',{p_shop_id:shop.value}) : null
       ]);
       if (request !== bookingRequest) return;
+      const editableTemplates = new Map((templateAccess?.data || []).map(row => [row.code,row.editable]));
+      for (const category of categories) category.template_editable = editableTemplates.get(category.code);
       const tableCodes = new Set(categories.filter(category => category.template === 'table').map(category => category.code));
       shopResources = resources.map(resource => ({ ...resource, table: tableCodes.has(resource.category_code) }));
       categoryMenu.replaceChildren(...categories.filter(category => currentRole !== 'staff' || category.template === 'table').map(category => {
