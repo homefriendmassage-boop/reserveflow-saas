@@ -88,7 +88,9 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       }
       return true;
     } catch (error) {
-      feedback.textContent = error?.message === 'RESOURCE_NAME_EXISTS'
+      feedback.textContent = error?.message === 'CATEGORY_TEMPLATE_HAS_BOOKINGS'
+        ? 'หมวดนี้มีประวัติการจองแล้ว กรุณาเพิ่มหมวดใหม่เพื่อใช้แม่แบบอื่น'
+        : error?.message === 'RESOURCE_NAME_EXISTS'
         ? 'ชื่อนี้มีอยู่แล้วในหมวดนี้ กรุณาใช้ชื่ออื่น'
         : error?.message === 'INVALID_TABLE_POSITION' && rpc === 'save_merchant_floor_item' &&
           (args.p_width < 24 || args.p_height < 24 || args.p_width > 320 || args.p_height > 320 ||
@@ -107,7 +109,7 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
   categoryContainer.replaceChildren();
   if (owner) {
     const categoryPanel = panel('ตั้งค่าหมวดการจอง');
-    const hint = node('p', 'แก้ชื่อหมวด การแสดงผล ราคา ค่าบริการ และลำดับที่ลูกค้าเห็น');
+    const hint = node('p', 'แก้ชื่อ ราคา และการแสดงผลได้ทุกหมวด เปลี่ยนแม่แบบได้เมื่อหมวดยังไม่มีประวัติการจอง');
     hint.className = 'sub';
     categoryPanel.append(hint);
     categoryPanel.dataset.section = 'categories';
@@ -125,7 +127,15 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       name.maxLength = 100;
       const type = field(form, 'แม่แบบ', select(templates));
       type.value = category?.template || 'table';
-      type.disabled = Boolean(category);
+      type.disabled = Boolean(category && !category.template_editable);
+      if (type.disabled) {
+        const reason = category.template_editable === false
+          ? 'หมวดนี้มีประวัติการจอง' : 'รอเปิดใช้ SQL ไฟล์ 39';
+        type.title = reason;
+        const note = node('small',reason);
+        note.className = 'sub';
+        type.parentElement.append(note);
+      }
       let visible;
       if (category) {
         const visibility = node('div');
