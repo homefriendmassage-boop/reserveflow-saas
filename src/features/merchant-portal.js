@@ -1,14 +1,14 @@
 import { editBookingRecipient, renderBookingHistory } from './merchant-booking-tools.js?v=merchant-tools-1';
 import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-details.js';
 import { renderDailyReport } from './daily-report.js?v=bank-slip-preview-37';
-import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=platform-slip-rules-40';
+import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=platform-shop-management-43';
 import { addThunderCheck } from './thunder-slip.js?v=bank-slip-preview-37';
-import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=personal-actual-1';
+import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=platform-shop-management-43';
 import { renderMerchantTeam } from './merchant-team.js?v=team-slip-credits-1';
 import { renderMerchantSettings } from './merchant-settings.js?v=floor-template-41';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, timeAtShop } from './booking-slots.js?v=business-day-1';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
-import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=personal-actual-1';
+import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=platform-shop-management-43';
 
 const byId = id => document.getElementById(id);
 const scanKey = 'reserveflow.merchant-scan';
@@ -89,6 +89,7 @@ const actionErrors = {
   INVALID_TABLE_POSITION: 'ตำแหน่งโต๊ะต้องอยู่ระหว่าง 5 ถึง 95%',
   INVALID_STAFF_ROLE: 'ตรวจ UID และสิทธิ์ที่เลือก หรือบัญชีนี้อาจเป็นเจ้าของร้าน',
   INVALID_SHOP_SETTINGS: 'กรุณาตรวจชื่อร้าน',
+  PLATFORM_SHOP_BOOKING_SUSPENDED: 'Superadmin ปิดรับจองออนไลน์ของร้านนี้ กรุณาติดต่อ Superadmin เพื่อเปิดอีกครั้ง',
   MERCHANT_BOOKING_FORBIDDEN: 'บัญชีนี้ไม่มีสิทธิ์จัดการการจองของร้าน'
 };
 
@@ -322,8 +323,9 @@ if (typeof window.supabase?.createClient !== 'function') {
     registerLogout.classList.toggle('hidden',enabled);
     cancelAddShop.classList.toggle('hidden',!enabled);
   }
+  const isPlatformAdmin = () => !byId('platformAdmin').classList.contains('hidden');
   addShop.onclick = () => {
-    if (![...shopMenu.options].some(shop => shop.dataset.role==='owner')) return;
+    if (!isPlatformAdmin() && ![...shopMenu.options].some(shop => shop.dataset.role==='owner')) return;
     registerForm.reset();
     setAdditionalShopMode(true);
     registration.classList.remove('hidden');
@@ -748,11 +750,11 @@ if (typeof window.supabase?.createClient !== 'function') {
         return;
       }
       byId('merchantAccountUid').textContent = data.session.user.id;
-      await loadPlatformAdmin(client);
-      if (!byId('platformAdmin').classList.contains('hidden')) renderPlatformTools(client);
+      await loadPlatformAdmin(client, () => loadSession());
+      if (!byId('platformAdmin').classList.contains('hidden')) renderPlatformTools(client, () => addShop.click());
       const shops = await listMerchantShops(client);
       setAdditionalShopMode(false);
-      addShop.classList.toggle('hidden',!shops.some(shop => shop.role==='owner'));
+      addShop.classList.toggle('hidden',!isPlatformAdmin() && !shops.some(shop => shop.role==='owner'));
       if (!shops.length) {
         login.classList.add('hidden');
         dashboard.classList.add('hidden');
@@ -906,7 +908,7 @@ if (typeof window.supabase?.createClient !== 'function') {
         PACKAGE_NOT_CONFIGURED: 'แพ็กเกจยังไม่พร้อม กรุณาเลือกทดลองฟรีหรือติดต่อ Superadmin'
       };
       status.textContent = errors[error.message] || (additional && error.code==='PGRST202'
-        ? 'รัน SQL ไฟล์ 42 ใน Supabase เพื่อเปิดการเพิ่มร้าน' : 'ยืนยันผลการสร้างร้านไม่ได้ กรุณาลองอีกครั้ง');
+        ? 'รัน SQL ไฟล์ 42 และ 43 ใน Supabase เพื่อเปิดการเพิ่มร้าน' : 'ยืนยันผลการสร้างร้านไม่ได้ กรุณาลองอีกครั้ง');
     } finally {
       registerSubmit.disabled = false;
       registerLogout.disabled = cancelAddShop.disabled = false;
