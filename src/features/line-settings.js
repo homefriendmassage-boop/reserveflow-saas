@@ -56,20 +56,38 @@ function shopChannelSettings(client, shopId, refresh) {
   friendId.autocapitalize = 'none';
   const friendSave = action('บันทึก LINE ID สำหรับเพิ่มเพื่อน');
   friendSave.type = 'submit';
-  friendForm.append(label('LINE ID ของ OA ที่ขึ้นต้นด้วย @',friendId),friendSave);
+  const friendStatus = element('p');
+  friendStatus.setAttribute('role','status');
+  function friendError(error) {
+    if (error.code === 'PGRST202' || error.code === '42883' || error.code === '42703') {
+      return 'ฐานข้อมูลยังไม่พร้อมสำหรับบันทึก LINE ID กรุณารัน SQL 46 หรือโหลดหน้านี้ใหม่ถ้าเพิ่งรัน';
+    }
+    if (error.message === 'SHOP_LINE_NOT_CONFIGURED') {
+      return 'ร้านนี้ยังไม่มี LINE OA กรุณาบันทึก Channel secret และ Channel access token ด้านบนก่อน';
+    }
+    if (error.code === '42501') return 'เข้าสู่ระบบด้วยบัญชีเจ้าของร้านเพื่อบันทึก LINE ID';
+    if (error.code === '22023') return 'ตรวจ LINE ID ของ OA ให้ขึ้นต้นด้วย @ และไม่มีช่องว่าง';
+    return 'บันทึก LINE ID ไม่สำเร็จ กรุณาลองใหม่';
+  }
+  friendForm.append(label('LINE ID ของ OA ที่ขึ้นต้นด้วย @',friendId),friendSave,friendStatus);
   section.append(friendForm);
-  void client.rpc('shop_line_friend_id',{p_shop_id:shopId}).then(({data}) => { if (!friendId.value) friendId.value=data || ''; });
+  void client.rpc('shop_line_friend_id',{p_shop_id:shopId}).then(({data,error}) => {
+    if (error) friendStatus.textContent = friendError(error);
+    else if (!friendId.value) friendId.value = data || '';
+  });
   friendForm.onsubmit = async event => {
     event.preventDefault();
     const id = friendId.value.trim();
     if (id && !/^@[A-Za-z0-9._-]{1,49}$/.test(id)) {
-      status.textContent = 'ใส่ LINE ID ของ OA ตามที่แสดงใน LINE Official Account Manager';
+      friendStatus.textContent = 'ใส่ LINE ID ของ OA ตามที่แสดงใน LINE Official Account Manager';
       return;
     }
     friendSave.disabled = true;
     try {
       const {error} = await client.rpc('save_shop_line_friend_id',{p_shop_id:shopId,p_basic_id:id});
-      status.textContent = error ? 'บันทึกไม่ได้ ตรวจการเชื่อม LINE OA และ SQL 46' : 'บันทึก LINE ID แล้ว';
+      friendStatus.textContent = error ? friendError(error) : 'บันทึก LINE ID แล้ว';
+    } catch {
+      friendStatus.textContent = 'เชื่อมต่อฐานข้อมูลไม่ได้ กรุณาลองใหม่';
     } finally { friendSave.disabled = false; }
   };
   function directConnection(isGroup) {
@@ -163,6 +181,7 @@ function shopChannelSettings(client, shopId, refresh) {
           invalid_token:'LINE แจ้งว่า Channel access token ใช้ไม่ได้',
           invalid_credentials:'ตรวจ Channel secret และ Channel access token',
           bot_already_linked:'LINE OA นี้ถูกตั้งให้ร้านอื่นแล้ว',
+          save_failed:'ตรวจ Token ผ่านแล้ว แต่บันทึกการเชื่อมต่อของร้านไม่ได้ กรุณาตรวจ SQL 21 และสิทธิ์เจ้าของร้าน',
           unauthorized:'เฉพาะเจ้าของร้านที่ตั้งค่า LINE OA ได้'
         })[data.result] || 'บันทึกไม่สำเร็จ กรุณาตรวจการเชื่อมต่อ';
         return;
