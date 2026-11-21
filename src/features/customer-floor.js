@@ -41,11 +41,6 @@ export function renderFloor(plan, resources, resourceField, template) {
     button.type = 'button';
     button.className = 'resource';
     button.style.setProperty('--floor-label-length', Math.max(2, [...resource.name].length * .56));
-    button.disabled = Boolean(table.occupied);
-  if (button.disabled) {
-    button.classList.remove('selected');
-    button.setAttribute('aria-pressed','false');
-  }
     const name = document.createElement('strong');
     name.textContent = resource.name;
     const availability = document.createElement('small');
@@ -63,6 +58,7 @@ export function renderFloor(plan, resources, resourceField, template) {
   floor.replaceChildren(...labels, ...buttons);
   floor.classList.remove('hidden');
   status.dataset.availability = ({ seat: 'เลือกที่นั่งว่างจากผัง', vip: 'เลือกห้องว่างจากผัง', table: 'เลือกโต๊ะว่างจากผัง' })[template];
+  status.textContent = status.dataset.availability;
   highlightTable(resourceField.value);
 }
 
