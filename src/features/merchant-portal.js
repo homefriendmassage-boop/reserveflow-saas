@@ -308,6 +308,38 @@ if (typeof window.supabase?.createClient !== 'function') {
     auth: { flowType: 'pkce', storage: authStorage }
   });
 
+  const addShop = byId('merchantAddShop');
+  const cancelAddShop = byId('merchantAddShopCancel');
+  const registerLogout = byId('merchantRegisterSignOut');
+  let addingShop = false;
+  function setAdditionalShopMode(enabled) {
+    addingShop = enabled;
+    byId('merchantRegisterTitle').textContent = enabled ? 'เพิ่มร้านค้าด้วยบัญชีเดิม' : 'สมัครร้านค้าใหม่';
+    byId('merchantRegisterHelp').textContent = enabled
+      ? 'ร้านใหม่จะมีลิงก์จอง แพ็กเกจ เครดิตตรวจสลิป และ LINE OA แยกจากร้านเดิม'
+      : 'ถ้าคุณเป็นทีมงาน ให้ส่งคำขอเข้าร้านแทนการสร้างร้านใหม่';
+    byId('merchantJoinPanel').classList.toggle('hidden',enabled);
+    registerLogout.classList.toggle('hidden',enabled);
+    cancelAddShop.classList.toggle('hidden',!enabled);
+  }
+  addShop.onclick = () => {
+    if (![...shopMenu.options].some(shop => shop.dataset.role==='owner')) return;
+    registerForm.reset();
+    setAdditionalShopMode(true);
+    registration.classList.remove('hidden');
+    byId('merchantRegistrationUid').textContent = byId('merchantAccountUid').textContent;
+    status.textContent = '';
+    void showSignupPackages(client,byId('signupPackages'));
+    registration.scrollIntoView({block:'start'});
+    registerForm.elements.shopName.focus({preventScroll:true});
+  };
+  cancelAddShop.onclick = () => {
+    setAdditionalShopMode(false);
+    registration.classList.add('hidden');
+    status.textContent = '';
+    addShop.focus();
+  };
+
   const recipientPicker = editBookingRecipient(client, byId('merchantBookingRecipient'));
   const passFeedback = byId('merchantPassStatus');
   const passDetails = byId('merchantPassDetails');
@@ -696,7 +728,7 @@ if (typeof window.supabase?.createClient !== 'function') {
     if (event === 'SIGNED_OUT') showLogin();
   });
 
-  async function loadSession() {
+  async function loadSession(selectShopId = shopMenu.value) {
     try {
       const { data, error } = await client.auth.getSession();
       if (error) throw error;
@@ -719,6 +751,8 @@ if (typeof window.supabase?.createClient !== 'function') {
       await loadPlatformAdmin(client);
       if (!byId('platformAdmin').classList.contains('hidden')) renderPlatformTools(client);
       const shops = await listMerchantShops(client);
+      setAdditionalShopMode(false);
+      addShop.classList.toggle('hidden',!shops.some(shop => shop.role==='owner'));
       if (!shops.length) {
         login.classList.add('hidden');
         dashboard.classList.add('hidden');
@@ -736,6 +770,7 @@ if (typeof window.supabase?.createClient !== 'function') {
         option.dataset.open = String(shop.public_booking_enabled);
         return option;
       }));
+      if (shops.some(shop => shop.id===selectShopId)) shopMenu.value = selectShopId;
       login.classList.add('hidden');
       registration.classList.add('hidden');
       registerForm.reset();
@@ -836,21 +871,24 @@ if (typeof window.supabase?.createClient !== 'function') {
     event.preventDefault();
     if (registerSubmit.disabled) return;
     registerSubmit.disabled = true;
-    const logoutButton = byId('merchantRegisterSignOut');
-    logoutButton.disabled = true;
+    registerLogout.disabled = cancelAddShop.disabled = true;
+    const additional = addingShop;
     status.textContent = 'กำลังสร้างร้าน…';
     try {
-      const referral = new URLSearchParams(location.search).get('ref') || sessionStorage.getItem('reserveflow_signup_referral');
       const plan = byId('merchantSignupPlan').value || null;
-      const { error } = await client.rpc('register_platform_shop', {
-        p_plan: plan,
-        p_referral: /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(referral || '') ? referral : null,
-        p_name: registerForm.elements.shopName.value.trim(),
-        p_slug: registerForm.elements.slug.value.trim()
-      });
+      const args = {
+        p_plan:plan,p_name:registerForm.elements.shopName.value.trim(),p_slug:registerForm.elements.slug.value.trim()
+      };
+      if (!additional) {
+        const referral = new URLSearchParams(location.search).get('ref') || sessionStorage.getItem('reserveflow_signup_referral');
+        args.p_referral = /^[a-f0-9]{8}(?:-[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(referral || '') ? referral : null;
+      }
+      const {data:createdShop,error} = await client.rpc(
+        additional ? 'register_additional_platform_shop' : 'register_platform_shop', args
+      );
       if (error) throw error;
-      sessionStorage.removeItem('reserveflow_signup_referral');
-      await loadSession();
+      if (!additional) sessionStorage.removeItem('reserveflow_signup_referral');
+      await loadSession(createdShop);
       if (!dashboard.classList.contains('hidden')) {
         actionStatus.textContent = 'สร้างร้านแล้ว เปิดรับจองได้จากเมนูตั้งค่าร้าน';
         const packages = byId('shopPackagePanel');
@@ -861,15 +899,17 @@ if (typeof window.supabase?.createClient !== 'function') {
       }
     } catch (error) {
       const errors = {
+        SHOP_OWNER_REQUIRED:'บัญชีนี้ต้องมีสิทธิ์เจ้าของร้านก่อนเพิ่มร้าน',
         SHOP_SLUG_TAKEN: 'ชื่อลิงก์นี้ถูกใช้แล้ว กรุณาเลือกชื่ออื่น',
         SHOP_MEMBERSHIP_EXISTS: 'บัญชีนี้มีร้านอยู่แล้ว กรุณารีเฟรชเพื่อเปิดหลังบ้าน',
         INVALID_SHOP_REGISTRATION: 'กรุณาตรวจชื่อร้านและชื่อสำหรับลิงก์จอง',
         PACKAGE_NOT_CONFIGURED: 'แพ็กเกจยังไม่พร้อม กรุณาเลือกทดลองฟรีหรือติดต่อ Superadmin'
       };
-      status.textContent = errors[error.message] || 'ยืนยันผลการสร้างร้านไม่ได้ กรุณาลองอีกครั้ง';
+      status.textContent = errors[error.message] || (additional && error.code==='PGRST202'
+        ? 'รัน SQL ไฟล์ 42 ใน Supabase เพื่อเปิดการเพิ่มร้าน' : 'ยืนยันผลการสร้างร้านไม่ได้ กรุณาลองอีกครั้ง');
     } finally {
       registerSubmit.disabled = false;
-      logoutButton.disabled = false;
+      registerLogout.disabled = cancelAddShop.disabled = false;
     }
   });
   byId('platformSignOut').addEventListener('click', () => signOut.click());
