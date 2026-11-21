@@ -1,6 +1,6 @@
 import { editBookingRecipient, renderBookingHistory } from './merchant-booking-tools.js?v=merchant-tools-1';
 import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-details.js';
-import { renderDailyReport } from './daily-report.js?v=bank-slip-preview-37';
+import { renderDailyReport } from './daily-report.js?v=report-labels-45';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=platform-shop-management-43';
 import { addThunderCheck } from './thunder-slip.js?v=bank-slip-preview-37';
 import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=platform-shop-management-43';

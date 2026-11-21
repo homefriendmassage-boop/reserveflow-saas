@@ -58,7 +58,7 @@ function lineMessage(kind: string, payload: Record<string, string>, site: string
       ]},
       body:{type:'box',layout:'vertical',spacing:'md',contents:[
         {type:'box',layout:'vertical',backgroundColor:'#EAF8F3',cornerRadius:'12px',paddingAll:'12px',spacing:'sm',contents:[
-          {type:'text',text:'ยอดรับที่ระบบยืนยัน',size:'sm',color:'#24634F',wrap:true},
+          {type:'text',text:'ยอดรับจากสลิปที่ตรวจผ่าน',size:'sm',color:'#24634F',wrap:true},
           {type:'text',text:money(payload.verified_amount),weight:'bold',size:'xl',color:'#11523E',wrap:true},
           {type:'text',text:'ตรวจรับเงิน '+payload.verified_count+' รายการ',size:'xs',color:'#24634F'}
         ]},
@@ -68,7 +68,7 @@ function lineMessage(kind: string, payload: Record<string, string>, site: string
         row('ยืนยัน / เข้าใช้ / เสร็จ',payload.active),
         row('รอชำระ / รอตรวจ',payload.pending),
         row('ยกเลิก',payload.cancelled),
-        {type:'text',text:'รอบรายงาน 06:00 ถึงก่อน 06:00 วันถัดไป ยอดรับนับตามเวลาโอนที่ระบบยืนยัน',wrap:true,size:'xs',color:'#68758A'}
+        {type:'text',text:'รอบรายงาน 06:00 ถึงก่อน 06:00 วันถัดไป ยอดรับนับตามเวลาโอนของสลิปที่ตรวจผ่าน',wrap:true,size:'xs',color:'#68758A'}
       ]},
       footer:{type:'box',layout:'vertical',contents:[
         {type:'button',action:{type:'uri',label:'เปิดหลังบ้าน',uri:new URL('merchant.html',site).href}}
