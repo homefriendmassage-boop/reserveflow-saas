@@ -1,9 +1,10 @@
+import { counterPaymentRpc, openMerchantCounterPayment } from './counter-payment.js';
 import { editBookingRecipient, renderBookingHistory } from './merchant-booking-tools.js?v=merchant-tools-1';
 import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-details.js';
 import { renderDailyReport } from './daily-report.js?v=report-labels-45';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=platform-shop-management-43';
 import { addThunderCheck } from './thunder-slip.js?v=bank-slip-preview-37';
-import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=platform-shop-management-43';
+import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=counter-payment-46';
 import { renderMerchantTeam } from './merchant-team.js?v=team-slip-credits-1';
 import { renderMerchantSettings } from './merchant-settings.js?v=floor-template-41';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, timeAtShop } from './booking-slots.js?v=business-day-1';
@@ -77,6 +78,9 @@ let saving = false;
 
 const actionErrors = {
   LINE_CUSTOMER_UNAVAILABLE: 'โปรไฟล์ LINE นี้ใช้ส่งจาก OA ของร้านไม่ได้ กรุณาค้นหาใหม่',
+  COUNTER_PHONE_REQUIRED: 'ใส่เบอร์โทรลูกค้าเพื่อสร้าง QR รับชำระ',
+  BOOKING_PAYMENT_UNAVAILABLE: 'ตรวจช่องทางรับเงินและราคาที่นั่งก่อนสร้าง QR',
+  SLIP_BOOKING_UNAVAILABLE: 'รายการนี้หมดเวลาหรือยังไม่มีสลิปให้ยืนยัน',
   BOOKING_RESOURCE_IN_USE: 'จุดนี้ยังมีผู้ใช้บริการ กรุณาสิ้นสุดการใช้งานเดิมก่อน',
   BOOKING_SLOT_TAKEN: 'รายการนี้ถูกจองในช่วงเวลาดังกล่าวแล้ว',
   INVALID_BOOKING_DATE: 'เลือกเวลาในอนาคตและจองล่วงหน้าได้สูงสุด 90 วัน',
@@ -182,7 +186,7 @@ function showLogin(message = '') {
   status.textContent = message;
 }
 
-function bookingCard(booking, timezone, changeStatus, readSlip, client, refresh) {
+function bookingCard(booking, timezone, changeStatus, readSlip, client, refresh, showCounter) {
   const card = document.createElement('article');
   card.className = 'booking';
   const title = document.createElement('h3');
@@ -240,6 +244,27 @@ function bookingCard(booking, timezone, changeStatus, readSlip, client, refresh)
       }
     });
     card.append(attachment);
+  }
+  if (['pending_payment','slip_review'].includes(booking.status)) {
+    void counterPaymentRpc(client,'merchant_counter_payment_token',{
+      p_shop_id:shopMenu.value,p_booking_id:booking.id
+    }).then(token => {
+      if (!token) return;
+      const payment = document.createElement('button');
+      payment.type = 'button';
+      payment.className = 'btn soft small';
+      payment.textContent = 'เปิด QR / แนบสลิป';
+      payment.onclick = () => showCounter(token);
+      card.append(payment);
+      if (booking.status === 'slip_review' && canManageTables()) {
+        const approve = document.createElement('button');
+        approve.type = 'button';
+        approve.className = 'btn primary small';
+        approve.textContent = 'ยืนยันรับชำระแล้ว';
+        approve.onclick = () => changeStatus(booking.id,'counter_paid');
+        card.append(approve);
+      }
+    }).catch(() => {});
   }
   const isTable = booking.category_code === 'table' ||
     shopResources.some(row => row.category_code === booking.category_code && row.table === true);
@@ -430,7 +455,14 @@ if (typeof window.supabase?.createClient !== 'function') {
     }
   }
 
+  function showCounter(token) {
+    return openMerchantCounterPayment(client,byId('merchantCounterPayment'),token,loadBookings);
+  }
+
   function changeStatus(id, next) {
+    if (next === 'counter_paid') return runAction(() =>
+      counterPaymentRpc(client,'confirm_counter_booking_payment',{p_shop_id:shopMenu.value,p_booking_id:id}),
+    'ยืนยันรับชำระแล้ว');
     if (next === 'checked_in') return runAction(store => store.checkIn(id), 'เช็กอินแล้ว');
     const message = next === 'confirmed' ? 'ยืนยันการจองแล้ว' : 'บันทึกว่าใช้งานเสร็จแล้ว';
     return runAction(store => store.changeTableStatus(id, next), message);
@@ -442,7 +474,7 @@ if (typeof window.supabase?.createClient !== 'function') {
       [row.id, row.resource_code, row.customer_name].some(value => value?.toLowerCase().includes(term)));
     if (rows.length) {
       bookings.replaceChildren(...rows.map(row => bookingCard(row, bookingTimezone, changeStatus, id =>
-        createSupabaseStore(client, shopMenu.value).getBookingSlip(id), client, loadBookings)));
+        createSupabaseStore(client, shopMenu.value).getBookingSlip(id), client, loadBookings, token => runAction(() => showCounter(token),'เปิดรายการรับชำระแล้ว'))));
     } else {
       bookings.textContent = term ? 'ไม่พบรายการจองที่ค้นหา' : 'ยังไม่มีรายการจอง';
     }
@@ -597,6 +629,9 @@ if (typeof window.supabase?.createClient !== 'function') {
   });
 
   async function loadShop() {
+    const counterPanel = byId('merchantCounterPayment');
+    counterPanel.classList.add('hidden');
+    counterPanel.replaceChildren();
     const shop = shopMenu.selectedOptions[0];
     if (!shop) return;
     const request = ++bookingRequest;
@@ -658,9 +693,9 @@ if (typeof window.supabase?.createClient !== 'function') {
       if (request !== bookingRequest) return;
       const editableTemplates = new Map((templateAccess?.data || []).map(row => [row.code,row.editable]));
       for (const category of categories) category.template_editable = editableTemplates.get(category.code);
-      const tableCodes = new Set(categories.filter(category => category.template === 'table').map(category => category.code));
+      const tableCodes = new Set(categories.filter(category => ['table','seat'].includes(category.template)).map(category => category.code));
       shopResources = resources.map(resource => ({ ...resource, table: tableCodes.has(resource.category_code) }));
-      categoryMenu.replaceChildren(...categories.filter(category => currentRole !== 'staff' || category.template === 'table').map(category => {
+      categoryMenu.replaceChildren(...categories.filter(category => currentRole !== 'staff' || ['table','seat'].includes(category.template)).map(category => {
         const option = new Option(category.name || category.code, category.code);
         option.dataset.template = category.template;
         return option;
@@ -689,6 +724,15 @@ if (typeof window.supabase?.createClient !== 'function') {
     const category = categoryMenu.value;
     const resource = tableMenu.value;
     const template = categoryMenu.selectedOptions[0]?.dataset.template;
+    const counter = event.submitter?.id === 'merchantCounterCreate';
+    if (!counter && currentRole === 'staff' && template === 'seat' && tableMode.value === 'actual') {
+      actionStatus.textContent = 'ให้แคชเชียร์หรือแอดมินบันทึกเวลาเริ่มย้อนหลังสำหรับที่นั่ง';
+      return;
+    }
+    if (counter && tableMode.value === 'actual') {
+      actionStatus.textContent = 'เลือกตอนนี้หรือจองล่วงหน้าเพื่อสร้าง QR';
+      return;
+    }
     const scheduled = tableMode.value === 'scheduled';
     const actual = tableMode.value === 'actual';
     const [hour, minute] = (actual ? actualTimeField : timeField).value.split(':').map(Number);
@@ -702,7 +746,7 @@ if (typeof window.supabase?.createClient !== 'function') {
       p_name: byId('merchantTableName').value, p_phone: byId('merchantTablePhone').value
     };
     const recipient = recipientPicker.recipient;
-    const fingerprint = JSON.stringify([tableMode.value,payload,recipient?.line_user]);
+    const fingerprint = JSON.stringify([tableMode.value,payload,recipient?.line_user,counter]);
     if (pendingBooking?.fingerprint !== fingerprint) {
       pendingBooking = { fingerprint, id: crypto.randomUUID() };
     }
@@ -710,7 +754,10 @@ if (typeof window.supabase?.createClient !== 'function') {
     const shopId = shopMenu.value;
     void runAction(async store => {
       const request = { ...payload, p_request_id: id, p_name: payload.p_name.trim() || recipient?.display_name || '' };
-      if (recipient) {
+      if (counter) {
+        const token = await counterPaymentRpc(client,'create_counter_booking_payment',{p_shop_id:shopId,p_request:request});
+        if (shopMenu.value === shopId) await showCounter(token);
+      } else if (recipient) {
         const result = await client.rpc('create_merchant_booking_for_line',{
           p_shop_id:shopId,p_request:request,p_line_user:recipient.line_user,p_actual:actual
         });
@@ -723,7 +770,7 @@ if (typeof window.supabase?.createClient !== 'function') {
       byId('merchantTableName').value = '';
       byId('merchantTablePhone').value = '';
       recipientPicker.reset();
-    }, recipient ? 'บันทึกการจองแล้ว · เข้าคิวส่ง Flex ให้ลูกค้า' : 'บันทึกการจองแล้ว');
+    }, counter ? 'สร้าง QR รับชำระแล้ว' : recipient ? 'บันทึกการจองแล้ว · เข้าคิวส่ง Flex ให้ลูกค้า' : 'บันทึกการจองแล้ว');
   });
 
   client.auth.onAuthStateChange(event => {

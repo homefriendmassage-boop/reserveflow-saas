@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="./assets/css/app.css?v=floor-template-41">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/merchant-portal.js?v=report-labels-45"></script>
+  <script type="module" src="./src/features/merchant-portal.js?v=counter-payment-46"></script>
 </head>
 <body>
 <header>
@@ -150,12 +150,14 @@
           <div class="field hidden"><label for="merchantTableTime">เวลาเริ่ม</label><select id="merchantTableTime" required disabled></select></div>
           <div class="field hidden"><label for="merchantTableActualTime">เวลาเริ่มจริง</label><input id="merchantTableActualTime" type="time" required disabled></div>
           <div class="field"><label for="merchantTableName">ชื่อผู้จอง (ไม่บังคับ)</label><input id="merchantTableName" maxlength="100"></div>
-          <div class="field"><label for="merchantTablePhone">เบอร์โทรศัพท์ (ไม่บังคับ)</label><input id="merchantTablePhone" type="tel" maxlength="20"></div>
+          <div class="field"><label for="merchantTablePhone">เบอร์โทรศัพท์ (จำเป็นสำหรับ QR รับชำระ)</label><input id="merchantTablePhone" type="tel" maxlength="20"></div>
         </div>
         <p class="sub">จองตอนนี้จะบันทึกเป็นเช็กอินแล้ว การจองล่วงหน้าจะบันทึกเป็นยืนยันแล้ว</p>
         <button type="submit" class="btn primary" disabled>บันทึกการจอง</button>
+        <button id="merchantCounterCreate" type="submit" class="btn soft">สร้าง QR รับชำระ</button>
       </form>
     </details>
+    <section id="merchantCounterPayment" class="merchant-settings-panel hidden"></section>
     <p id="merchantActionStatus" role="status"></p>
     <div class="field">
       <label for="merchantBookingSearch">ค้นหาด้วยชื่อผู้จอง เลขจอง หรือรหัสรายการ</label>

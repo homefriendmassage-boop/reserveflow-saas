@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="./assets/css/app.css?v=pass-review-1">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/customer-booking-pass.js?v=late-line-pass-1"></script>
+  <script type="module" src="./src/features/customer-booking-pass.js?v=counter-payment-46"></script>
 </head>
 <body>
 <main class="booking-pass-page">
@@ -28,9 +28,12 @@
       </div>
       <p id="passQrHelp" class="sub"></p>
       <div id="passQr" class="booking-pass-qr hidden" aria-label="QR สำหรับให้พนักงานสแกน"></div>
+      <section id="counterPayment" class="merchant-settings-panel hidden"></section>
       <section id="passLine" class="merchant-settings-panel pass-line hidden" aria-labelledby="passLineTitle">
         <h2 id="passLineTitle">รับบัตรจองทาง LINE</h2>
         <p id="passLineHelp"></p>
+        <a id="passLineFriend" class="btn soft hidden" target="_blank" rel="noopener">เพิ่มเพื่อน LINE ร้าน</a>
+        <a id="passLineChat" class="btn soft hidden" target="_blank" rel="noopener">เปิด LINE เพื่อส่งข้อความเชื่อมบัตร</a>
         <label class="field"><span>ข้อความที่ใช้เชื่อมบัตร</span><input id="passLineCode" readonly></label>
         <button id="passCopyCode" class="btn soft" type="button">คัดลอกข้อความเชื่อมบัตร</button>
       </section>
