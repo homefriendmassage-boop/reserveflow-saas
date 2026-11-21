@@ -56,6 +56,7 @@ const dateField = byId('merchantTableDate');
 const timeField = byId('merchantTableTime');
 const actualTimeField = byId('merchantTableActualTime');
 const guestField = byId('merchantTableGuests');
+const bookingPayment = byId('merchantBookingPayment');
 const tableSubmit = tableForm.querySelector('button[type="submit"]');
 const categorySettings = byId('merchantCategorySettings');
 const statCards = [...byId('merchantStats').querySelectorAll('strong')];
@@ -78,6 +79,7 @@ let saving = false;
 
 const actionErrors = {
   LINE_CUSTOMER_UNAVAILABLE: 'โปรไฟล์ LINE นี้ใช้ส่งจาก OA ของร้านไม่ได้ กรุณาค้นหาใหม่',
+  BOOKING_PRICE_CHANGED: 'ยอดจองเปลี่ยนระหว่างทำรายการ โหลดหน้าร้านใหม่แล้วตรวจยอดก่อนบันทึก',
   COUNTER_PHONE_REQUIRED: 'ใส่เบอร์โทรลูกค้าเพื่อสร้าง QR รับชำระ',
   BOOKING_PAYMENT_UNAVAILABLE: 'ตรวจช่องทางรับเงินและราคาที่นั่งก่อนสร้าง QR',
   SLIP_BOOKING_UNAVAILABLE: 'รายการนี้หมดเวลาหรือยังไม่มีสลิปให้ยืนยัน',
@@ -138,10 +140,32 @@ function loadMerchantResources() {
   }));
   updateTableCapacity();
   tableSubmit.disabled = saving || !tableMenu.value;
+  updateBookingPayment();
 }
 categoryMenu.addEventListener('change', loadMerchantResources);
 
 timeField.replaceChildren(...bookingTimeOptions());
+function bookingCashAmount() {
+  const category = categoryMenu.selectedOptions[0]?.dataset;
+  if (!category || category.price === undefined) return null;
+  const quantity = ['staff','vip','seat'].includes(category.template)
+    ? Number(hoursField.value) : Number((category.template === 'ticket' ? ticketsField : guestField).value);
+  return Math.round((Number(category.price)*quantity+Number(category.serviceFee))*100)/100;
+}
+function updateBookingPayment() {
+  const cash = bookingPayment.value === 'cash';
+  const amount = bookingCashAmount();
+  tableSubmit.textContent = cash
+    ? amount === 0 ? 'บันทึกการจอง' : 'ยืนยันรับเงินสดและบันทึกจอง'
+    : 'สร้าง QR ให้ลูกค้าชำระ';
+  const total = new Intl.NumberFormat('th-TH',{style:'currency',currency:'THB'}).format(amount);
+  byId('merchantBookingPaymentHelp').textContent = cash
+    ? amount === 0 ? 'รายการนี้ไม่มียอดชำระ'
+      : amount === null ? 'กดยืนยันเมื่อรับเงินสดครบแล้ว' : 'รับเงินสด ' + total + ' ก่อนกดยืนยัน'
+    : 'ให้ลูกค้าสแกน QR เพื่อชำระเงินและแนบสลิปบนเครื่องของลูกค้า';
+}
+bookingPayment.addEventListener('change', updateBookingPayment);
+for (const field of [guestField,hoursField,ticketsField]) field.addEventListener('input',updateBookingPayment);
 tableMode.addEventListener('change', toggleTableSchedule);
 tableMenu.addEventListener('change', updateTableCapacity);
 
@@ -169,6 +193,7 @@ function showLogin(message = '') {
   publicLink.classList.add('hidden');
   tableMenu.replaceChildren();
   tableForm.reset();
+  updateBookingPayment();
   toggleTableSchedule();
   tableEditor.open = false;
   categoryMenu.replaceChildren();
@@ -204,6 +229,7 @@ function bookingCard(booking, timezone, changeStatus, readSlip, client, refresh,
   details.textContent = [
     formatDate.formatRange(new Date(booking.starts_at), new Date(booking.ends_at)),
     labels[booking.status] || booking.status,
+    booking.paid_cash ? 'รับเงินสดแล้ว' : '',
     currentRole === 'staff' ? '' : amount.format(booking.amount)
   ].filter(Boolean).join(' · ');
   const reference = document.createElement('small');
@@ -487,9 +513,13 @@ if (typeof window.supabase?.createClient !== 'function') {
     if (!shop) return;
     bookings.textContent = 'กำลังโหลดรายการจอง…';
     try {
-      const rows = await createSupabaseStore(client, shop.value).getBookings();
+      const [rows,cash] = await Promise.all([
+        createSupabaseStore(client,shop.value).getBookings(),
+        counterPaymentRpc(client,'merchant_cash_booking_ids',{p_shop_id:shop.value}).catch(() => [])
+      ]);
       if (request !== bookingRequest) return;
-      displayedBookings = rows;
+      const cashIds = new Set(cash || []);
+      displayedBookings = rows.map(row => ({...row,paid_cash:cashIds.has(row.id)}));
       const totals = [
         rows.length,
         rows.filter(row => row.status === 'pending_payment').length,
@@ -671,6 +701,7 @@ if (typeof window.supabase?.createClient !== 'function') {
     tableMenu.replaceChildren();
     tableSubmit.disabled = true;
     tableForm.reset();
+    updateBookingPayment();
     toggleTableSchedule();
     dateField.value = businessDateAtShop(shop.dataset.timezone);
     actionStatus.textContent = '';
@@ -698,6 +729,8 @@ if (typeof window.supabase?.createClient !== 'function') {
       categoryMenu.replaceChildren(...categories.filter(category => currentRole !== 'staff' || ['table','seat'].includes(category.template)).map(category => {
         const option = new Option(category.name || category.code, category.code);
         option.dataset.template = category.template;
+        if (category.price != null) option.dataset.price = category.price;
+        option.dataset.serviceFee = category.service_fee || 0;
         return option;
       }));
       loadMerchantResources();
@@ -724,7 +757,7 @@ if (typeof window.supabase?.createClient !== 'function') {
     const category = categoryMenu.value;
     const resource = tableMenu.value;
     const template = categoryMenu.selectedOptions[0]?.dataset.template;
-    const counter = event.submitter?.id === 'merchantCounterCreate';
+    const counter = bookingPayment.value === 'transfer';
     if (!counter && currentRole === 'staff' && template === 'seat' && tableMode.value === 'actual') {
       actionStatus.textContent = 'ให้แคชเชียร์หรือแอดมินบันทึกเวลาเริ่มย้อนหลังสำหรับที่นั่ง';
       return;
@@ -746,31 +779,35 @@ if (typeof window.supabase?.createClient !== 'function') {
       p_name: byId('merchantTableName').value, p_phone: byId('merchantTablePhone').value
     };
     const recipient = recipientPicker.recipient;
-    const fingerprint = JSON.stringify([tableMode.value,payload,recipient?.line_user,counter]);
+    const cashAmount = counter ? null : bookingCashAmount();
+    const fingerprint = JSON.stringify([tableMode.value,payload,recipient?.line_user,counter,cashAmount]);
     if (pendingBooking?.fingerprint !== fingerprint) {
       pendingBooking = { fingerprint, id: crypto.randomUUID() };
     }
     const id = pendingBooking.id;
     const shopId = shopMenu.value;
-    void runAction(async store => {
+    void runAction(async () => {
       const request = { ...payload, p_request_id: id, p_name: payload.p_name.trim() || recipient?.display_name || '' };
       if (counter) {
         const token = await counterPaymentRpc(client,'create_counter_booking_payment',{p_shop_id:shopId,p_request:request});
         if (shopMenu.value === shopId) await showCounter(token);
-      } else if (recipient) {
-        const result = await client.rpc('create_merchant_booking_for_line',{
-          p_shop_id:shopId,p_request:request,p_line_user:recipient.line_user,p_actual:actual
-        });
-        if (result.error) throw result.error;
       } else {
-        await store.createMerchantBooking(request, template, actual);
+        await counterPaymentRpc(client,'create_merchant_cash_booking',{
+          p_shop_id:shopId,p_request:{...request,p_expected_amount:cashAmount},p_actual:actual,p_line_user:recipient?.line_user || null
+        });
       }
       if (shopMenu.value !== shopId) return;
+      if (!counter) {
+        const panel = byId('merchantCounterPayment');
+        panel.classList.add('hidden');
+        panel.replaceChildren();
+      }
       pendingBooking = undefined;
       byId('merchantTableName').value = '';
       byId('merchantTablePhone').value = '';
       recipientPicker.reset();
-    }, counter ? 'สร้าง QR รับชำระแล้ว' : recipient ? 'บันทึกการจองแล้ว · เข้าคิวส่ง Flex ให้ลูกค้า' : 'บันทึกการจองแล้ว');
+    }, counter ? 'สร้าง QR รับชำระแล้ว'
+      : cashAmount === 0 ? 'บันทึกการจองแล้ว · ไม่มียอดชำระ' : 'บันทึกการจองและรับเงินสดแล้ว');
   });
 
   client.auth.onAuthStateChange(event => {
