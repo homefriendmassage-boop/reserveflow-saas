@@ -98,7 +98,7 @@ export async function showSignupPackages(client, container) {
       ...Object.entries(labels).filter(([key]) => data.payments_enabled && data.prices[key])
         .map(([key,label]) => new Option(label+' · '+money(data.prices[key]),key)));
     container.textContent = [
-      'ทดลองฟรี 7 วัน',
+      'ทดลองฟรี 7 วัน · ตรวจสลิป 10 ครั้ง',
       ...Object.entries(labels).map(([key,label]) => label + (data.prices[key] ? ' ' + money(data.prices[key]) : ' · รอตั้งราคา'))
     ].join(' / ');
   } catch { container.textContent = 'ทดลองฟรี 7 วัน'; }
@@ -113,21 +113,30 @@ function slipCreditPanel(client, shopId) {
 
   async function load() {
     const data = await rpc(client,'shop_slip_credit_overview',{p_shop_id:shopId});
-    const {credits,amount} = data.offer;
-    body.replaceChildren(
-      node('p',credits + ' สลิป · ' + money(amount) + ' (' + money(amount / credits) + ' ต่อสลิป)'),
-      node('p','เครดิตตรวจสลิปไม่มีค่าแนะนำ'));
+    const packs = data.offers || [{code:'starter',...data.offer}];
+    const packLabel = pack => pack.credits + ' สลิป · ' + money(pack.amount)
+      + ' (' + money(pack.amount / pack.credits) + ' ต่อสลิป)';
+    body.replaceChildren(node('p','เครดิตตรวจสลิปไม่มีค่าแนะนำ'));
     if (shopId) {
-      body.append(node('p','เครดิตคงเหลือ ' + data.balance + ' สลิป'));
+      if (data.allowance) body.append(node('p','โควต้ารวมในแพ็กเกจคงเหลือ ' + data.allowance.remaining
+        + ' / ' + data.allowance.included_limit + ' สลิป'));
+      body.append(node('p','เครดิตเติมเงินคงเหลือ ' + data.balance + ' สลิป'));
       const current = data.orders.find(order => order.state === 'pending');
       for (const order of data.orders.filter(order => order.state !== 'pending')) {
         body.append(node('p',order.credits + ' สลิป · ' + money(order.amount) + ' · ' + stateLabels[order.state]));
       }
       if (!current) {
-        body.append(data.payments_enabled ? button('สร้างรายการเติมเครดิต',async () => {
-          await rpc(client,'open_slip_credit_order',{p_shop_id:shopId});
+        if (!data.payments_enabled) {
+          body.append(node('p','รอ Superadmin ตั้งค่าบัญชีรับเงินแพลตฟอร์ม'));
+          return;
+        }
+        const pack = node('select');
+        pack.replaceChildren(...packs.map(item => new Option(packLabel(item),item.code)));
+        body.append(field('เลือกแพ็กเกจตรวจสลิป',pack),button('สร้างรายการเติมเครดิต',async () => {
+          if (data.offers) await rpc(client,'open_slip_credit_pack',{p_shop_id:shopId,p_code:pack.value});
+          else await rpc(client,'open_slip_credit_order',{p_shop_id:shopId});
           await load();
-        },feedback) : node('p','รอ Superadmin ตั้งค่าบัญชีรับเงินแพลตฟอร์ม'));
+        },feedback));
         return;
       }
       body.append(node('h3','รายการเติมเครดิต · ' + current.credits + ' สลิป · ' + money(current.amount)));
@@ -161,19 +170,24 @@ function slipCreditPanel(client, shopId) {
       return;
     }
 
-    const quantity = node('input');
-    Object.assign(quantity,{type:'number',min:'1',max:'100000',step:'1',value:credits,required:true});
-    const price = node('input');
-    Object.assign(price,{type:'number',min:'0.01',step:'0.01',value:amount,required:true});
-    const fields = node('div');
-    fields.className = 'fields';
-    fields.append(field('จำนวนสลิป',quantity),field('ราคาแพ็กเกจ (บาท)',price));
-    body.append(fields,button('บันทึกราคาเครดิตตรวจสลิป',async () => {
-      if (!quantity.reportValidity() || !price.reportValidity()) return;
-      await rpc(client,'save_slip_credit_offer',{p_credits:Number(quantity.value),p_amount:Number(price.value)});
-      await load();
-      feedback.textContent = 'บันทึกราคาเครดิตแล้ว';
-    },feedback),node('h3','สลิปเติมเครดิตรอตรวจ'));
+    for (const pack of packs) {
+      const quantity = node('input');
+      Object.assign(quantity,{type:'number',min:'1',max:'100000',step:'1',value:pack.credits,required:true});
+      const price = node('input');
+      Object.assign(price,{type:'number',min:'0.01',step:'0.01',value:pack.amount,required:true});
+      const fields = node('div');
+      fields.className = 'fields';
+      fields.append(field('จำนวนสลิป',quantity),field('ราคาแพ็กเกจ (บาท)',price));
+      body.append(node('h3',packLabel(pack)),fields,button('บันทึกราคาเครดิตตรวจสลิป',async () => {
+        if (!quantity.reportValidity() || !price.reportValidity()) return;
+        const args = {p_credits:Number(quantity.value),p_amount:Number(price.value)};
+        if (data.offers) await rpc(client,'save_slip_credit_pack',{...args,p_code:pack.code});
+        else await rpc(client,'save_slip_credit_offer',args);
+        await load();
+        feedback.textContent = 'บันทึกราคาเครดิตแล้ว';
+      },feedback));
+    }
+    body.append(node('h3','สลิปเติมเครดิตรอตรวจ'));
     if (!data.orders.length) body.append(node('p','ไม่มีสลิปเติมเครดิตรอตรวจ'));
     for (const order of data.orders) {
       const entry = node('article');
@@ -328,7 +342,8 @@ export function renderPlatformTools(client) {
     const fields=node('div');
     fields.className='fields';
     fields.append(field('พร้อมเพย์แพลตฟอร์ม (เบอร์มือถือหรือเลขบัตรประชาชน)',mobile),field('ค่าแนะนำเฉพาะแพ็กเกจแพลตฟอร์ม (%)',referralPercent),...rows.map(row=>row.field));
-    body.replaceChildren(fields,button('ใส่ราคาแนะนำ',() => {
+    body.replaceChildren(node('p','แพ็กเกจที่ชำระแล้วรวมโควต้าตรวจสลิป 100 ครั้งต่อเดือนปฏิทิน'
+      + ' · ทดลองใช้และร้านเดิมที่ยังไม่มีแพ็กเกจได้รับโควต้าเริ่มต้น 10 ครั้ง'),fields,button('ใส่ราคาแนะนำ',() => {
       for (const row of rows) row.input.value = suggestedPrices[row.key];
       feedback.textContent = 'ใส่ราคาแนะนำแล้ว ตรวจราคาแล้วกดบันทึกเพื่อใช้จริง';
     },feedback),button('บันทึกราคาและบัญชีรับเงิน',async () => {

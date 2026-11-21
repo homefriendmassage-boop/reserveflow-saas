@@ -1,7 +1,8 @@
+import { editBookingRecipient, renderBookingHistory } from './merchant-booking-tools.js?v=merchant-tools-1';
 import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-details.js';
 import { renderDailyReport } from './daily-report.js?v=business-day-1';
-import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=team-slip-credits-1';
-import { addThunderCheck } from './thunder-slip.js?v=team-slip-credits-1';
+import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=merchant-tools-1';
+import { addThunderCheck } from './thunder-slip.js?v=merchant-tools-1';
 import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=personal-actual-1';
 import { renderMerchantTeam } from './merchant-team.js?v=team-slip-credits-1';
 import { renderMerchantSettings } from './merchant-settings.js?v=payment-drafts-1';
@@ -75,6 +76,7 @@ let pendingBooking;
 let saving = false;
 
 const actionErrors = {
+  LINE_CUSTOMER_UNAVAILABLE: 'โปรไฟล์ LINE นี้ใช้ส่งจาก OA ของร้านไม่ได้ กรุณาค้นหาใหม่',
   BOOKING_RESOURCE_IN_USE: 'จุดนี้ยังมีผู้ใช้บริการ กรุณาสิ้นสุดการใช้งานเดิมก่อน',
   BOOKING_SLOT_TAKEN: 'รายการนี้ถูกจองในช่วงเวลาดังกล่าวแล้ว',
   INVALID_BOOKING_DATE: 'เลือกเวลาในอนาคตและจองล่วงหน้าได้สูงสุด 90 วัน',
@@ -306,6 +308,7 @@ if (typeof window.supabase?.createClient !== 'function') {
     auth: { flowType: 'pkce', storage: authStorage }
   });
 
+  const recipientPicker = editBookingRecipient(client, byId('merchantBookingRecipient'));
   const passFeedback = byId('merchantPassStatus');
   const passDetails = byId('merchantPassDetails');
   const passConfirm = byId('merchantPassConfirm');
@@ -528,6 +531,8 @@ if (typeof window.supabase?.createClient !== 'function') {
     const report = byId('merchantDailyReport');
     report.replaceChildren();
     if (canManageTables()) renderDailyReport(client, report, shop.value, shop.dataset.timezone);
+    renderBookingHistory(client, byId('merchantBookingHistory'), canManageTables() ? shop.value : null, shop.dataset.timezone);
+    recipientPicker.reset(canManageTables() ? shop.value : null);
     publicLink.classList.toggle('hidden', !shop.dataset.slug);
     publicLink.href = './book.html?' + new URLSearchParams({ shop: shop.dataset.slug || '' });
     const roleHelp = {
@@ -619,19 +624,29 @@ if (typeof window.supabase?.createClient !== 'function') {
       p_tickets: ticketsField.disabled ? null : Number(ticketsField.value),
       p_name: byId('merchantTableName').value, p_phone: byId('merchantTablePhone').value
     };
-    const fingerprint = JSON.stringify([tableMode.value,payload]);
+    const recipient = recipientPicker.recipient;
+    const fingerprint = JSON.stringify([tableMode.value,payload,recipient?.line_user]);
     if (pendingBooking?.fingerprint !== fingerprint) {
       pendingBooking = { fingerprint, id: crypto.randomUUID() };
     }
     const id = pendingBooking.id;
     const shopId = shopMenu.value;
     void runAction(async store => {
-      await store.createMerchantBooking({ ...payload, p_request_id: id }, template, actual);
+      const request = { ...payload, p_request_id: id, p_name: payload.p_name.trim() || recipient?.display_name || '' };
+      if (recipient) {
+        const result = await client.rpc('create_merchant_booking_for_line',{
+          p_shop_id:shopId,p_request:request,p_line_user:recipient.line_user,p_actual:actual
+        });
+        if (result.error) throw result.error;
+      } else {
+        await store.createMerchantBooking(request, template, actual);
+      }
       if (shopMenu.value !== shopId) return;
       pendingBooking = undefined;
       byId('merchantTableName').value = '';
       byId('merchantTablePhone').value = '';
-    }, 'บันทึกการจองแล้ว');
+      recipientPicker.reset();
+    }, recipient ? 'บันทึกการจองแล้ว · เข้าคิวส่ง Flex ให้ลูกค้า' : 'บันทึกการจองแล้ว');
   });
 
   client.auth.onAuthStateChange(event => {

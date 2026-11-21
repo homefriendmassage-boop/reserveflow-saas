@@ -98,6 +98,26 @@ async function configure(request: Request, admin: ReturnType<typeof serviceClien
   }
 }
 
+async function saveCustomerProfile(
+  client: ReturnType<typeof serviceClient>, shop: string, bot: string, user: string
+) {
+  if (!/^U[0-9a-f]{32}$/.test(user)) return;
+  const credentials = await client.rpc('shop_customer_profile_token', { p_shop_id: shop, p_bot: bot });
+  if (credentials.error || !credentials.data) return;
+  const response = await fetch('https://api.line.me/v2/bot/profile/' + user, {
+    headers: { Authorization: 'Bearer ' + credentials.data },
+    redirect: 'error', signal: AbortSignal.timeout(3500)
+  });
+  if (!response.ok) { await response.body?.cancel(); return; }
+  const profile = await response.json();
+  if (profile.userId !== user) return;
+  await client.rpc('save_shop_line_customer', {
+    p_shop_id: shop, p_bot: bot, p_user: user,
+    p_name: typeof profile.displayName === 'string' ? profile.displayName : null,
+    p_picture: typeof profile.pictureUrl === 'string' ? profile.pictureUrl : null
+  });
+}
+
 Deno.serve(async request => {
   if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
   if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
@@ -133,6 +153,10 @@ Deno.serve(async request => {
       const incoming = event as LineEvent;
       const command = shopId && incoming?.type === 'message' && incoming.message?.type === 'text'
         && incoming.source?.type === 'user' ? incoming.message.text?.trim() : null;
+      if (command === 'ลงทะเบียนลูกค้า' && shopId && botId && incoming.source?.userId) {
+        await saveCustomerProfile(client, shopId, botId, incoming.source.userId);
+        continue;
+      }
       if (command?.startsWith('บัตร ')) {
         const code = command.slice('บัตร '.length);
         if (uuid.test(code)) {
@@ -140,6 +164,9 @@ Deno.serve(async request => {
             p_token: code, p_shop_id: shopId, p_bot: botId, p_user: incoming.source?.userId
           });
           if (linked.error) throw linked.error;
+          if (shopId && botId && incoming.source?.userId) {
+            await saveCustomerProfile(client, shopId, botId, incoming.source.userId).catch(() => {});
+          }
         }
         continue;
       }

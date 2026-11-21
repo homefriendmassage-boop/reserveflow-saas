@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="./assets/css/app.css?v=scan-checkin-status-1">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/merchant-portal.js?v=occupied-floor-1"></script>
+  <script type="module" src="./src/features/merchant-portal.js?v=merchant-tools-1"></script>
 </head>
 <body>
 <header>
@@ -68,6 +68,17 @@
     </section>
   <section class="hidden" id="merchantDashboard" aria-label="หลังบ้านร้านค้า">
     <div id="merchantDailyReport"></div>
+    <details id="merchantBookingHistory" class="merchant-settings-panel hidden">
+      <summary>ค้นหาประวัติการจอง</summary>
+      <form class="fields">
+        <label class="field"><span>วันที่เริ่มต้น</span><input name="from" type="date" required></label>
+        <label class="field"><span>วันที่สิ้นสุด</span><input name="to" type="date" required></label>
+        <label class="field"><span>ชื่อผู้จอง เลขจอง หรือจุดจอง</span><input name="term" type="search" maxlength="100"></label>
+        <button class="btn soft" type="submit">ค้นหาประวัติ</button>
+      </form>
+      <p role="status"></p>
+      <div role="list"></div>
+    </details>
     <div class="stats merchant-stats" id="merchantStats" aria-label="สรุปรายการจอง">
       <div class="stat"><strong>—</strong><span>ทั้งหมด</span></div>
       <div class="stat"><strong>—</strong><span>จองรอชำระ</span></div>
@@ -102,9 +113,19 @@
     <div id="merchantBusinessTools"></div>
     <div id="merchantAdvancedSettings" class="merchant-editor"></div>
     <section class="panel">
-    <h2>รายการจองทั้งหมด</h2>
+    <h2>รายการจองที่ยังเปิดอยู่</h2>
     <details id="merchantTableEditor" class="merchant-settings-panel hidden">
       <summary>จองแทนลูกค้า</summary>
+      <details id="merchantBookingRecipient" class="merchant-settings-panel hidden">
+        <summary>ค้นหาลูกค้า LINE เพื่อส่ง Flex</summary>
+        <form class="fields">
+          <label class="field"><span>ชื่อ LINE หรือ User ID</span><input type="search" maxlength="100" required></label>
+          <button class="btn soft" type="submit">ค้นหาลูกค้า LINE</button>
+          <button class="btn soft" type="reset">ล้างผู้รับ</button>
+        </form>
+        <p role="status"></p>
+        <div role="list"></div>
+      </details>
       <form id="merchantTableForm">
         <div class="fields">
           <div class="field"><label for="merchantBookingCategory">หมวดการจอง</label><select id="merchantBookingCategory" required></select></div>

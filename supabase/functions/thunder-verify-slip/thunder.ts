@@ -8,8 +8,9 @@ export async function verifySlip(payload: string, key: string, send = fetch) {
   });
   if (!response.ok) {
     await response.body?.cancel();
-    return { outcome: response.status === 429 || response.status >= 500 || [401,403].includes(response.status)
-      ? 'retry' : 'not_verified' };
+    if (response.status === 429) return { outcome:'retry', providerState:'thunder_limit' };
+    if ([401,403].includes(response.status)) return { outcome:'retry', providerState:'thunder_access' };
+    return { outcome: response.status >= 500 ? 'retry' : 'not_verified' };
   }
   const body = await response.json();
   const data = body?.data;

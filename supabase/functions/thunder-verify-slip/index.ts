@@ -47,7 +47,7 @@ Deno.serve(async request => {
       if (!payload) return json({state:'qr_unreadable'});
       try {
         const result = await verifySlip(payload,key);
-        if (result.outcome !== 'provider_verified') return json({state:result.outcome});
+        if (result.outcome !== 'provider_verified') return json({state:result.providerState || result.outcome});
         if (result.amount !== Number(order.amount)) return json({state:'amount_review',amount:result.amount});
         if (result.mobile !== order.mobile || !result.paidAt || Date.parse(result.paidAt)<Date.parse(order.created_at)
           || Date.parse(result.paidAt)>Date.now()+120000) return json({state:'receiver_review',amount:result.amount});
@@ -80,9 +80,13 @@ Deno.serve(async request => {
   } catch {
     result = {outcome:'retry'};
   }
+  if (payload && result.outcome === 'retry') {
+    const refund = await admin.rpc('refund_booking_slip_credit', { p_booking_id: bookingId });
+    if (refund.error) console.warn('Slip credit could not be refunded', refund.error.code);
+  }
   const finished = await admin.rpc('finish_thunder_booking_slip', {
     p_booking_id: bookingId, p_outcome: result.outcome, p_reference: result.reference ?? null,
     p_amount: result.amount ?? null, p_mobile: result.mobile ?? null, p_paid_at: result.paidAt ?? null
   });
-  return json(finished.error ? {state:'unavailable'} : finished.data);
+  return json(finished.error ? {state:'unavailable'} : result.providerState ? {state:result.providerState} : finished.data);
 });

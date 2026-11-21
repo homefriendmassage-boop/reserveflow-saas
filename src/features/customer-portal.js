@@ -1,4 +1,4 @@
-import { prepareSlipAttachment } from './customer-slip.js?v=occupied-floor-1';
+import { prepareSlipAttachment } from './customer-slip.js?v=merchant-tools-1';
 import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=occupied-floor-1';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, nextBookingDate, timeAtShop } from './booking-slots.js?v=business-day-1';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
@@ -26,6 +26,7 @@ let pendingRequest;
 
 const errorMessages = {
   BOOKING_PAYMENT_UNAVAILABLE: 'ร้านยังไม่ได้เปิดรับชำระพร้อมเพย์สำหรับรายการนี้',
+  BOOKING_QUOTE_MISMATCH: 'กรุณาเริ่มรายการใหม่เพื่อสร้าง QR ชำระเงิน',
   BOOKING_OPTION_UNAVAILABLE: 'รายการนี้ไม่เปิดให้จองแล้ว กรุณารีเฟรชหน้า',
   INVALID_CAPACITY: 'จำนวนคนหรือจำนวนบัตรเกินที่กำหนด',
   INVALID_BOOKING_DATE: 'เลือกเวลาในอนาคตและจองล่วงหน้าได้สูงสุด 90 วัน',

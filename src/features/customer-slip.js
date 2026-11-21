@@ -1,4 +1,4 @@
-import { checkThunderSlip, thunderStatus } from './thunder-slip.js?v=team-slip-credits-1';
+import { checkThunderSlip, thunderStatus } from './thunder-slip.js?v=merchant-tools-1';
 
 export function prepareSlipAttachment(client, draft, sendPayment, onComplete) {
   const section = document.getElementById('bookingSlip');
@@ -88,6 +88,7 @@ export function prepareSlipAttachment(client, draft, sendPayment, onComplete) {
     } catch (error) {
       status.textContent = ({
         BOOKING_PAYMENT_UNAVAILABLE: 'ร้านยังรับชำระรายการนี้ไม่ได้ กรุณาติดต่อร้าน',
+        BOOKING_QUOTE_MISMATCH: 'ฉบับร่างหมดอายุหรือข้อมูลเปลี่ยน หากโอนแล้วกรุณาติดต่อร้านพร้อมสลิป',
         BOOKING_RESOURCE_IN_USE: 'จุดนี้ยังมีผู้ใช้บริการ หากโอนแล้วกรุณาติดต่อร้านพร้อมสลิป',
         BOOKING_SLOT_TAKEN: 'ช่วงเวลานี้ถูกจองแล้ว หากโอนแล้วกรุณาติดต่อร้านพร้อมสลิป',
         INVALID_BOOKING_DATE: 'เลยเวลาที่เลือกแล้ว หากโอนแล้วกรุณาติดต่อร้านพร้อมสลิป',
