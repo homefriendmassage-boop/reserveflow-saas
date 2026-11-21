@@ -246,21 +246,82 @@ export function renderLineSettings(client, container, shopId) {
   });
 }
 
-export async function loadPlatformAdmin(client) {
+export async function loadPlatformAdmin(client, refresh) {
   const { data, error } = await client.rpc('platform_shop_overview');
-  if (error || !Array.isArray(data)) return;
-  document.getElementById('platformAdmin').classList.remove('hidden');
+  const admin = document.getElementById('platformAdmin');
+  admin.classList.toggle('hidden', !!error || !Array.isArray(data));
+  if (admin.classList.contains('hidden')) return;
   const list = document.getElementById('platformShopList');
-  list.replaceChildren(...data.map(shop => {
+  const feedback = element('p');
+  feedback.setAttribute('role','status');
+  const cards = data.map(shop => {
     const card = element('article');
     card.className = 'booking';
     const customer = element('a', 'หน้าจองของร้าน');
     customer.href = './book.html?' + new URLSearchParams({ shop: shop.slug });
+    const suspended = shop.platform_booking_suspended;
+    async function change(control, rpcName, args, success) {
+      control.disabled = true;
+      try {
+        const { error } = await client.rpc(rpcName,{p_shop_id:shop.shop_id,...args});
+        if (error) throw error;
+        await refresh();
+        document.getElementById('platformShopManagementStatus').textContent = success;
+      } catch (error) {
+        const messages = {
+          PGRST202:'รัน SQL ไฟล์ 43 ใน Supabase เพื่อเปิดเมนูจัดการร้าน',
+          PLATFORM_SHOP_NOT_FOUND:'ไม่พบร้านนี้ กรุณาโหลดหน้าใหม่',
+          PLATFORM_SHOP_CLOSE_FIRST:'ปิดรับจองจากเมนู Superadmin ก่อนลบร้าน',
+          PLATFORM_SHOP_CONFIRM_SLUG:'พิมพ์ชื่อในลิงก์จองให้ตรงกับร้าน',
+          '42501':'บัญชีนี้ไม่มีสิทธิ์จัดการร้าน'
+        };
+        feedback.textContent = messages[error.message] || messages[error.code] || 'จัดการร้านไม่สำเร็จ กรุณาลองอีกครั้ง';
+      } finally { control.disabled = false; }
+    }
+    const bookingAction = enabled => {
+      const label = enabled ? 'เปิดรับจองออนไลน์' : 'ปิดรับจองออนไลน์';
+      const control = action(label);
+      control.onclick = () => change(control,'set_platform_shop_booking',{p_enabled:enabled},
+        shop.name + ' ' + label + 'แล้ว');
+      return control;
+    };
     card.append(element('h3', shop.name), element('p', [
-      shop.slug, shop.public_booking_enabled ? 'เปิดรับจอง' : 'ปิดรับจอง',
+      shop.slug, suspended ? 'Superadmin ปิดรับจอง' : shop.public_booking_enabled ? 'เปิดรับจอง' : 'ปิดรับจอง',
       'ทีมงาน ' + shop.staff_count + ' บัญชี'
     ].join(' · ')), customer);
+    if (!shop.public_booking_enabled) card.append(bookingAction(true));
+    if (!suspended) card.append(bookingAction(false));
+    if (suspended) {
+      const deletion = element('details');
+      const form = element('form');
+      const label = element('label','พิมพ์ ' + shop.slug + ' เพื่อยืนยัน');
+      label.className = 'field';
+      const slug = element('input');
+      slug.required = true;
+      slug.autocomplete = 'off';
+      slug.setAttribute('autocapitalize','none');
+      label.append(slug);
+      const remove = action('ยืนยันลบร้านถาวร');
+      remove.type = 'submit';
+      remove.className = 'btn danger small';
+      form.append(label,remove);
+      form.onsubmit = event => {
+        event.preventDefault();
+        if (slug.value !== shop.slug) {
+          feedback.textContent = 'พิมพ์ชื่อในลิงก์จองให้ตรงกับร้าน';
+          slug.focus();
+          return;
+        }
+        void change(remove,'delete_platform_shop',{p_confirm_slug:slug.value},'ลบร้าน ' + shop.name + ' แล้ว');
+      };
+      deletion.append(element('summary','ลบร้านถาวร'),
+        element('p','ระบบจะลบข้อมูลร้าน การจอง ทีมงาน แพ็กเกจ เครดิตตรวจสลิป และการเชื่อม LINE OA การลบนี้ย้อนกลับไม่ได้'),
+        form);
+      card.append(deletion);
+    }
     return card;
-  }));
+  });
+  feedback.id = 'platformShopManagementStatus';
+  list.replaceChildren(element('h3','จัดการร้านค้า'),feedback,...cards);
   renderLineSettings(client, document.getElementById('platformLineSettings'), null);
 }

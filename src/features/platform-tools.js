@@ -427,23 +427,10 @@ function allowancePanel(client) {
   return panel;
 }
 
-export function renderPlatformTools(client) {
+export function renderPlatformTools(client, createShop) {
   const signup = document.getElementById('platformSignup');
   const referral = referralPanel(client,null);
-  const create = button('สร้างร้านค้าใหม่',() => {
-    const registration = document.getElementById('merchantRegister');
-    if (!document.getElementById('merchantDashboard').classList.contains('hidden')) {
-      const notice = document.getElementById('platformCreateNote');
-      notice.textContent = 'บัญชีนี้มีร้านแล้ว ส่งใบสมัครให้เจ้าของร้านใหม่เปิดและเข้าสู่ระบบด้วยบัญชีของเขา';
-      return;
-    }
-    registration.classList.remove('hidden');
-    void showSignupPackages(client,document.getElementById('signupPackages'));
-    registration.scrollIntoView({block:'start'});
-  },referral);
-  const note = node('p');
-  note.id = 'platformCreateNote';
-  signup.replaceChildren(create,note,referral);
+  signup.replaceChildren(button('สร้างร้านค้าใหม่',createShop,referral),referral);
   const panel = detail('ราคาแพ็กเกจแพลตฟอร์มและค่าแนะนำ');
   const body = node('div');
   const feedback = node('p');
