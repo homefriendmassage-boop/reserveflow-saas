@@ -53,6 +53,7 @@ Deno.serve(async request => {
       let reference = null;
       let amount = null;
       let receiver = null;
+      let holder = null;
       let paidAt = null;
       if (key) {
         try {
@@ -62,14 +63,15 @@ Deno.serve(async request => {
             outcome = result.providerState || result.outcome;
             reference = result.reference || null;
             amount = result.amount ?? null;
-            receiver = result.nationalId || result.mobile || null;
+            receiver = result.bankAccount || null;
+            holder = result.bankHolder || null;
             paidAt = result.paidAt || null;
           } else outcome = 'qr_unreadable';
         } catch { outcome = 'retry'; }
       }
       const {data: result,error: finishError} = await admin.rpc('finish_platform_slip',{
         p_kind:kind,p_order_id:id,p_lease:claim.lease,p_outcome:outcome,p_reference:reference,
-        p_amount:amount,p_receiver:receiver,p_paid_at:paidAt
+        p_amount:amount,p_receiver:receiver,p_paid_at:paidAt,p_holder:holder
       });
       return json(finishError ? {state:'retry'} : result);
     }

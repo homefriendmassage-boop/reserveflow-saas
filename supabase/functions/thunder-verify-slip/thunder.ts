@@ -24,6 +24,12 @@ export async function verifySlip(payload: string, key: string, send = fetch) {
   const mobile = proxy?.type === 'MSISDN'
     ? account.replace(/^(?:0066|\+66|66)([689][0-9]{8})$/, '0$1') : '';
   const nationalId = ['NATID','NATIONAL_ID'].includes(proxy?.type) && /^[0-9]{13}$/.test(account) ? account : null;
+  const bank = data.receiver?.account?.bank?.account;
+  const bankAccount = typeof bank === 'string' && /^[0-9]{6,20}$/.test(bank.replace(/[\s-]/g,''))
+    ? bank.replace(/[\s-]/g,'') : null;
+  const names = data.receiver?.account?.name;
+  const holder = typeof names === 'string' ? names : (names?.th || names?.en);
+  const bankHolder = typeof holder === 'string' && holder.trim() && !/[*•●]/.test(holder) ? holder.trim() : null;
   const time = typeof data.date === 'string' && /(?:Z|[+-]\d{2}:\d{2})$/.test(data.date)
     ? Date.parse(data.date) : NaN;
   return {
@@ -32,6 +38,8 @@ export async function verifySlip(payload: string, key: string, send = fetch) {
     amount: data.amount.amount,
     mobile: /^0[689][0-9]{8}$/.test(mobile) ? mobile : null,
     nationalId,
+    bankAccount,
+    bankHolder,
     paidAt: Number.isFinite(time) ? new Date(time).toISOString() : null
   };
 }

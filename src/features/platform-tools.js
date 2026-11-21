@@ -33,6 +33,8 @@ function button(text, action, status) {
         INVALID_SPECIAL_ENTITLEMENT:'ตรวจจำนวนโควต้าและวันสิ้นสุดสิทธิ์',
         INVALID_SLIP_PACK_PRICE:'จำนวนสลิปหรือราคาอยู่นอกช่วงที่กำหนด',
         SLIP_PACK_NOT_FOUND:'ไม่พบแพ็กเกจนี้ กรุณาเปิดหน้านี้ใหม่',
+        PLATFORM_RECIPIENT_REQUIRED:'ตั้งชื่อและเลขบัญชีผู้รับใน Superadmin ก่อนอนุมัติสลิป',
+        INVALID_PLATFORM_RECIPIENT:'กรอกชื่อบัญชีและเลขบัญชีผู้รับให้ครบ',
         INVALID_PLATFORM_PROMPTPAY:'ใช้เบอร์มือถือพร้อมเพย์ 10 หลักหรือเลขบัตรประชาชน 13 หลัก',
         INVALID_PLATFORM_REFERRAL:'ใส่ค่าแนะนำระหว่าง 0 ถึง 100%',
         INVALID_PLATFORM_PRICES:'ตรวจราคาทุกช่อง ราคาที่ระบุเริ่มต้นที่ 1 บาท',
@@ -180,6 +182,9 @@ function platformPaymentStatus(result, kind) {
     amount_review:'ยอดเงินไม่ตรง' + amount + ' · รอ Superadmin ตรวจ',
     receiver_review:'รอ Superadmin ตรวจผู้รับหรือเวลาโอน',
     duplicate_review:'พบสลิปหรือรายการโอนซ้ำ · รอ Superadmin ตรวจ',
+    duplicate_rejected:'ปฏิเสธ: สลิปหรือรายการโอนเคยใช้แล้ว · สร้างรายการแล้วแนบสลิปใหม่',
+    date_rejected:'ปฏิเสธ: วันหรือเวลาโอนไม่ตรงกับรายการ · สร้างรายการแล้วแนบสลิปใหม่',
+    receiver_rejected:'ปฏิเสธ: ชื่อหรือเลขบัญชีผู้รับไม่ตรง · สร้างรายการแล้วแนบสลิปใหม่',
     checking:'กำลังตรวจสลิป',
     rejected:'รายการถูกปฏิเสธแล้ว'
   })[result.state] || 'ส่งสลิปแล้ว · รอ Superadmin ตรวจ';
@@ -188,7 +193,7 @@ function platformPaymentStatus(result, kind) {
 async function verifyAndRefresh(client, kind, id, refresh, status, refreshPending = false) {
   status.textContent = 'กำลังตรวจสลิป…';
   const result = await checkPlatformPayment(client,kind,id);
-  if (refreshPending || result.state==='approved' || result.state==='rejected') await refresh();
+  if (refreshPending || result.state==='approved' || result.state==='rejected' || result.state?.endsWith('_rejected')) await refresh();
   status.textContent = platformPaymentStatus(result,kind);
 }
 
@@ -213,7 +218,8 @@ function slipCreditPanel(client, shopId) {
       body.append(node('p','เครดิตเติมเงินคงเหลือ ' + data.balance + ' สลิป'));
       const current = data.orders.find(order => order.state === 'pending');
       for (const order of data.orders.filter(order => order.state !== 'pending')) {
-        body.append(node('p',order.credits + ' สลิป · ' + money(order.amount) + ' · ' + stateLabels[order.state]));
+        body.append(node('p',order.credits + ' สลิป · ' + money(order.amount) + ' · ' + (order.state==='rejected' && order.slip_status?.endsWith('_rejected')
+          ? platformPaymentStatus({state:order.slip_status},'credits') : stateLabels[order.state])));
       }
       if (!current) {
         if (!data.payments_enabled) {
@@ -254,7 +260,10 @@ function slipCreditPanel(client, shopId) {
       return;
     }
 
-    const shops = data.custom_packs_enabled ? await rpc(client,'platform_shop_overview') : [];
+    const [shops,recipient] = await Promise.all([
+      data.custom_packs_enabled ? rpc(client,'platform_shop_overview') : [],
+      rpc(client,'platform_payment_recipient').catch(() => null)
+    ]);
     const editPack = pack => {
       const quantity = node('input');
       Object.assign(quantity,{type:'number',min:'1',max:'100000',step:'1',value:pack.credits ?? '',required:true});
@@ -294,6 +303,7 @@ function slipCreditPanel(client, shopId) {
     for (const pack of packs) editPack(pack);
     if (data.custom_packs_enabled) editPack({});
     body.append(node('h3','สลิปเติมเครดิตรอตรวจ'));
+    if (recipient?.account) body.append(node('p','ตรวจเทียบชื่อและเลขบัญชี · '+recipient.holder+' · '+recipient.account));
     if (!data.orders.length) body.append(node('p','ไม่มีสลิปเติมเครดิตรอตรวจ'));
     for (const order of data.orders) {
       const entry = node('article');
@@ -311,10 +321,10 @@ function slipCreditPanel(client, shopId) {
         button('ตรวจสลิป',() => verifyAndRefresh(client,'credits',order.id,load,feedback),feedback),
         button('อนุมัติและเติมเครดิต',async () => {
           if (!image.getAttribute('src')) {
-            feedback.textContent = 'เปิดรูปสลิปและตรวจยอดกับบัญชีผู้รับก่อนอนุมัติ';
+            feedback.textContent = 'เปิดรูปสลิปและตรวจยอด วันโอน ชื่อและเลขบัญชีผู้รับก่อนอนุมัติ';
             return;
           }
-          if (!confirm('ยืนยันว่าตรวจยอดและบัญชีผู้รับของสลิปเติมเครดิตแล้วหรือไม่?')) return;
+          if (!confirm('ยืนยันว่าตรวจยอด วันโอน ชื่อและเลขบัญชีผู้รับของสลิปเติมเครดิตแล้วหรือไม่?')) return;
           await rpc(client,'review_slip_credit_order',{p_order_id:order.id,p_approve:true,p_reference:null});
           await load();
           feedback.textContent = 'เติมเครดิตแล้ว';
@@ -351,7 +361,9 @@ export function renderShopBusinessTools(client, container, shopId) {
       node('p',data.expires_at?'แพ็กเกจหลักใช้งานได้ถึง '+date(data.expires_at):'ร้านเดิม · ยังไม่มีวันหมดอายุในระบบแพ็กเกจ'),
       ...(data.special_access_until ? [node('p','สิทธิ์ใช้งานพิเศษถึง ' + data.special_access_until.split('-').reverse().join('/'))] : []),
       node('p','ค่าแนะนำรอจ่าย '+money(data.unpaid_referral)),
-      ...data.orders.map(order => node('p',labels[order.plan]+' · '+money(order.amount)+' · '+stateLabels[order.state])));
+      ...data.orders.map(order => node('p',labels[order.plan]+' · '+money(order.amount)+' · '
+        +(order.state==='rejected' && order.slip_status?.endsWith('_rejected')
+          ? platformPaymentStatus({state:order.slip_status},'subscription') : stateLabels[order.state]))));
     if (!current && plan.options.length) {
       body.append(field('เลือกแพ็กเกจ',plan),button('สร้างรายการชำระแพ็กเกจ',async () => {
         await rpc(client,'open_package_order',{p_shop_id:shopId,p_plan:plan.value});
@@ -461,6 +473,33 @@ function allowancePanel(client) {
   return panel;
 }
 
+function platformRecipientPanel(client) {
+  const panel = detail('ชื่อและเลขบัญชีสำหรับตรวจสลิปแพลตฟอร์ม');
+  const holder = Object.assign(node('input'),{maxLength:120});
+  const account = Object.assign(node('input'),{inputMode:'numeric',maxLength:28});
+  const feedback = node('p');
+  feedback.setAttribute('role','status');
+  const save = button('บันทึกบัญชีผู้รับสำหรับตรวจสลิป',async () => {
+    await rpc(client,'save_platform_payment_recipient',{p_holder:holder.value,p_account:account.value});
+    feedback.textContent = 'บันทึกบัญชีผู้รับแล้ว';
+  },feedback);
+  save.disabled = true;
+  panel.append(field('ชื่อบัญชีตามที่ธนาคารระบุ',holder),field('เลขบัญชีธนาคารผู้รับ',account),save,feedback);
+  panel.addEventListener('toggle',async () => {
+    if (!panel.open) return;
+    save.disabled = true;
+    try {
+      const info = await rpc(client,'platform_payment_recipient');
+      holder.value = info?.holder || '';
+      account.value = info?.account || '';
+      save.disabled = false;
+    } catch {
+      feedback.textContent = 'โหลดข้อมูลบัญชีผู้รับไม่ได้ ตรวจ SQL ไฟล์ 40';
+    }
+  });
+  return panel;
+}
+
 export function renderPlatformTools(client) {
   const signup = document.getElementById('platformSignup');
   const referral = referralPanel(client,null);
@@ -483,11 +522,14 @@ export function renderPlatformTools(client) {
   const feedback = node('p');
   feedback.setAttribute('role','status');
   panel.append(body,feedback);
-  document.getElementById('platformBilling').replaceChildren(panel,allowancePanel(client),slipCreditPanel(client,null));
+  document.getElementById('platformBilling').replaceChildren(panel,platformRecipientPanel(client),allowancePanel(client),slipCreditPanel(client,null));
 
   async function load() {
-    const [billing,queue,allowance] = await Promise.all([rpc(client,'platform_package_prices'),rpc(client,'platform_package_queue'),
-      rpc(client,'platform_slip_allowance_settings').catch(() => null)]);
+    const [billing,queue,allowance,recipient] = await Promise.all([
+      rpc(client,'platform_package_prices'),rpc(client,'platform_package_queue'),
+      rpc(client,'platform_slip_allowance_settings').catch(() => null),
+      rpc(client,'platform_payment_recipient').catch(() => null)
+    ]);
     const mobile = node('input');
     mobile.type='tel';
     mobile.value=billing.mobile || '';
@@ -524,6 +566,7 @@ export function renderPlatformTools(client) {
       });
       feedback.textContent='บันทึกแล้ว';
     },feedback),node('h3','สลิปแพ็กเกจแพลตฟอร์มรอตรวจ'));
+    if (recipient?.account) body.append(node('p','ตรวจเทียบชื่อและเลขบัญชี · '+recipient.holder+' · '+recipient.account));
     if (!queue.orders.length) body.append(node('p','ไม่มีสลิปรอตรวจ'));
     for (const order of queue.orders) {
       const entry = node('article');
@@ -539,10 +582,10 @@ export function renderPlatformTools(client) {
         button('ตรวจสลิปแพ็กเกจ',() => verifyAndRefresh(client,'subscription',order.id,load,feedback),feedback),
         button('อนุมัติและต่ออายุ',async()=>{
           if (!image.getAttribute('src')) {
-            feedback.textContent='เปิดรูปสลิปและตรวจยอดกับบัญชีผู้รับก่อนอนุมัติ';
+            feedback.textContent='เปิดรูปสลิปและตรวจยอด วันโอน ชื่อและเลขบัญชีผู้รับก่อนอนุมัติ';
             return;
           }
-          if (!confirm('ยืนยันว่าตรวจยอดและบัญชีผู้รับของสลิปนี้แล้วหรือไม่?')) return;
+          if (!confirm('ยืนยันว่าตรวจยอด วันโอน ชื่อและเลขบัญชีผู้รับของสลิปนี้แล้วหรือไม่?')) return;
           await rpc(client,'review_package_order',{p_order_id:order.id,p_approve:true,p_reference:null});
           await load();
           feedback.textContent='อนุมัติและต่ออายุแล้ว';
