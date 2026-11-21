@@ -28,6 +28,8 @@ function button(text, action, status) {
     catch (error) {
       const messages = {
         INVALID_REFERRAL_LIFF:'กรอก LIFF ID ที่ได้จาก LINE Developers',
+        INVALID_SLIP_QUOTA:'ใส่โควต้าจำนวนเต็มตั้งแต่ 0 ถึง 100,000 สลิป',
+        INVALID_SPECIAL_ENTITLEMENT:'ตรวจจำนวนโควต้าและวันสิ้นสุดสิทธิ์',
         INVALID_SLIP_PACK_PRICE:'จำนวนสลิปหรือราคาอยู่นอกช่วงที่กำหนด',
         SLIP_PACK_NOT_FOUND:'ไม่พบแพ็กเกจนี้ กรุณาเปิดหน้านี้ใหม่',
         INVALID_PLATFORM_PROMPTPAY:'ใช้เบอร์มือถือพร้อมเพย์ 10 หลักหรือเลขบัตรประชาชน 13 หลัก',
@@ -125,13 +127,15 @@ function referralPanel(client, shopId) {
 
 export async function showSignupPackages(client, container) {
   try {
-    const data = await rpc(client,'platform_package_prices');
+    const [data, allowance] = await Promise.all([
+      rpc(client,'platform_package_prices'),rpc(client,'platform_slip_allowance_settings').catch(() => null)
+    ]);
     const select=document.getElementById('merchantSignupPlan');
     select.replaceChildren(new Option('ทดลองฟรี 7 วัน',''),
       ...Object.entries(labels).filter(([key]) => data.payments_enabled && data.prices[key])
         .map(([key,label]) => new Option(label+' · '+money(data.prices[key]),key)));
     container.textContent = [
-      'ทดลองฟรี 7 วัน · ตรวจสลิป 10 ครั้ง',
+      'ทดลองฟรี 7 วัน · ตรวจสลิป ' + (allowance?.starter_total ?? 10) + ' ครั้ง',
       ...Object.entries(labels).map(([key,label]) => label + (data.prices[key] ? ' ' + money(data.prices[key]) : ' · รอตั้งราคา'))
     ].join(' / ');
   } catch { container.textContent = 'ทดลองฟรี 7 วัน'; }
@@ -147,7 +151,7 @@ function slipCreditPanel(client, shopId) {
   async function load() {
     const data = await rpc(client,'shop_slip_credit_overview',{p_shop_id:shopId});
     const packs = data.offers || [{code:'starter',...data.offer}];
-    const packLabel = pack => pack.credits + ' สลิป · ' + money(pack.amount)
+    const packLabel = pack => (pack.label ? pack.label + ' · ' : '') + pack.credits + ' สลิป · ' + money(pack.amount)
       + ' (' + money(pack.amount / pack.credits) + ' ต่อสลิป)';
     body.replaceChildren(node('p','เครดิตตรวจสลิปไม่มีค่าแนะนำ'));
     if (!data.offers && !shopId) body.append(node('p',
@@ -205,25 +209,45 @@ function slipCreditPanel(client, shopId) {
       return;
     }
 
-    for (const pack of packs) {
+    const shops = data.custom_packs_enabled ? await rpc(client,'platform_shop_overview') : [];
+    const editPack = pack => {
       const quantity = node('input');
-      Object.assign(quantity,{type:'number',min:'1',max:'100000',step:'1',value:pack.credits,required:true});
+      Object.assign(quantity,{type:'number',min:'1',max:'100000',step:'1',value:pack.credits ?? '',required:true});
       const price = node('input');
-      Object.assign(price,{type:'number',min:'0.01',step:'0.01',value:pack.amount,required:true});
+      Object.assign(price,{type:'number',min:'0.01',step:'0.01',value:pack.amount ?? '',required:true});
       const fields = node('div');
       fields.className = 'fields';
+      const label = node('input');
+      Object.assign(label,{value:pack.label || (pack.code ? pack.credits + ' สลิป' : ''),maxLength:100,required:true});
+      const scope = node('select');
+      scope.replaceChildren(new Option('ทุกร้าน',''),...shops.map(shop => new Option(shop.name + ' · ' + shop.slug,shop.shop_id)));
+      if (pack.shop_id && !shops.some(shop => shop.shop_id === pack.shop_id)) {
+        scope.append(new Option('ร้านที่ผูกไว้',pack.shop_id));
+      }
+      scope.value = pack.shop_id || '';
+      const enabled = node('select');
+      enabled.replaceChildren(new Option('เปิดขาย','yes'),new Option('ซ่อนแพ็กเกจ','no'));
+      enabled.value = pack.enabled === false ? 'no' : 'yes';
+      const customizable = data.custom_packs_enabled && pack.code !== 'starter';
+      if (customizable) fields.append(field('ชื่อแพ็กเกจ',label),field('ร้านที่เห็นแพ็กเกจ',scope),field('การแสดงแพ็กเกจ',enabled));
       fields.append(field('จำนวนสลิป',quantity),field('ราคาแพ็กเกจ (บาท)',price));
       const packStatus = node('p');
       packStatus.setAttribute('role','status');
-      body.append(node('h3',packLabel(pack)),fields,button('บันทึกราคาเครดิตตรวจสลิป',async () => {
-        if (!quantity.reportValidity() || !price.reportValidity()) return;
-        const args = {p_credits:Number(quantity.value),p_amount:Number(price.value)};
-        if (data.offers) await rpc(client,'save_slip_credit_pack',{...args,p_code:pack.code});
-        else await rpc(client,'save_slip_credit_offer',args);
-        await load();
-        feedback.textContent = 'บันทึกราคาแพ็กเกจ ' + args.p_credits + ' สลิปแล้ว';
-      },packStatus),packStatus);
-    }
+      body.append(node('h3',pack.code ? packLabel(pack) : 'เพิ่มแพ็กเกจเติมเครดิต'),fields,
+        button(pack.code ? 'บันทึกราคาเครดิตตรวจสลิป' : 'เพิ่มแพ็กเกจ',async () => {
+          if (!quantity.reportValidity() || !price.reportValidity() || (customizable && !label.reportValidity())) return;
+          const args = {p_credits:Number(quantity.value),p_amount:Number(price.value)};
+          if (customizable) await rpc(client,'save_custom_slip_credit_pack',{
+            ...args,p_code:pack.code || null,p_label:label.value,p_shop_id:scope.value || null,p_enabled:enabled.value==='yes'
+          });
+          else if (data.offers) await rpc(client,'save_slip_credit_pack',{...args,p_code:pack.code});
+          else await rpc(client,'save_slip_credit_offer',args);
+          await load();
+          feedback.textContent = 'บันทึกแพ็กเกจ ' + args.p_credits + ' สลิปแล้ว';
+        },packStatus),packStatus);
+    };
+    for (const pack of packs) editPack(pack);
+    if (data.custom_packs_enabled) editPack({});
     body.append(node('h3','สลิปเติมเครดิตรอตรวจ'));
     if (!data.orders.length) body.append(node('p','ไม่มีสลิปเติมเครดิตรอตรวจ'));
     for (const order of data.orders) {
@@ -280,7 +304,8 @@ export function renderShopBusinessTools(client, container, shopId) {
       .map(([key,label]) => new Option(label+' · '+money(pricing.prices[key]),key)));
     const current = data.orders.find(order => order.state==='pending');
     body.replaceChildren(
-      node('p',data.expires_at?'ใช้งานได้ถึง '+date(data.expires_at):'ร้านเดิม · ยังไม่มีวันหมดอายุในระบบแพ็กเกจ'),
+      node('p',data.expires_at?'แพ็กเกจหลักใช้งานได้ถึง '+date(data.expires_at):'ร้านเดิม · ยังไม่มีวันหมดอายุในระบบแพ็กเกจ'),
+      ...(data.special_access_until ? [node('p','สิทธิ์ใช้งานพิเศษถึง ' + data.special_access_until.split('-').reverse().join('/'))] : []),
       node('p','ค่าแนะนำรอจ่าย '+money(data.unpaid_referral)),
       ...data.orders.map(order => node('p',labels[order.plan]+' · '+money(order.amount)+' · '+stateLabels[order.state])));
     if (!current && plan.options.length) {
@@ -336,6 +361,78 @@ export function renderShopBusinessTools(client, container, shopId) {
   });
 }
 
+function allowancePanel(client) {
+  const panel = detail('โควต้าตรวจสลิปและสิทธิ์พิเศษรายร้าน');
+  const body = node('div');
+  const feedback = node('p');
+  feedback.setAttribute('role','status');
+  panel.append(body,feedback);
+  let generation = 0;
+  panel.addEventListener('toggle', async () => {
+    if (!panel.open) { generation++; return; }
+    const request = ++generation;
+    try {
+      const [settings,shops] = await Promise.all([
+        rpc(client,'platform_slip_allowance_settings'),rpc(client,'platform_shop_overview')
+      ]);
+      if (request !== generation) return;
+      const quota = (value = '') => Object.assign(node('input'),{type:'number',min:'0',max:'100000',step:'1',value});
+      const paid = quota(settings.paid_monthly);
+      const starter = quota(settings.starter_total);
+      paid.required = starter.required = true;
+      const defaults = node('div');
+      defaults.className = 'fields';
+      defaults.append(field('โควต้ารวมแพ็กเกจที่ชำระแล้ว (ต่อเดือน)',paid),field('โควต้าเริ่มต้นต่อร้าน',starter));
+      const shop = node('select');
+      shop.replaceChildren(new Option('เลือกร้าน',''),...shops.map(row => new Option(row.name + ' · ' + row.slug,row.shop_id)));
+      const special = node('div');
+      const detailStatus = node('p');
+      detailStatus.setAttribute('role','status');
+      body.replaceChildren(defaults,button('บันทึกโควต้ามาตรฐาน',async () => {
+        if (!paid.reportValidity() || !starter.reportValidity()) return;
+        await rpc(client,'save_platform_slip_allowance_settings',{p_paid:Number(paid.value),p_starter:Number(starter.value)});
+        feedback.textContent = 'บันทึกโควต้ามาตรฐานแล้ว';
+      },feedback),node('h3','สิทธิ์พิเศษรายร้าน'),field('เลือกร้านค้า',shop),special,detailStatus);
+      let shopRequest = 0;
+      shop.onchange = async () => {
+        const id = shop.value;
+        const selectedRequest = ++shopRequest;
+        special.replaceChildren();
+        detailStatus.textContent = id ? 'กำลังโหลดสิทธิ์ของร้าน…' : '';
+        if (!id) return;
+        try {
+          const grant = await rpc(client,'platform_shop_special_entitlement',{p_shop_id:id});
+          if (request !== generation || selectedRequest !== shopRequest) return;
+          const monthly = quota(grant?.monthly_quota ?? '');
+          const until = Object.assign(node('input'),{type:'date',value:grant?.quota_until || ''});
+          const access = Object.assign(node('input'),{type:'date',value:grant?.access_until || ''});
+          const note = Object.assign(node('input'),{maxLength:300,value:grant?.reason || ''});
+          const fields = node('div');
+          fields.className = 'fields';
+          fields.append(field('โควต้าพิเศษต่อเดือน (เว้นว่างเพื่อใช้ค่ามาตรฐาน)',monthly),
+            field('ใช้โควต้าพิเศษถึงวันที่ (ไม่ระบุถ้าให้ต่อเนื่อง)',until),
+            field('สิทธิ์ใช้งานแพลตฟอร์มถึงวันที่ (ไม่บังคับ)',access),field('หมายเหตุภายใน',note));
+          special.replaceChildren(fields,button('บันทึกสิทธิ์ของร้าน',async () => {
+            if (!monthly.reportValidity()) return;
+            await rpc(client,'save_platform_shop_special_entitlement',{
+              p_shop_id:id,p_monthly:monthly.value===''?null:Number(monthly.value),
+              p_quota_until:monthly.value===''?null:until.value || null,
+              p_access_until:access.value || null,p_reason:note.value
+            });
+            if (shop.value === id) detailStatus.textContent = 'บันทึกสิทธิ์ของร้านแล้ว';
+          },detailStatus));
+          detailStatus.textContent = '';
+        } catch {
+          if (shop.value === id) detailStatus.textContent = 'โหลดสิทธิ์ของร้านไม่สำเร็จ';
+        }
+      };
+    } catch {
+      if (request === generation) feedback.textContent = 'โหลดการตั้งค่าโควต้าไม่ได้ กรุณาตรวจ SQL ไฟล์ 36';
+    }
+  });
+  return panel;
+}
+
 export function renderPlatformTools(client) {
   const signup = document.getElementById('platformSignup');
   const referral = referralPanel(client,null);
@@ -358,10 +455,11 @@ export function renderPlatformTools(client) {
   const feedback = node('p');
   feedback.setAttribute('role','status');
   panel.append(body,feedback);
-  document.getElementById('platformBilling').replaceChildren(panel,slipCreditPanel(client,null));
+  document.getElementById('platformBilling').replaceChildren(panel,allowancePanel(client),slipCreditPanel(client,null));
 
   async function load() {
-    const [billing,queue] = await Promise.all([rpc(client,'platform_package_prices'),rpc(client,'platform_package_queue')]);
+    const [billing,queue,allowance] = await Promise.all([rpc(client,'platform_package_prices'),rpc(client,'platform_package_queue'),
+      rpc(client,'platform_slip_allowance_settings').catch(() => null)]);
     const mobile = node('input');
     mobile.type='tel';
     mobile.value=billing.mobile || '';
@@ -379,8 +477,8 @@ export function renderPlatformTools(client) {
     const fields=node('div');
     fields.className='fields';
     fields.append(field('พร้อมเพย์แพลตฟอร์ม (เบอร์มือถือหรือเลขบัตรประชาชน)',mobile),field('ค่าแนะนำเฉพาะแพ็กเกจแพลตฟอร์ม (%)',referralPercent),...rows.map(row=>row.field));
-    body.replaceChildren(node('p','แพ็กเกจที่ชำระแล้วรวมโควต้าตรวจสลิป 100 ครั้งต่อเดือนปฏิทิน'
-      + ' · ทดลองใช้และร้านเดิมที่ยังไม่มีแพ็กเกจได้รับโควต้าเริ่มต้น 10 ครั้ง'),fields,button('ใส่ราคาแนะนำ',() => {
+    body.replaceChildren(node('p','แพ็กเกจที่ชำระแล้วรวมโควต้าตรวจสลิป ' + (allowance?.paid_monthly ?? 100) + ' ครั้งต่อเดือนปฏิทิน'
+      + ' · โควต้าเริ่มต้น ' + (allowance?.starter_total ?? 10) + ' ครั้งต่อร้าน'),fields,button('ใส่ราคาแนะนำ',() => {
       for (const row of rows) row.input.value = suggestedPrices[row.key];
       feedback.textContent = 'ใส่ราคาแนะนำแล้ว ตรวจราคาแล้วกดบันทึกเพื่อใช้จริง';
     },feedback),button('บันทึกราคาและบัญชีรับเงิน',async () => {
