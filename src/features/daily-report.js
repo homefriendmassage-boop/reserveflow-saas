@@ -109,7 +109,7 @@ export function renderDailyReport(client, container, shopId, timezone) {
     const stats = node('div');
     stats.className = 'stats';
     for (const [label,value] of [
-      ['ยอดรับที่ระบบยืนยัน',currency.format(data.verified_amount)],
+      ['ยอดรับจากสลิปที่ตรวจผ่าน',currency.format(data.verified_amount)],
       ['ยอดจองที่ยืนยันตามวันใช้บริการ',currency.format(data.booking_amount)],
       ['ยืนยัน / เข้าใช้ / เสร็จ',number.format(data.active)],
       ['รอชำระ / รอตรวจ / รอยืนยัน',number.format(data.pending)]
@@ -119,7 +119,7 @@ export function renderDailyReport(client, container, shopId, timezone) {
       stat.append(node('strong',value),node('span',label));
       stats.append(stat);
     }
-    const note = node('p', 'รอบรายงาน 06:00 ถึงก่อน 06:00 ของวันถัดไป ยอดรับนับตามเวลาโอนที่ระบบยืนยัน ยอดจองนับตามเวลาเริ่มใช้บริการ');
+    const note = node('p', 'รอบรายงาน 06:00 ถึงก่อน 06:00 ของวันถัดไป ยอดรับนับตามเวลาโอนของสลิปที่ตรวจผ่าน ยอดจองนับตามเวลาเริ่มใช้บริการ');
     note.className = 'sub';
     const overview = node('p', 'รวม ' + number.format(data.bookings) + ' รายการ · ยกเลิก ' +
       number.format(data.cancelled) + ' รายการ · ตรวจรับเงิน ' + number.format(data.verified_count) + ' รายการ');
