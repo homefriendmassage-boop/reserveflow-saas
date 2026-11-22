@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="./assets/css/app.css?v=floor-template-41">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/merchant-portal.js?v=merchant-cash-47"></script>
+  <script type="module" src="./src/features/merchant-portal.js?v=shop-context"></script>
 </head>
 <body>
 <header>
@@ -66,6 +66,17 @@
         <button class="btn soft hidden" id="merchantPassRefresh" type="button">อัปเดตสถานะบัตร</button>
         <button class="btn soft" id="merchantPassClose" type="button">ไปหลังบ้านร้านค้า</button>
       </div>
+    </section>
+  <section class="panel merchant-account hidden" id="merchantAccount">
+      <h2>บัญชีและร้านค้า</h2>
+      <div class="field">
+        <label for="merchantShop">ร้านค้า</label>
+        <select id="merchantShop"></select>
+      </div>
+      <p id="merchantRole"></p>
+      <button type="button" id="merchantAddShop" class="btn primary hidden">เพิ่มร้านค้า</button>
+      <details><summary>UID บัญชีของฉัน</summary><p><code id="merchantAccountUid"></code></p></details>
+      <button type="button" id="merchantSignOut" class="btn soft">ออกจากระบบ</button>
     </section>
   <section class="hidden" id="merchantDashboard" aria-label="หลังบ้านร้านค้า">
     <div id="merchantDailyReport"></div>
@@ -164,17 +175,6 @@
       <input id="merchantBookingSearch" type="search" autocomplete="off">
     </div>
     <div id="merchantBookings" aria-live="polite"></div>
-    </section>
-    <section class="panel merchant-account">
-      <h2>บัญชีและร้านค้า</h2>
-      <div class="field">
-        <label for="merchantShop">ร้านค้า</label>
-        <select id="merchantShop"></select>
-      </div>
-      <p id="merchantRole"></p>
-      <button type="button" id="merchantAddShop" class="btn primary hidden">เพิ่มร้านค้า</button>
-      <details><summary>UID บัญชีของฉัน</summary><p><code id="merchantAccountUid"></code></p></details>
-      <button type="button" id="merchantSignOut" class="btn soft">ออกจากระบบ</button>
     </section>
   </section>
   <section class="panel hidden" id="platformAdmin">
