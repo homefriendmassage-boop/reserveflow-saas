@@ -301,6 +301,8 @@ export async function loadPlatformAdmin(client, refresh) {
     card.className = 'booking';
     const customer = element('a', 'หน้าจองของร้าน');
     customer.href = './book.html?' + new URLSearchParams({ shop: shop.slug });
+    const merchant = element('a','หลังบ้านร้านนี้');
+    merchant.href = './merchant.html?' + new URLSearchParams({shop:shop.slug});
     const suspended = shop.platform_booking_suspended;
     async function change(control, rpcName, args, success) {
       control.disabled = true;
@@ -330,7 +332,7 @@ export async function loadPlatformAdmin(client, refresh) {
     card.append(element('h3', shop.name), element('p', [
       shop.slug, suspended ? 'Superadmin ปิดรับจอง' : shop.public_booking_enabled ? 'เปิดรับจอง' : 'ปิดรับจอง',
       'ทีมงาน ' + shop.staff_count + ' บัญชี'
-    ].join(' · ')), customer);
+    ].join(' · ')), customer, document.createTextNode(' · '), merchant);
     if (!shop.public_booking_enabled) card.append(bookingAction(true));
     if (!suspended) card.append(bookingAction(false));
     if (suspended) {

@@ -20,6 +20,9 @@ let floorLoading = false;
 let sending = false;
 const categoryIcons = { table: '🍽️', seat: '💺', staff: '👤', vip: '🚪', ticket: '🎟️' };
 const shopSlug = new URLSearchParams(location.search).get('shop');
+if (shopSlug) {
+  document.getElementById('bookingMerchantLink').href = './merchant.html?' + new URLSearchParams({shop:shopSlug});
+}
 const money = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' });
 let categories = [];
 let pendingRequest;

@@ -4,7 +4,7 @@ import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-
 import { renderDailyReport } from './daily-report.js?v=report-labels-45';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=platform-shop-management-43';
 import { addThunderCheck } from './thunder-slip.js?v=bank-slip-preview-37';
-import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=line-id-feedback';
+import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=shop-context';
 import { renderMerchantTeam } from './merchant-team.js?v=team-slip-credits-1';
 import { renderMerchantSettings } from './merchant-settings.js?v=floor-template-41';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, timeAtShop } from './booking-slots.js?v=business-day-1';
@@ -41,6 +41,13 @@ const signIn = byId('merchantSignIn');
 const signOut = byId('merchantSignOut');
 const dashboard = byId('merchantDashboard');
 const shopMenu = byId('merchantShop');
+const accountPanel = byId('merchantAccount');
+const loginShopKey = 'reserveflow.login-shop';
+function setShopUrl(shop) {
+  const url = new URL(location.href);
+  url.searchParams.set('shop',shop.dataset.slug || shop.value);
+  if (url.href !== location.href) history.replaceState(history.state,'',url);
+}
 const bookings = byId('merchantBookings');
 const status = byId('merchantStatus');
 const actionStatus = byId('merchantActionStatus');
@@ -189,6 +196,7 @@ function showLogin(message = '') {
   teamSearch.value = '';
   teamStatus.textContent = '';
   bookingRequest++;
+  accountPanel.classList.add('hidden');
   shopMenu.replaceChildren();
   publicLink.classList.add('hidden');
   tableMenu.replaceChildren();
@@ -398,12 +406,13 @@ if (typeof window.supabase?.createClient !== 'function') {
   const passDetails = byId('merchantPassDetails');
   const passConfirm = byId('merchantPassConfirm');
   const passRefresh = byId('merchantPassRefresh');
+  let scannedShopId;
   passRefresh.onclick = openScannedPass;
   byId('merchantPassClose').onclick = () => {
     scanToken = null;
     try { sessionStorage.removeItem(scanKey); } catch {}
     passPanel.classList.add('hidden');
-    void loadSession();
+    void loadSession(scannedShopId);
   };
 
   async function openScannedPass() {
@@ -422,6 +431,7 @@ if (typeof window.supabase?.createClient !== 'function') {
       passFeedback.textContent = 'เปิดบัตรนี้ไม่ได้ กรุณาตรวจว่าบัตรเป็นของร้านที่คุณมีสิทธิ์';
       return;
     }
+    scannedShopId = data.shop_id;
     renderPassDetails(passDetails, data);
     const pending = ['pending_payment', 'pending_confirm', 'slip_review'].includes(data.status);
     let message = passStatus(data);
@@ -663,7 +673,8 @@ if (typeof window.supabase?.createClient !== 'function') {
     counterPanel.classList.add('hidden');
     counterPanel.replaceChildren();
     const shop = shopMenu.selectedOptions[0];
-    if (!shop) return;
+    if (!shop?.value) return;
+    setShopUrl(shop);
     const request = ++bookingRequest;
     currentRole = shop.dataset.role;
     const report = byId('merchantDailyReport');
@@ -814,7 +825,7 @@ if (typeof window.supabase?.createClient !== 'function') {
     if (event === 'SIGNED_OUT') showLogin();
   });
 
-  async function loadSession(selectShopId = shopMenu.value) {
+  async function loadSession(selectShopId) {
     try {
       const { data, error } = await client.auth.getSession();
       if (error) throw error;
@@ -837,9 +848,22 @@ if (typeof window.supabase?.createClient !== 'function') {
       await loadPlatformAdmin(client, () => loadSession());
       if (!byId('platformAdmin').classList.contains('hidden')) renderPlatformTools(client, () => addShop.click());
       const shops = await listMerchantShops(client);
+      const urlShop = new URLSearchParams(location.search).get('shop');
+      let loginShop;
+      try {
+        loginShop = sessionStorage.getItem(loginShopKey);
+        sessionStorage.removeItem(loginShopKey);
+      } catch {}
+      const requested = selectShopId || urlShop || loginShop || shopMenu.value;
+      if (requested && !urlShop && !selectShopId && loginShop) {
+        const url = new URL(location.href);
+        url.searchParams.set('shop',loginShop);
+        history.replaceState(history.state,'',url);
+      }
       setAdditionalShopMode(false);
       addShop.classList.toggle('hidden',!isPlatformAdmin() && !shops.some(shop => shop.role==='owner'));
-      if (!shops.length) {
+      if (!shops.length && !requested) {
+        accountPanel.classList.add('hidden');
         login.classList.add('hidden');
         dashboard.classList.add('hidden');
         registration.classList.toggle('hidden', !byId('platformAdmin').classList.contains('hidden'));
@@ -856,13 +880,22 @@ if (typeof window.supabase?.createClient !== 'function') {
         option.dataset.open = String(shop.public_booking_enabled);
         return option;
       }));
-      if (shops.some(shop => shop.id===selectShopId)) shopMenu.value = selectShopId;
+      const selected = requested ? shops.find(shop => shop.id === requested || shop.slug === requested)
+        : shops.length === 1 ? shops[0] : undefined;
+      if (selected) shopMenu.value = selected.id;
+      else {
+        shopMenu.prepend(new Option('เลือกร้านค้าที่ต้องการเปิด','',true,true));
+        shopMenu.options[0].disabled = true;
+      }
+      accountPanel.classList.remove('hidden');
       login.classList.add('hidden');
       registration.classList.add('hidden');
       registerForm.reset();
-      dashboard.classList.remove('hidden');
-      status.textContent = '';
-      await loadShop();
+      dashboard.classList.toggle('hidden',!selected);
+      status.textContent = selected ? '' : requested
+        ? 'บัญชีนี้ไม่มีสิทธิ์เข้าร้านตามลิงก์ กรุณาเลือกร้านที่มีสิทธิ์หรือเข้าสู่ระบบด้วยบัญชีของร้านนั้น'
+        : 'กรุณาเลือกร้านค้าก่อนเปิดหลังบ้าน';
+      if (selected) await loadShop();
     } catch {
       showLogin('ตรวจสิทธิ์ร้านค้าไม่สำเร็จ กรุณาลองอีกครั้ง');
     } finally {
@@ -876,6 +909,11 @@ if (typeof window.supabase?.createClient !== 'function') {
     status.textContent = 'กำลังเปิด LINE Login…';
     try {
       const redirectTo = new URL('./merchant.html', location.href).href;
+      const requestedShop = new URLSearchParams(location.search).get('shop');
+      try {
+        if (requestedShop) sessionStorage.setItem(loginShopKey,requestedShop);
+        else sessionStorage.removeItem(loginShopKey);
+      } catch {}
       const referral = new URLSearchParams(location.search).get('ref');
       if (referral) sessionStorage.setItem('reserveflow_signup_referral',referral);
       else if (new URLSearchParams(location.search).has('signup')) sessionStorage.removeItem('reserveflow_signup_referral');
@@ -1002,7 +1040,12 @@ if (typeof window.supabase?.createClient !== 'function') {
   byId('merchantRegisterSignOut').addEventListener('click', () => signOut.click());
   void loadSession();
 
-  shopMenu.addEventListener('change', loadShop);
+  shopMenu.addEventListener('change', () => {
+    if (!shopMenu.value) return;
+    dashboard.classList.remove('hidden');
+    status.textContent = '';
+    void loadShop();
+  });
   signOut.addEventListener('click', async () => {
     showLogin('กำลังออกจากระบบ…');
     signIn.disabled = true;
