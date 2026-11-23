@@ -1,4 +1,5 @@
-import { prepareSlipAttachment } from './customer-slip.js?v=bank-slip-preview-37';
+import { initBookingLiff, submitLiffPayment } from './booking-liff.js';
+import { prepareSlipAttachment } from './customer-slip.js?v=booking-liff-48';
 import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=unfinished-floor-44';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, nextBookingDate, timeAtShop } from './booking-slots.js?v=business-day-1';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
@@ -19,7 +20,9 @@ const resourceField = document.getElementById('bookingResourceField');
 let floorLoading = false;
 let sending = false;
 const categoryIcons = { table: '🍽️', seat: '💺', staff: '👤', vip: '🚪', ticket: '🎟️' };
-const shopSlug = new URLSearchParams(location.search).get('shop');
+const pageParams = new URLSearchParams(location.search);
+const shopSlug = pageParams.get('shop');
+const throughLiff = pageParams.get('line') === '1';
 if (shopSlug) {
   document.getElementById('bookingMerchantLink').href = './merchant.html?' + new URLSearchParams({shop:shopSlug});
 }
@@ -28,6 +31,8 @@ let categories = [];
 let pendingRequest;
 
 const errorMessages = {
+  BOOKING_LINE_UNAVAILABLE: 'เปิดการเชื่อม LINE ไม่ได้ กรุณาเปิดหน้าจองใหม่จากเมนู LINE ของร้าน',
+  BOOKING_LINE_EXPIRED: 'การเชื่อม LINE หมดอายุ กรุณาเปิดหน้าจองใหม่จากเมนู LINE ของร้าน',
   BOOKING_PAYMENT_UNAVAILABLE: 'ร้านยังไม่ได้เปิดรับชำระพร้อมเพย์สำหรับรายการนี้',
   BOOKING_QUOTE_MISMATCH: 'กรุณาเริ่มรายการใหม่เพื่อเปิดช่องทางชำระเงิน',
   BOOKING_OPTION_UNAVAILABLE: 'รายการนี้ไม่เปิดให้จองแล้ว กรุณารีเฟรชหน้า',
@@ -145,6 +150,7 @@ async function start() {
   const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: { persistSession: false, detectSessionInUrl: false, autoRefreshToken: false }
   });
+  const lineSession = throughLiff ? initBookingLiff(client,shopSlug) : Promise.resolve(null);
   const { data, error } = await client.rpc('booking_catalog', { p_shop_slug: shopSlug });
   if (error) throw error;
   if (!data?.categories.length) {
@@ -363,9 +369,9 @@ async function start() {
     submit.classList.add('hidden');
     submitStatus.textContent = 'รอแนบสลิปเพื่อส่งคำขอจอง';
     prepareSlipAttachment(client, draft, async image => {
-      const { data, error } = await client.rpc('submit_customer_payment', {
-        p_request: draft.payload, p_amount: draft.booking.amount, p_image: image
-      });
+      const payment = { p_request:draft.payload,p_amount:Number(draft.booking.amount),p_image:image };
+      if (throughLiff) return submitLiffPayment(client,await lineSession,payment);
+      const { data, error } = await client.rpc('submit_customer_payment',payment);
       if (error) throw error;
       return data;
     }, (message, saved) => {
@@ -388,7 +394,7 @@ async function start() {
         lastPass.classList.add('hidden');
         form.classList.add('hidden');
         result.classList.remove('hidden');
-        document.getElementById('customerBookingResultStatus').textContent = message + ' · เลขจอง ' + saved.id;
+        document.getElementById('customerBookingResultStatus').textContent = message + (saved.line_linked ? ' · เชื่อม LINE แล้ว ระบบจะส่งบัตรหลังยืนยันการจอง' : '') + ' · เลขจอง ' + saved.id;
         resultTitle.focus();
         return;
       }
@@ -444,6 +450,17 @@ async function start() {
       document.getElementById('bookingSummaryHours').textContent].join(' · ');
 
     try {
+      if (throughLiff) {
+        const liff = await lineSession;
+        if (!liff) throw new Error('BOOKING_LINE_UNAVAILABLE');
+        if (!liff.isLoggedIn()) {
+          const redirectUri = new URL('./book.html',location.href);
+          redirectUri.search = new URLSearchParams({shop:shopSlug,line:'1'});
+          liff.login({redirectUri:redirectUri.href});
+          return;
+        }
+        if (!liff.getIDToken()) throw new Error('BOOKING_LINE_EXPIRED');
+      }
       const request = { p_request_id: pendingRequest.id, ...payload };
       const { data, error } = await client.rpc('quote_customer_payment', { p_request: request });
       if (error) throw error;

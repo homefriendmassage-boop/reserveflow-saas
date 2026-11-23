@@ -12,3 +12,6 @@ verify_jwt = false
 
 [functions.thunder-verify-slip]
 verify_jwt = false
+
+[functions.booking-line-payment]
+verify_jwt = false
