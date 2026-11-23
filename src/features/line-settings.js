@@ -90,6 +90,50 @@ function shopChannelSettings(client, shopId, refresh) {
       friendStatus.textContent = 'เชื่อมต่อฐานข้อมูลไม่ได้ กรุณาลองใหม่';
     } finally { friendSave.disabled = false; }
   };
+  const liffForm = element('form');
+  const liffId = element('input');
+  liffId.placeholder = '1234567890-abcdefgh';
+  liffId.maxLength = 53;
+  liffId.autocapitalize = 'none';
+  const liffSave = action('บันทึก LIFF สำหรับจอง');
+  liffSave.type = 'submit';
+  const liffStatus = element('p');
+  liffStatus.setAttribute('role','status');
+  const endpoint = element('input');
+  endpoint.readOnly = true;
+  const bookingUrl = new URL('./book.html',location.href);
+  const shopSlug = new URLSearchParams(location.search).get('shop') || '';
+  bookingUrl.search = new URLSearchParams({shop:shopSlug,line:'1'});
+  endpoint.value = bookingUrl.href;
+  const richMenu = element('input');
+  richMenu.readOnly = true;
+  const showLiffLink = id => { richMenu.value = id ? 'https://liff.line.me/' + id : ''; };
+  liffForm.append(label('Endpoint URL สำหรับ LIFF ใน LINE Developers',endpoint),
+    label('LIFF ID สำหรับหน้าจอง',liffId),liffSave,label('ลิงก์ LIFF สำหรับใส่ Rich Menu',richMenu),liffStatus);
+  section.append(liffForm);
+  void client.rpc('merchant_booking_liff',{p_shop_id:shopId}).then(({data}) => {
+    if (!liffId.value && data) { liffId.value = data; showLiffLink(data); }
+  });
+  liffForm.onsubmit = async event => {
+    event.preventDefault();
+    const id = liffId.value.trim();
+    if (id && !/^[0-9]{6,20}-[A-Za-z0-9]{4,32}$/.test(id)) {
+      liffStatus.textContent = 'ใส่ LIFF ID จาก LINE Developers';
+      return;
+    }
+    liffSave.disabled = true;
+    try {
+      const {error} = await client.rpc('save_shop_booking_liff',{p_shop_id:shopId,p_liff_id:id});
+      if (error) {
+        liffStatus.textContent = error.message === 'SHOP_LINE_NOT_CONFIGURED'
+          ? 'บันทึก LINE OA ของร้านก่อนตั้ง LIFF'
+          : error.code === 'PGRST202' ? 'รัน SQL 48 ก่อนตั้ง LIFF' : 'บันทึก LIFF ไม่สำเร็จ';
+        return;
+      }
+      showLiffLink(id);
+      liffStatus.textContent = id ? 'บันทึกแล้ว คัดลอกลิงก์ LIFF ไปใส่ Rich Menu ได้' : 'ปิด LIFF สำหรับหน้าจองแล้ว';
+    } finally { liffSave.disabled = false; }
+  };
   function directConnection(isGroup) {
     const direct = element('details');
     const targetForm = element('form');

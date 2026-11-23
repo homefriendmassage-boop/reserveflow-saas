@@ -88,6 +88,9 @@ export function prepareSlipAttachment(client, draft, sendPayment, onComplete) {
       }
     } catch (error) {
       status.textContent = ({
+        BOOKING_LINE_EXPIRED: 'การเชื่อม LINE หมดอายุ เปิดหน้าจองใหม่จากเมนู LINE แล้วแนบสลิปเดิมอีกครั้ง',
+        BOOKING_LINE_UNAVAILABLE: 'เชื่อม LINE ไม่สำเร็จ กรุณาลองส่งอีกครั้งโดยใช้สลิปเดิม',
+        BOOKING_LINE_ALREADY_LINKED: 'รายการนี้เชื่อมกับ LINE บัญชีอื่นแล้ว กรุณาติดต่อร้าน',
         BOOKING_PAYMENT_UNAVAILABLE: 'ร้านยังรับชำระรายการนี้ไม่ได้ กรุณาติดต่อร้าน',
         BOOKING_QUOTE_MISMATCH: 'ฉบับร่างหมดอายุหรือข้อมูลเปลี่ยน หากโอนแล้วกรุณาติดต่อร้านพร้อมสลิป',
         BOOKING_RESOURCE_IN_USE: 'จุดนี้ยังมีผู้ใช้บริการ หากโอนแล้วกรุณาติดต่อร้านพร้อมสลิป',
