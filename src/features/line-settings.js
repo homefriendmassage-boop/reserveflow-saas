@@ -1,4 +1,4 @@
-import { shopSupportPanel } from './platform-shop-support.js?v=support-editors-50';
+import { shopSupportPanel } from './platform-shop-support.js?v=hour-promotions-51';
 function element(tag, text) {
   const node = document.createElement(tag);
   if (text) node.textContent = text;

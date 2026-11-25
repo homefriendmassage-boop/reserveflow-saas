@@ -1,3 +1,4 @@
+import { isHourlyBooking } from './booking-pricing.js';
 import { renderListResources } from './merchant-list-resources.js?v=payment-drafts-1';
 import { decorTypes, floorGeometry, legacyFloor, sampleTableFloor, starterTemplateFloor, templatePositions } from './floor-design.js?v=floor-template-41';
 
@@ -65,6 +66,11 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       const selectedCode = rpc === 'save_merchant_floor_item' ? result || resourceCode : resourceCode;
       await reload();
       const replacement = (section === 'categories' ? categoryContainer : container).querySelector(`[data-section="${section}"]`);
+      if (rpc === 'save_merchant_hour_promotions') {
+        const promotion = [...(replacement?.querySelectorAll('[data-hour-promotions]') || [])]
+          .find(detail => detail.dataset.hourPromotions === args.p_code);
+        if (promotion) promotion.open = true;
+      }
       const categorySelect = replacement?.querySelector(section === 'resources' ? '[data-list-category]' : '[data-floor-category]');
       if (categorySelect && categoryCode) {
         categorySelect.value = categoryCode;
@@ -90,6 +96,7 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     } catch (error) {
       feedback.textContent = error?.message === 'CATEGORY_TEMPLATE_HAS_BOOKINGS'
         ? 'หมวดนี้มีประวัติการจองแล้ว กรุณาเพิ่มหมวดใหม่เพื่อใช้แม่แบบอื่น'
+        : error?.message === 'INVALID_HOUR_PROMOTIONS' ? 'ตรวจจำนวนชั่วโมงและราคาโปรโมชัน'
         : error?.message === 'RESOURCE_NAME_EXISTS'
         ? 'ชื่อนี้มีอยู่แล้วในหมวดนี้ กรุณาใช้ชื่ออื่น'
         : error?.message === 'INVALID_TABLE_POSITION' && rpc === 'save_merchant_floor_item' &&
@@ -188,6 +195,33 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
         }, 'categories');
       });
       categoryPanel.append(form);
+      if (category && isHourlyBooking(category.template)) {
+        const detail = node('details');
+        detail.className = 'merchant-settings-panel';
+        detail.dataset.hourPromotions = category.code;
+        detail.append(node('summary','โปรตามชั่วโมง · '+category.name),
+          node('p','กรอกราคารวมของโปร เว้นว่างช่วงที่ไม่มีโปร ชั่วโมงที่เกินคิดราคาปกติ'));
+        const promotions = node('form');
+        promotions.className = 'fields';
+        const maxHours = category.template === 'seat' ? 6 : 5;
+        const prices = new Map();
+        for (let hours=2; hours<=maxHours; hours++) {
+          const control = input('number',category.hour_promotions?.[hours] ?? '',0,99999999.99);
+          control.required = false;
+          control.step = '0.01';
+          prices.set(hours,field(promotions,hours+' ชั่วโมง (บาท)',control));
+        }
+        promotions.append(button('บันทึกโปรตามชั่วโมง','submit'));
+        promotions.onsubmit = event => {
+          event.preventDefault();
+          const p_promotions = Object.fromEntries([...prices]
+            .filter(([,control]) => control.value !== '').map(([hours,control]) => [hours,Number(control.value)]));
+          void persist('save_merchant_hour_promotions',{p_code:category.code,p_promotions},'categories');
+        };
+        detail.append(promotions);
+        categoryPanel.append(detail);
+      }
+
     }
     categoryPanel.append(message);
     categoryContainer.append(categoryPanel);
