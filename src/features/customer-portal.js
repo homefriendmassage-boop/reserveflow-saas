@@ -1,3 +1,4 @@
+import { bookingPrice } from './booking-pricing.js';
 import { initBookingLiff, submitLiffPayment } from './booking-liff.js';
 import { prepareSlipAttachment } from './customer-slip.js?v=booking-liff-48';
 import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=unfinished-floor-44';
@@ -84,9 +85,13 @@ function updateEstimate() {
   document.getElementById('bookingSummaryTime').textContent = validPeriod
     ? fields.hour.selectedOptions[0].textContent + ' – ' + end : '—';
   document.getElementById('bookingSummaryHours').textContent = validPeriod ? duration + ' ชั่วโมง' : '—';
-  estimate.textContent = resource && validPeriod
-    ? money.format(Number(category.price) * Number(units) + Number(category.service_fee))
-    : '—';
+  const price = resource && validPeriod ? bookingPrice(category,Number(units)) : null;
+  estimate.textContent = price ? money.format(price.total) : '—';
+  const promotion = document.getElementById('bookingPromotion');
+  promotion.classList.toggle('hidden',!price?.packageHours);
+  promotion.textContent = price?.packageHours
+    ? 'โปร '+price.packageHours+' ชม.'+(price.extraHours ? ' + ราคาปกติ '+price.extraHours+' ชม.' : '')
+      +' · ประหยัด '+money.format(price.savings) : '';
   submit.disabled = !resource || floorLoading || sending;
   highlightTable(fields.resource.value);
   for (const card of resourceCards.children) {

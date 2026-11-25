@@ -1,4 +1,4 @@
-import { renderMerchantSettings } from './merchant-settings.js?v=floor-template-41';
+import { renderMerchantSettings } from './merchant-settings.js?v=hour-promotions-51';
 
 function node(tag,text = '') {
   const item = document.createElement(tag);

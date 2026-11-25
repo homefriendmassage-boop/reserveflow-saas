@@ -1,12 +1,13 @@
+import { bookingPrice } from './booking-pricing.js';
 import { counterPaymentRpc, openMerchantCounterPayment } from './counter-payment.js?v=customer-qr-handoff';
 import { editBookingRecipient, renderBookingHistory } from './merchant-booking-tools.js?v=merchant-tools-1';
 import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-details.js';
 import { renderDailyReport } from './daily-report.js?v=report-labels-45';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=platform-shop-management-43';
 import { addThunderCheck } from './thunder-slip.js?v=bank-slip-preview-37';
-import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=support-editors-50';
+import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=hour-promotions-51';
 import { renderMerchantTeam } from './merchant-team.js?v=team-slip-credits-1';
-import { renderMerchantSettings } from './merchant-settings.js?v=floor-template-41';
+import { renderMerchantSettings } from './merchant-settings.js?v=hour-promotions-51';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, timeAtShop } from './booking-slots.js?v=business-day-1';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=platform-shop-management-43';
@@ -157,7 +158,8 @@ function bookingCashAmount() {
   if (!category || category.price === undefined) return null;
   const quantity = ['staff','vip','seat'].includes(category.template)
     ? Number(hoursField.value) : Number((category.template === 'ticket' ? ticketsField : guestField).value);
-  return Math.round((Number(category.price)*quantity+Number(category.serviceFee))*100)/100;
+  return bookingPrice({template:category.template,price:category.price,
+    service_fee:category.serviceFee,hour_promotions:JSON.parse(category.hourPromotions || '{}')},quantity).total;
 }
 function updateBookingPayment() {
   const cash = bookingPayment.value === 'cash';
@@ -742,6 +744,7 @@ if (typeof window.supabase?.createClient !== 'function') {
         option.dataset.template = category.template;
         if (category.price != null) option.dataset.price = category.price;
         option.dataset.serviceFee = category.service_fee || 0;
+        option.dataset.hourPromotions = JSON.stringify(category.hour_promotions || {});
         return option;
       }));
       loadMerchantResources();

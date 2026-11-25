@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="./assets/css/app.css?v=bank-slip-preview-37">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/customer-portal.js?v=booking-liff-48"></script>
+  <script type="module" src="./src/features/customer-portal.js?v=hour-promotions-51"></script>
 </head>
 <body>
 <header>
@@ -75,6 +75,7 @@
           <div><strong>รายการที่จอง</strong><span id="bookingSummaryResource">ยังไม่ได้เลือก</span></div>
           <div><strong>ช่วงเวลาที่จอง</strong><span id="bookingSummaryTime">—</span></div>
           <div><strong>จำนวนชั่วโมง</strong><span id="bookingSummaryHours">—</span></div>
+          <div id="bookingPromotion" class="sub hidden"></div>
           <div><strong>รวมค่าจอง / บริการ</strong><span id="bookingEstimate">—</span></div>
         </div>
         <button id="sendBooking" type="submit" class="btn primary full" disabled>แสดงช่องทางชำระเงิน</button>
