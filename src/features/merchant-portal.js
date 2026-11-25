@@ -4,7 +4,7 @@ import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-
 import { renderDailyReport } from './daily-report.js?v=report-labels-45';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=platform-shop-management-43';
 import { addThunderCheck } from './thunder-slip.js?v=bank-slip-preview-37';
-import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=shop-support-49';
+import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=support-editors-50';
 import { renderMerchantTeam } from './merchant-team.js?v=team-slip-credits-1';
 import { renderMerchantSettings } from './merchant-settings.js?v=floor-template-41';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, timeAtShop } from './booking-slots.js?v=business-day-1';

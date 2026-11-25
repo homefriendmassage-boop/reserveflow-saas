@@ -1,3 +1,5 @@
+import { renderMerchantSettings } from './merchant-settings.js?v=floor-template-41';
+
 function node(tag,text = '') {
   const item = document.createElement(tag);
   item.textContent = text;
@@ -21,7 +23,7 @@ export function shopSupportPanel(client,shop,onShopChanged) {
   status.setAttribute('role','status');
   panel.append(node('summary','ช่วยตั้งค่าร้านนี้'),status,body);
   const errors = {
-    PGRST202:'รัน SQL 49 เพื่อเปิดเมนูช่วยตั้งค่าร้าน',
+    PGRST202:'รัน SQL 49 และ 50 เพื่อเปิดเมนูช่วยตั้งค่าร้าน',
     '42501':'เฉพาะ Superadmin ที่ใช้เมนูนี้ได้',
     '22023':'กรุณาตรวจข้อมูลที่กรอก',
     PLATFORM_SHOP_NOT_FOUND:'ไม่พบร้านนี้',
@@ -64,6 +66,22 @@ export function shopSupportPanel(client,shop,onShopChanged) {
     return wrapper;
   }
 
+  const categoryEditor = node('div');
+  const layoutEditor = node('div');
+  categoryEditor.className = layoutEditor.className = 'merchant-editor';
+  async function loadEditors() {
+    const {data,error} = await client.rpc('platform_shop_support_editors',{p_shop_id:shop.shop_id});
+    if (error) throw error;
+    renderMerchantSettings(layoutEditor,{
+      categoryContainer:categoryEditor,...data,owner:true,
+      save:async (rpc,args) => {
+        const {data,error} = await client.rpc(rpc,{...args,p_shop_id:shop.shop_id});
+        if (error) throw error;
+        return data;
+      },
+      reload:loadEditors
+    });
+  }
   panel.addEventListener('toggle',async () => {
     if (!panel.open || body.childElementCount || status.dataset.loading) return;
     status.dataset.loading = '1';
@@ -71,19 +89,10 @@ export function shopSupportPanel(client,shop,onShopChanged) {
     try {
       const {data,error} = await client.rpc('platform_shop_support_settings',{p_shop_id:shop.shop_id});
       if (error) throw error;
-      body.append(form('ตั้งค่าร้าน','shop',{
+      body.append(form('ตั้งค่าร้านค้า','shop',{
         name:field('ชื่อร้าน',data.name,{required:true,maxLength:100}),
         open:field('เปิดรับจองออนไลน์',data.open,{type:'checkbox',disabled:data.suspended})
       }));
-      for (const category of data.categories) {
-        body.append(form('หมวด ' + category.name,'category',{
-          name:field('ชื่อหมวด',category.name,{required:true,maxLength:100}),
-          visible:field('แสดงในหน้าจอง',category.visible,{type:'checkbox'}),
-          price:field('ราคา (บาท)',category.price,{type:'number',min:'0',max:'99999999.99',step:'0.01',required:true}),
-          fee:field('ค่าบริการ (บาท)',category.fee,{type:'number',min:'0',max:'99999999.99',step:'0.01',required:true}),
-          sort_order:field('ลำดับ',category.sort_order,{type:'number',min:'0',max:'10000',step:'1',required:true})
-        },{code:category.code}));
-      }
       const webhook = field('Webhook URL ของร้าน',
         `https://zotgxsimkrofqxkhjjak.supabase.co/functions/v1/line-webhook?shop=${encodeURIComponent(shop.shop_id)}`,
         {readOnly:true});
@@ -94,7 +103,13 @@ export function shopSupportPanel(client,shop,onShopChanged) {
           liff_id:field('LIFF ID สำหรับหน้าจอง',data.line.liff_id,{maxLength:53})
         }));
       } else body.append(node('p','เจ้าของร้านยังไม่ได้เชื่อม LINE OA'));
-      status.textContent = '';
+      body.append(categoryEditor,layoutEditor);
+      try {
+        await loadEditors();
+        status.textContent = '';
+      } catch (error) {
+        status.textContent = error.code === 'PGRST202' ? 'รัน SQL 50 เพื่อเปิดหมวด พนักงาน โซนบัตร และผัง' : errorText(error);
+      }
     } catch (error) { status.textContent = errorText(error); }
     finally { delete status.dataset.loading; }
   });
