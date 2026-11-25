@@ -1,3 +1,4 @@
+import { shopSupportPanel } from './platform-shop-support.js';
 function element(tag, text) {
   const node = document.createElement(tag);
   if (text) node.textContent = text;
@@ -370,15 +371,25 @@ export async function loadPlatformAdmin(client, refresh) {
       const label = enabled ? 'เปิดรับจองออนไลน์' : 'ปิดรับจองออนไลน์';
       const control = action(label);
       control.onclick = () => change(control,'set_platform_shop_booking',{p_enabled:enabled},
-        shop.name + ' ' + label + 'แล้ว');
+        shopName.textContent + ' ' + label + 'แล้ว');
       return control;
     };
-    card.append(element('h3', shop.name), element('p', [
-      shop.slug, suspended ? 'Superadmin ปิดรับจอง' : shop.public_booking_enabled ? 'เปิดรับจอง' : 'ปิดรับจอง',
-      'ทีมงาน ' + shop.staff_count + ' บัญชี'
-    ].join(' · ')), customer, document.createTextNode(' · '), merchant);
-    if (!shop.public_booking_enabled) card.append(bookingAction(true));
-    if (!suspended) card.append(bookingAction(false));
+    const shopName = element('h3',shop.name);
+    const shopStatus = element('p');
+    const openBooking = bookingAction(true);
+    const closeBooking = bookingAction(false);
+    function updateShopCard(name,open) {
+      shopName.textContent = name;
+      shopStatus.textContent = [
+        shop.slug, suspended ? 'Superadmin ปิดรับจอง' : open ? 'เปิดรับจอง' : 'ปิดรับจอง',
+        'ทีมงาน ' + shop.staff_count + ' บัญชี'
+      ].join(' · ');
+      openBooking.classList.toggle('hidden',open);
+      closeBooking.classList.toggle('hidden',suspended);
+    }
+    updateShopCard(shop.name,shop.public_booking_enabled);
+    card.append(shopName,shopStatus,customer,document.createTextNode(' · '),merchant,
+      shopSupportPanel(client,shop,values => updateShopCard(values.name,values.open)),openBooking,closeBooking);
     if (suspended) {
       const deletion = element('details');
       const form = element('form');
