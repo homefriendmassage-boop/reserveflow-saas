@@ -1,4 +1,4 @@
-import { shopSupportPanel } from './platform-shop-support.js?v=hour-promotions-51';
+import { shopSupportPanel } from './platform-shop-support.js?v=inline-promotions';
 function element(tag, text) {
   const node = document.createElement(tag);
   if (text) node.textContent = text;

@@ -7,7 +7,8 @@
   <link rel="stylesheet" href="./assets/css/app.css?v=floor-template-41">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/merchant-portal.js?v=merchant-line-callback"></script>
+  <link rel="stylesheet" href="./assets/css/promotion-manager.css?v=inline-promotions">
+  <script type="module" src="./src/features/merchant-portal.js?v=inline-promotions"></script>
 </head>
 <body>
 <header>
@@ -97,10 +98,6 @@
       <div class="stat"><strong>—</strong><span>รอคอนเฟิร์ม</span></div>
       <div class="stat"><strong>—</strong><span>จองแล้ว/เช็กอิน</span></div>
     </div>
-    <section id="merchantPromotionPanel" class="panel hidden">
-      <h2>จัดการโปรโมชั่น</h2>
-      <a id="merchantPromotionLink" class="btn soft" href="./promotion-manager.html">สร้างหรือแก้ไขโปรโมชั่น</a>
-    </section>
     <div id="merchantCategorySettings" class="merchant-editor"></div>
     <section id="merchantShopSettings" class="panel hidden">
       <h2>🏪 ตั้งค่าร้านค้า</h2>

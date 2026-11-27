@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>จัดการโปรโมชั่น · ReserveFlow</title>
   <link rel="stylesheet" href="./assets/css/app.css">
-  <link rel="stylesheet" href="./assets/css/promotion-manager.css">
+  <link rel="stylesheet" href="./assets/css/promotion-manager.css?v=inline-promotions">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
-  <script type="module" src="./src/features/promotion-manager.js?v=merchant-line-callback"></script>
+  <script type="module" src="./src/features/promotion-manager.js?v=inline-promotions"></script>
 </head>
 <body>
   <header><div class="top"><div class="logo"><b>R</b>ReserveFlow · จัดการโปรโมชั่น</div><a id="backToShop" href="./merchant.html" class="btn soft small">กลับหลังบ้าน</a></div></header>
@@ -19,48 +19,7 @@
       <section id="editor" class="hidden">
         <label class="field"><span>ร้านค้า</span><select id="shop"></select></label>
         <p id="feedback" role="status"></p>
-        <div id="shopEditor" class="hidden">
-          <form id="offerForm" class="promotion-offer-form">
-            <h2 id="offerTitle">สร้างโปรโมชั่น</h2>
-            <input type="hidden" id="offerId">
-            <label class="field"><span>ชื่อโปรโมชั่น</span><input id="name" required maxlength="120" placeholder="เช่น ตกกุ้ง 3 ชั่วโมง ฟรีเครื่องดื่ม"></label>
-            <div class="promotion-pair">
-              <label class="field"><span>จำนวนชั่วโมง</span><select id="hours"><option value="1">1 ชั่วโมง</option><option value="2">2 ชั่วโมง</option><option value="3" selected>3 ชั่วโมง</option><option value="4">4 ชั่วโมง</option><option value="5">5 ชั่วโมง</option></select></label>
-              <label class="field"><span>ประเภทโปรโมชั่น</span><select id="mode"><option value="gift">แจกของแถม</option><option value="discount">ลดราคา</option></select></label>
-            </div>
-            <label class="field"><span>ราคาแพ็กเกจ (บาท)</span><input id="price" type="number" min="0" step=".01" required></label>
-            <div id="giftFields">
-              <label class="field"><span>ของแถม</span><input id="gift" placeholder="เช่น เครื่องดื่ม 1 แก้ว"></label>
-              <label class="field"><span>มูลค่าของแถม (บาท)</span><input id="giftValue" type="number" min="0" step=".01" value="0"></label>
-            </div>
-            <label class="merchant-switch"><input type="checkbox" id="active" checked> เปิดแสดงโปรโมชั่นให้ลูกค้า</label>
-            <details class="merchant-settings-panel">
-              <summary>วันใช้งานและจำนวนสิทธิ์</summary>
-              <div class="promotion-pair">
-                <label class="field"><span>เปิดขายตั้งแต่ (เวลาไทย)</span><input id="startsAt" type="datetime-local"></label>
-                <label class="field"><span>ปิดขายเมื่อ (เวลาไทย)</span><input id="endsAt" type="datetime-local"></label>
-              </div>
-              <label class="field"><span>จำนวนสิทธิ์ (เว้นว่างเพื่อไม่จำกัด)</span><input id="usageLimit" type="number" min="1" max="1000000"></label>
-            </details>
-            <section class="promotion-preview" aria-labelledby="previewLabel">
-              <p id="previewLabel" class="sub">ตัวอย่างที่ลูกค้าจะเห็น</p>
-              <h3 id="previewName"></h3>
-              <p id="previewPrice"></p>
-              <p id="previewGift"></p>
-              <p id="previewStatus" class="sub"></p>
-            </section>
-            <div class="inline-actions">
-              <button class="btn primary" type="submit">บันทึกโปรโมชั่น</button>
-              <button class="btn soft" id="clear" type="button">สร้างรายการใหม่</button>
-            </div>
-          </form>
-          <h2>โปรโมชั่นของร้าน</h2>
-          <div class="inline-actions">
-            <button id="loadDiscount" class="btn soft" type="button">ชุดโปรลดราคา 1–5 ชม.</button>
-            <button id="loadGift" class="btn soft" type="button">ชุดโปรแถมเครื่องดื่ม/อาหาร</button>
-          </div>
-          <div id="offers"></div>
-        </div>
+        <div id="shopEditor" class="hidden"></div>
       </section>
     </section>
   </main>

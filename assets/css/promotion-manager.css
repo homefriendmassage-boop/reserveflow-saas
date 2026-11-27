@@ -5,12 +5,12 @@
 .promotion-offer-form .field { margin: 0; }
 .promotion-offer-form .field input, .promotion-offer-form .field select { width: 100%; border-radius: 20px; }
 .promotion-pair { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .75rem; }
-#giftFields { display: grid; gap: .75rem; }
-#giftFields.hidden { display: none; }
+.promotion-gift-fields { display: grid; gap: .75rem; }
+.promotion-gift-fields.hidden { display: none; }
 .promotion-preview { border-top: 1px solid #d8e0f2; padding-top: .75rem; }
 .promotion-preview p { margin: .35rem 0; }
-#previewPrice { font-size: 1.25rem; font-weight: 700; }
-#previewGift { color: #087646; }
+.promotion-preview-price { font-size: 1.25rem; font-weight: 700; }
+.promotion-preview-gift { color: #087646; }
 @media (max-width: 460px) {
   .promotion-pair { grid-template-columns: 1fr; }
 }

@@ -1,3 +1,4 @@
+import { mountInlinePromotion } from './promotion-form.js';
 import { renderMerchantSettings } from './merchant-settings.js?v=hour-promotions-51';
 
 function node(tag,text = '') {
@@ -81,6 +82,7 @@ export function shopSupportPanel(client,shop,onShopChanged) {
       },
       reload:loadEditors
     });
+    mountInlinePromotion(categoryEditor,client,shop.shop_id,{platform:true});
   }
   panel.addEventListener('toggle',async () => {
     if (!panel.open || body.childElementCount || status.dataset.loading) return;
