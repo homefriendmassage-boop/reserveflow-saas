@@ -284,6 +284,7 @@ function bookingCard(booking, timezone, changeStatus, readSlip, client, refresh,
         if (slipManualOnly && booking.status !== 'cancelled') {
           const review = document.createElement('form');
           review.className = 'fields';
+          review.noValidate = true;
           const label = document.createElement('label');
           label.className = 'field';
           const transfer = document.createElement('input');
@@ -300,10 +301,45 @@ function bookingCard(booking, timezone, changeStatus, readSlip, client, refresh,
           approve.type = 'submit';
           approve.className = 'btn primary small';
           approve.textContent = 'ยืนยันรับชำระด้วยตนเอง';
-          review.append(label,checkLabel,approve);
-          review.onsubmit = event => {
+          const feedback = document.createElement('p');
+          feedback.setAttribute('role','status');
+          const expired = ['pending_confirm','pending_payment','slip_review'].includes(booking.status)
+            && Date.parse(booking.ends_at) <= Date.now();
+          const expiredMessage = 'รายการนี้เลยเวลาจองแล้ว จึงยืนยันการจองย้อนหลังจากปุ่มนี้ไม่ได้';
+          approve.disabled = expired;
+          if (expired) feedback.textContent = expiredMessage;
+          review.append(label,checkLabel,approve,feedback);
+          review.onsubmit = async event => {
             event.preventDefault();
-            changeStatus(booking.id,'manual_paid',{p_reference:transfer.value.trim(),p_amount:Number(booking.amount)});
+            if (approve.disabled) return;
+            if (['pending_confirm','pending_payment','slip_review'].includes(booking.status)
+              && Date.parse(booking.ends_at) <= Date.now()) {
+              feedback.textContent = expiredMessage;
+              return;
+            }
+            const reference = transfer.value.trim();
+            if (reference.length < 6 || reference.length > 200) {
+              feedback.textContent = 'กรอกเลขอ้างอิงจากรายการเงินเข้าอย่างน้อย 6 ตัวอักษร';
+              transfer.focus();
+              return;
+            }
+            if (!verified.checked) {
+              feedback.textContent = 'ติ๊กยืนยันว่าตรวจชื่อผู้รับ บัญชี และยอดเงินเข้าแล้ว';
+              verified.focus();
+              return;
+            }
+            approve.disabled = true;
+            feedback.textContent = 'กำลังบันทึกการรับชำระ…';
+            try {
+              await changeStatus(booking.id,'manual_paid',{p_reference:reference,p_amount:Number(booking.amount)});
+              note.textContent = 'แอดมินยืนยันรับชำระด้วยตนเองแล้ว';
+              review.remove();
+            } catch (error) {
+              feedback.textContent = actionErrors[error.message]
+                || (error.code === 'PGRST202' ? 'ฐานข้อมูลยังไม่มีฟังก์ชันยืนยันด้วยตนเอง กรุณาตรวจว่า SQL 19 รันสำเร็จ'
+                  : 'บันทึกการรับชำระไม่ได้ กรุณาลองใหม่');
+              approve.disabled = false;
+            }
           };
           attachment.append(review);
           return;
@@ -537,9 +573,17 @@ if (typeof window.supabase?.createClient !== 'function') {
   }
 
   function changeStatus(id, next, manualDetails) {
-    if (next === 'manual_paid') return runAction(() =>
-      counterPaymentRpc(client,'confirm_merchant_slip_manually',{p_shop_id:shopMenu.value,p_booking_id:id,...manualDetails}),
-    'ยืนยันรับชำระด้วยตนเองแล้ว');
+    if (next === 'manual_paid') {
+      const shopId = shopMenu.value;
+      return counterPaymentRpc(client,'confirm_merchant_slip_manually',{
+        p_shop_id:shopId,p_booking_id:id,...manualDetails
+      }).then(() => {
+        if (shopMenu.value === shopId) {
+          actionStatus.textContent = 'ยืนยันรับชำระด้วยตนเองแล้ว';
+          void loadBookings();
+        }
+      });
+    }
     if (next === 'counter_paid') return runAction(() =>
       counterPaymentRpc(client,'confirm_counter_booking_payment',{p_shop_id:shopMenu.value,p_booking_id:id}),
     'ยืนยันรับชำระแล้ว');
