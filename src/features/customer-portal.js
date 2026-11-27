@@ -1,8 +1,8 @@
 import { bookingPrice } from './booking-pricing.js';
 import { initBookingLiff, submitLiffPayment } from './booking-liff.js?v=friendship-verification';
-import { prepareSlipAttachment } from './customer-slip.js?v=line-friend-required';
+import { prepareSlipAttachment } from './customer-slip.js?v=recipient-check';
 import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=next-available-start';
-import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, nextBookingDate, timeAtShop } from './booking-slots.js?v=business-day-1';
+import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, nextBookingDate, timeAtShop } from './booking-slots.js?v=display-time-only';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 
 const form = document.getElementById('publicBookingForm');
@@ -110,7 +110,7 @@ function updateEstimate() {
   const [hour, minute] = fields.hour.value.split(':').map(Number);
   const endMinutes = hour * 60 + minute + duration * 60;
   const end = [Math.floor(endMinutes / 60) % 24, endMinutes % 60]
-    .map(value => String(value).padStart(2, '0')).join(':') + (hour < 6 || endMinutes >= 1440 ? ' (+1 วัน)' : '');
+    .map(value => String(value).padStart(2, '0')).join(':');
   const endField = document.getElementById('bookingEnd');
   const validPeriod = !loadingOffers && Boolean(fields.hour.value) && duration > 0 &&
     (fields.hours.disabled || fields.hours.validity.valid);

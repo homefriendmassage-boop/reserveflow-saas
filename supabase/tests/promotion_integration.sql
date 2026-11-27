@@ -37,6 +37,8 @@ begin
   insert into public.resources(shop_id,category_code,code,name) values
     (shop,'seat','S1','Seat 1'),(shop,'seat','S2','Seat 2'),(shop_b,'seat','S1','Other seat');
   insert into public.shop_promptpay(shop_id,mobile) values(shop,'0891234567'),(shop_b,'0891112222');
+  insert into reserveflow_private.shop_bank_accounts(shop_id,bank_name,holder_name,account_number)
+    values(shop,'Test bank','Test Recipient','1234567890');
   insert into reserveflow_private.shop_line_channels(shop_id,secret_id,bot_id,bot_name,booking_liff_id)
     values(shop,vault.create_secret('{"token":"fake-oa-a"}'),'U'||repeat('7',32),'OA A',client_liff),
       (shop_b,vault.create_secret('{"token":"fake-oa-b"}'),'U'||repeat('8',32),'OA B','2012709645-DdCcBbAa');
@@ -108,8 +110,50 @@ begin
   update public.bookings set status='confirmed' where id=booking;
   if public.rf_booking_voucher(pass) is not null then raise exception 'status alone issued voucher'; end if;
   update public.bookings set status='pending_confirm' where id=booking;
+  begin
+    set local role service_role;
+    if public.finish_booking_slip_checked(booking,'provider_verified','wrong-receiver',379,
+      '9999999999',array['Wrong Name'],now())->>'state' is distinct from 'receiver_review'
+      then raise exception 'wrong recipient was classified as an amount mismatch'; end if;
+    set local role authenticated;
+    perform set_config('request.jwt.claim.sub',account::text,true);
+    begin
+      perform public.change_merchant_table_booking_status(shop,booking,'confirmed');
+      raise exception 'staff confirmed a rejected receiver';
+    exception when invalid_parameter_value then
+      if sqlerrm<>'BOOKING_SLIP_APPROVAL_NOT_ALLOWED' then raise; end if;
+    end;
+    raise sqlstate 'RF913';
+  exception when sqlstate 'RF913' then null;
+  end;
+  begin
+    set local role service_role;
+    if public.finish_booking_slip_checked(booking,'provider_verified','wrong-name',380,
+      '1234567890',array['Wrong Name'],now())->>'state' is distinct from 'receiver_review'
+      then raise exception 'account match bypassed the receiver name'; end if;
+    raise sqlstate 'RF913';
+  exception when sqlstate 'RF913' then null;
+  end;
+  begin
+    set local role service_role;
+    if public.finish_booking_slip_checked(booking,'provider_verified','amount-only',379,
+      '1234567890',array['Test Recipient'],now())->>'state' is distinct from 'amount_review'
+      then raise exception 'valid recipient amount mismatch not sent to staff'; end if;
+    reset role;
+    if (select status from public.bookings where id=booking)<>'pending_confirm'
+      then raise exception 'amount mismatch was automatically approved'; end if;
+    set local role authenticated;
+    perform set_config('request.jwt.claim.sub',account::text,true);
+    perform public.change_merchant_table_booking_status(shop,booking,'confirmed');
+    reset role;
+    if (select status from public.bookings where id=booking)<>'confirmed'
+      then raise exception 'staff could not approve an amount mismatch'; end if;
+    raise sqlstate 'RF913';
+  exception when sqlstate 'RF913' then null;
+  end;
   set local role service_role;
-  if public.finish_thunder_booking_slip(booking,'provider_verified','promo-fixture-verified',380,'0891234567',now())->>'state'<>'confirmed' then
+  if public.finish_booking_slip_checked(booking,'provider_verified','promo-fixture-verified',380,
+    '1234567890',array['Test Recipient'],now())->>'state'<>'confirmed' then
     raise exception 'existing verifier did not confirm payment';
   end if;
   reset role;

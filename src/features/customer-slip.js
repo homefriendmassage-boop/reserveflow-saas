@@ -1,5 +1,5 @@
 import { bindSlipImage } from './slip-image-picker.js';
-import { checkThunderSlip, thunderStatus } from './thunder-slip.js?v=bank-slip-preview-37';
+import { checkThunderSlip, thunderStatus } from './thunder-slip.js?v=recipient-check';
 
 export function prepareSlipAttachment(client, draft, sendPayment, onComplete) {
   const section = document.getElementById('bookingSlip');
@@ -81,10 +81,6 @@ export function prepareSlipAttachment(client, draft, sendPayment, onComplete) {
     status.textContent = 'กำลังส่งสลิป…';
     try {
       const saved = await sendPayment(image);
-      if (!booking.qr) {
-        close('ส่งสลิปแล้ว · รอร้านตรวจสอบบัญชีธนาคาร', saved);
-        return;
-      }
       status.textContent = 'ส่งสลิปแล้ว · กำลังตรวจสลิป…';
       try {
         close(thunderStatus(await checkThunderSlip(client, saved.id, payload.p_phone)), saved);

@@ -1,6 +1,6 @@
 import { counterPaymentRpc, renderCounterPayment } from './counter-payment.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
-import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-details.js';
+import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-details.js?v=display-time-only';
 
 const get = id => document.getElementById(id);
 const token = location.hash.slice(1);

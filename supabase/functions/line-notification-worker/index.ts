@@ -32,6 +32,7 @@ async function availableBookingQr(payload: Record<string, string>) {
 function lineMessage(kind: string, payload: Record<string, string>, site: string, qrUrl?: string) {
   if (kind === 'booking_pass') {
     const pending = payload.notification_stage === 'pending';
+    const statusColor = pending ? '#8A4B08' : '#17634A';
     const link = new URL('booking-pass.html', site);
     link.hash = payload.pass_token;
     const row = (label: string, value: string) => ({
@@ -52,7 +53,7 @@ function lineMessage(kind: string, payload: Record<string, string>, site: string
       : savings > 0 ? 'ส่วนลด ' + new Intl.NumberFormat('th-TH',{style:'currency',currency:'THB'}).format(savings) : '';
     return { type: 'flex', altText: (pending ? 'รับรายการจองแล้ว · รอยืนยัน · ' : 'ยืนยันการจองแล้ว · ') + payload.shop, contents: {
       type: 'bubble', size: 'mega',
-      header: { type: 'box', layout: 'vertical', paddingAll: '20px', spacing: 'sm', backgroundColor: '#303C80', contents: [
+      header: { type: 'box', layout: 'vertical', paddingAll: '20px', spacing: 'sm', backgroundColor: statusColor, contents: [
         { type: 'text', text: 'ReserveFlow', color: '#DBE4FF', size: 'xs', weight: 'bold' },
         { type: 'text', text: pending ? 'รับรายการจองแล้ว · รอยืนยัน' : 'บัตรจอง · ยืนยันแล้ว', color: '#FFFFFF', size: 'xl', weight: 'bold', wrap: true },
         { type: 'text', text: payload.shop, color: '#EBEFFF', size: 'sm', wrap: true }
@@ -60,7 +61,7 @@ function lineMessage(kind: string, payload: Record<string, string>, site: string
       body: { type: 'box', layout: 'vertical', spacing: 'md', contents: [
         row('วันที่ใช้บริการ', payload.date),
         row('รายการที่จอง', payload.item),
-        row('ช่วงเวลาที่จอง', payload.period),
+        row('ช่วงเวลาที่จอง', payload.period.replaceAll(' (+1 วัน)', '')),
         row('จำนวนชั่วโมง', Number(payload.hours) + ' ชั่วโมง'),
         ...(channel ? [row('ช่องทางจอง',channel)] : []),
         ...(packageDetails ? [row('แพ็กเกจ',packageDetails)] : []),
@@ -70,7 +71,7 @@ function lineMessage(kind: string, payload: Record<string, string>, site: string
       ] },
       ...(!pending && qrUrl ? { hero: { type:'image', url:qrUrl, size:'full', aspectRatio:'1:1', aspectMode:'fit' } } : {}),
       footer: { type: 'box', layout: 'vertical', contents: [
-        { type: 'button', style: 'primary', color: '#404FBA', action: {
+        { type: 'button', style: 'primary', color: statusColor, action: {
           type: 'uri', label: pending || qrUrl ? 'เปิดบัตรจอง' : 'เปิดบัตรและ QR เข้างาน', uri: link.href
         } }
       ] }

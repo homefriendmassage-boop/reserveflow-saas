@@ -3,14 +3,14 @@ import { cancelPromotionLogin, resumePromotionLogin } from './promotion-login.js
 import { bookingPrice } from './booking-pricing.js';
 import { counterPaymentRpc, openMerchantCounterPayment } from './counter-payment.js?v=customer-qr-handoff';
 import { editBookingRecipient, renderBookingHistory } from './merchant-booking-tools.js?v=merchant-tools-1';
-import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-details.js';
+import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-details.js?v=display-time-only';
 import { renderDailyReport } from './daily-report.js?v=report-labels-45';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=platform-shop-management-43';
-import { addThunderCheck } from './thunder-slip.js?v=bank-slip-preview-37';
+import { addThunderCheck } from './thunder-slip.js?v=recipient-check';
 import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=online-promotions';
 import { renderMerchantTeam } from './merchant-team.js?v=team-slip-credits-1';
 import { renderMerchantSettings } from './merchant-settings.js?v=online-promotions';
-import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, timeAtShop } from './booking-slots.js?v=business-day-1';
+import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, timeAtShop } from './booking-slots.js?v=display-time-only';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=platform-shop-management-43';
 
@@ -92,6 +92,7 @@ const actionErrors = {
   BOOKING_PRICE_CHANGED: 'ยอดจองเปลี่ยนระหว่างทำรายการ โหลดหน้าร้านใหม่แล้วตรวจยอดก่อนบันทึก',
   COUNTER_PHONE_REQUIRED: 'ใส่เบอร์โทรลูกค้าเพื่อสร้าง QR รับชำระ',
   BOOKING_PAYMENT_UNAVAILABLE: 'ตรวจช่องทางรับเงินและราคาที่นั่งก่อนสร้าง QR',
+  BOOKING_SLIP_APPROVAL_NOT_ALLOWED: 'ยืนยันเองได้เฉพาะสลิปที่ตรวจชื่อและบัญชีผู้รับผ่าน แต่ยอดไม่ตรง',
   SLIP_BOOKING_UNAVAILABLE: 'รายการนี้หมดเวลาหรือยังไม่มีสลิปให้ยืนยัน',
   BOOKING_RESOURCE_IN_USE: 'จุดนี้ยังมีผู้ใช้บริการ กรุณาสิ้นสุดการใช้งานเดิมก่อน',
   BOOKING_SLOT_TAKEN: 'รายการนี้ถูกจองในช่วงเวลาดังกล่าวแล้ว',
@@ -276,6 +277,19 @@ function bookingCard(booking, timezone, changeStatus, readSlip, client, refresh,
         image.src = data.image;
         attachment.append(image);
         addThunderCheck(attachment, client, booking.id, data, refresh);
+        if (data.verification_state === 'amount_review' && data.receiver_verified &&
+          ['pending_confirm','slip_review'].includes(booking.status)) {
+          const approve = document.createElement('button');
+          approve.type = 'button';
+          approve.className = 'btn primary small';
+          approve.textContent = 'ยืนยันยอดที่ไม่ตรง';
+          approve.onclick = () => {
+            if (window.confirm('ยืนยันการจองโดยยอมรับยอดชำระที่ไม่ตรงใช่ไหม?')) {
+              changeStatus(booking.id, booking.status === 'slip_review' ? 'counter_paid' : 'confirmed');
+            }
+          };
+          attachment.append(approve);
+        }
       } catch {
         note.remove();
         label.textContent = 'เปิดสลิปอีกครั้งเพื่อโหลดใหม่';
@@ -294,14 +308,6 @@ function bookingCard(booking, timezone, changeStatus, readSlip, client, refresh,
       payment.textContent = 'เปิด QR ให้ลูกค้า';
       payment.onclick = () => showCounter(token);
       card.append(payment);
-      if (booking.status === 'slip_review' && canManageTables()) {
-        const approve = document.createElement('button');
-        approve.type = 'button';
-        approve.className = 'btn primary small';
-        approve.textContent = 'ยืนยันรับชำระแล้ว';
-        approve.onclick = () => changeStatus(booking.id,'counter_paid');
-        card.append(approve);
-      }
     }).catch(() => {});
   }
   const isTable = booking.category_code === 'table' ||
@@ -314,7 +320,6 @@ function bookingCard(booking, timezone, changeStatus, readSlip, client, refresh,
   }
   if (canManageTables() && !['completed', 'cancelled'].includes(booking.status)) {
     const started = start <= now;
-    if (!started && booking.status === 'pending_confirm') options.push(['confirmed', 'ยืนยันการจอง']);
     if (started && ['confirmed', 'checked_in'].includes(booking.status)) options.push(['completed', 'ใช้งานเสร็จ']);
     options.push(['cancelled', 'ยกเลิกการจอง']);
   }

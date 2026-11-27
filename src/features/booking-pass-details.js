@@ -4,7 +4,7 @@ export function renderPassDetails(list, pass) {
   const rows = [
     ['วันที่ใช้บริการ', pass.date],
     ['รายการที่จอง', [pass.category, pass.item].filter(Boolean).join(' · ')],
-    ['ช่วงเวลาที่จอง', pass.period],
+    ['ช่วงเวลาที่จอง', pass.period?.replaceAll(' (+1 วัน)', '')],
     ['จำนวนชั่วโมง', Number(pass.hours) + ' ชั่วโมง']
   ];
   if (pass.amount != null) rows.push(['รวมค่าจอง / บริการ',

@@ -14,7 +14,7 @@ export function thunderStatus(result) {
   const messages = {
     confirmed: 'ตรวจผ่านและยืนยันการจองแล้ว',
     amount_review: 'ระบบพบรายการโอน แต่ยอดไม่ตรง · รอแอดมินยืนยัน',
-    receiver_review: 'ระบบพบรายการโอน · รอตรวจผู้รับหรือเวลาโอน',
+    receiver_review: 'สลิปไม่ผ่าน · ยืนยันชื่อผู้รับ เลขบัญชี หรือเวลาโอนไม่ได้',
     duplicate_review: 'เลขอ้างอิงนี้ผูกกับรายการจองอื่นแล้ว · รอแอดมินตรวจ',
     booking_review: 'ตรวจพบรายการโอน · รอแอดมินตรวจสถานะจอง',
     qr_unreadable: 'ระบบอ่าน QR ไม่ได้ · รอแอดมินตรวจรูปสลิป',
@@ -46,9 +46,9 @@ export function addThunderCheck(container, client, bookingId, initial, refresh) 
     try {
       const result = await checkThunderSlip(client, bookingId);
       feedback.textContent = thunderStatus(result);
-      if (result?.state === 'confirmed' && initial.verification_state !== 'confirmed') await refresh();
+      if (['confirmed','amount_review'].includes(result?.state) && initial.verification_state !== result.state) await refresh();
     } catch {
-      feedback.textContent = 'ตรวจสลิปไม่ได้ กรุณาลองใหม่หรือตรวจสลิปด้วยตนเอง';
+      feedback.textContent = 'ตรวจสลิปไม่ได้ กรุณาลองตรวจใหม่';
     } finally {
       button.disabled = false;
     }

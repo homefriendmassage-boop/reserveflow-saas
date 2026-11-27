@@ -2,7 +2,7 @@ export function bookingTimeOptions() {
   return Array.from({ length: 48 }, (_, index) => {
     const hour = (6 + Math.floor(index / 2)) % 24;
     const time = String(hour).padStart(2, '0') + (index % 2 ? ':30' : ':00');
-    return new Option(time + (hour < 6 ? ' (+1 วัน)' : ''), time);
+    return new Option(time, time);
   });
 }
 
