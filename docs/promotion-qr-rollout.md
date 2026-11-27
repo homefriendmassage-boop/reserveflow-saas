@@ -27,6 +27,12 @@ PR #5 ใช้ branch `feature/shrimp-hour-promos-qr-redemption` สำหร�
 - ทดสอบ worker แบบจำลองด้วย `deno test --allow-env supabase/tests/promotion_worker_test.ts` ซึ่งไม่ส่ง LINE จริง ตรวจ Cron secret, routing, retry key, Flex URL และผลตอบรับ 200/409/500
 - ก่อนใช้งานจริงให้ทดสอบ QR และ Flex ด้วย OA ทดสอบบน Android และ iPhone ตรวจสิทธิ์พนักงานต่างร้าน ตรวจ URL ภาพที่ LINE ดึงได้ และทดสอบภาระงานจริง ปัจจุบัน QR ใช้ rate limit ต่อ instance และ token สำหรับลดการใช้งานซ้ำระยะสั้น
 
+## ผลทดสอบของ PR #5
+
+- PostgreSQL แบบแยกผ่านการรัน migration และทดสอบราคาใน QR, การปลอมยอด, โควต้า, สิทธิ์ข้ามร้าน, สลิปที่ยังไม่ยืนยัน, การยกเลิก, คืนเงินและหมดอายุ ทดสอบเรียกยืนยันคูปองจากสอง session ได้ผลสำเร็จหนึ่งครั้งและอีกครั้งตอบ `ALREADY_REDEEMED`
+- Chromium จำลองหน้ามือถือผ่านทั้งจองพร้อมโปรและจองปกติ Deno ผ่านการทดสอบ PNG และ LINE worker แบบจำลองสำหรับผล 200, 409 และ 500
+- รอผลจาก LINE OA จริง, Android/iPhone จริง และการรับชำระใน staging ก่อนเปิดใช้งานจริง
+
 ## ขั้นตอน staging หลังรีวิว
 
 1. สร้างหรือใช้ Supabase staging ของ **ReserveFlow** ที่แยกจาก production ติดตั้ง SQL ฐานถึง 51 แล้วตามด้วย migrations วันที่ 27 พ.ย. ลำดับ 01–04
