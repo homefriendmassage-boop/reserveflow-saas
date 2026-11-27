@@ -12,7 +12,7 @@ function flex(job:Job){
   ]});
   const issued=job.kind==='issued';
   const baseUrl=new URL('promotion-redeem.html',site);baseUrl.searchParams.set('code',job.token);
-  const qrUrl=new URL('/promotion-qr',supabaseUrl.replace('.supabase.co','.functions.supabase.co'));
+  const qrUrl=new URL('functions/v1/promotion-qr',supabaseUrl+'/');
   qrUrl.searchParams.set('code',job.token);
   return {type:'flex',altText:issued?'🎁 คูปองสิทธิพิเศษ · '+job.shop_name:'✅ ยืนยันการรับสิทธิ์เรียบร้อย',
     contents:{type:'bubble',size:'mega',
