@@ -32,6 +32,11 @@ declare
   expiry date := (now() at time zone 'Asia/Bangkok')::date + 1;
   client_liff text := '2012709644-AaBbCcDd';
 begin
+  if reserveflow_private.booking_receiver_name_key('นาย สมชาย ใจดี') is distinct from
+      reserveflow_private.booking_receiver_name_key('สมชาย ใจดี')
+    or reserveflow_private.booking_receiver_name_key('นายสมชาย ใจอื่น') is not distinct from
+      reserveflow_private.booking_receiver_name_key('สมชาย ใจดี')
+    then raise exception 'receiver title normalization loosened the full-name comparison'; end if;
   insert into public.categories(shop_id,code,name,template,price,service_fee,hour_promotions)
     values (shop,'seat','Seat','seat',120,20,'{"3":300}'),(shop_b,'seat','Other','seat',120,20,'{}');
   insert into public.resources(shop_id,category_code,code,name) values
@@ -121,7 +126,7 @@ begin
   begin
     set local role service_role;
     if public.finish_booking_slip_checked(booking,'provider_verified','valid-promptpay',380,
-      null,array['Test Recipient'],now(),'0891234567')->>'state' is distinct from 'confirmed'
+      null,array['MR. Test Recipient'],now(),'0891234567')->>'state' is distinct from 'confirmed'
       then raise exception 'matching PromptPay and name were not accepted'; end if;
     raise sqlstate 'RF913';
   exception when sqlstate 'RF913' then null;
