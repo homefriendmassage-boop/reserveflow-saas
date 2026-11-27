@@ -230,8 +230,6 @@ begin
   pass:=(public.submit_customer_payment(request,380,image)->>'pass_token')::uuid;
   reset role;
   update public.bookings set status='confirmed' where id=second_booking;
-  update public.booking_slip_attachments set verification_state='confirmed',verified_amount=380,
-    verified_paid_at=now(),thunder_reference='promo-fixture-second' where booking_id=second_booking;
   update public.bookings set status='completed' where id=second_booking;
   if public.rf_booking_voucher(pass) is not null then raise exception 'completion bypassed check-in'; end if;
   update public.bookings set status='confirmed',starts_at=now()+interval '5 minutes',
@@ -241,6 +239,14 @@ begin
   perform set_config('request.jwt.claim.sub',account::text,true);
   perform public.check_in_booking_pass(scan);
   reset role;
+  if public.rf_booking_voucher(pass) is not null then raise exception 'check-in issued coupon without verified payment'; end if;
+  set local role service_role;
+  if public.finish_booking_slip_checked(second_booking,'provider_verified','promo-fixture-second',380,
+    '1234567890',array['Test Recipient'],now())->>'state' is distinct from 'confirmed'
+    then raise exception 'valid slip did not confirm after check-in'; end if;
+  reset role;
+  if (select status from public.bookings where id=second_booking) <> 'checked_in'
+    then raise exception 'slip retry changed the check-in status'; end if;
   update public.bookings set status='completed' where id=second_booking;
   second_token:=public.rf_booking_voucher(pass);
   if second_token is null then raise exception 'website booking lacks coupon'; end if;
