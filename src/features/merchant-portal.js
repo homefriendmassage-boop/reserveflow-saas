@@ -6,7 +6,7 @@ import { editBookingRecipient, renderBookingHistory } from './merchant-booking-t
 import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-details.js?v=display-time-only';
 import { renderDailyReport } from './daily-report.js?v=report-labels-45';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=platform-shop-management-43';
-import { addThunderCheck } from './thunder-slip.js?v=slip-decimal-response';
+import { addThunderCheck } from './thunder-slip.js?v=slip-review-reason';
 import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=online-promotions';
 import { renderMerchantTeam } from './merchant-team.js?v=team-slip-credits-1';
 import { renderMerchantSettings } from './merchant-settings.js?v=online-promotions';

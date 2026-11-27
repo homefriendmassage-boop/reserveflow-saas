@@ -1,6 +1,6 @@
 import { bookingPrice } from './booking-pricing.js';
 import { initBookingLiff, submitLiffPayment } from './booking-liff.js?v=friendship-verification';
-import { prepareSlipAttachment } from './customer-slip.js?v=slip-decimal-response';
+import { prepareSlipAttachment } from './customer-slip.js?v=slip-review-reason';
 import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=next-available-start';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, nextBookingDate, timeAtShop } from './booking-slots.js?v=display-time-only';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';

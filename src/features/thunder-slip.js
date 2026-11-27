@@ -32,11 +32,17 @@ export function thunderStatus(result) {
     provider_response_incomplete: 'ระบบตรวจสลิปส่งข้อมูลยอดหรือเลขอ้างอิงมาไม่ครบ · กรุณาลองตรวจใหม่',
     verification_save_unavailable: 'ระบบบันทึกผลตรวจสลิปไม่ได้ · ให้ผู้ดูแลดู Logs ของตัวตรวจสลิป',
     receiver_account_unavailable: 'ระบบตรวจสลิปไม่ได้รับเลขบัญชีผู้รับแบบเต็ม จึงยืนยันรายการไม่ได้',
+    bank_account_missing: 'ร้านยังไม่ได้ตั้งบัญชีรับเงินสำหรับตรวจสลิป',
+    receiver_account_mismatch: 'เลขบัญชีผู้รับจากผลตรวจไม่ตรงกับบัญชีรับเงินของร้าน',
+    receiver_name_mismatch: 'ชื่อผู้รับจากผลตรวจไม่ตรงกับชื่อบัญชีที่ร้านตั้งไว้',
+    payment_time_unavailable: 'ผลตรวจไม่มีเวลาโอนที่ยืนยันได้',
+    payment_before_quote: 'เวลาชำระมาก่อนเวลาสร้างยอดชำระของรายการนี้',
+    payment_time_future: 'เวลาโอนในผลตรวจอยู่หลังเวลาปัจจุบัน',
     receiver_name_unavailable: 'ระบบตรวจสลิปไม่ได้รับชื่อผู้รับ จึงยืนยันรายการไม่ได้',
     unavailable: 'เปิดข้อมูลตรวจสลิปไม่ได้ · กรุณาลองใหม่หรือติดต่อผู้ดูแล',
     not_configured: 'ระบบตรวจสลิปอัตโนมัติยังไม่พร้อม · รอแอดมินตรวจ'
   };
-  return (messages[result?.state] || 'ส่งสลิปแล้ว · รอแอดมินตรวจ') + amountText;
+  return (messages[result?.reason] || messages[result?.state] || 'ส่งสลิปแล้ว · รอแอดมินตรวจ') + amountText;
 }
 
 export function addThunderCheck(container, client, bookingId, initial, refresh) {
@@ -46,7 +52,7 @@ export function addThunderCheck(container, client, bookingId, initial, refresh) 
   button.textContent = 'ตรวจสลิป';
   const feedback = document.createElement('p');
   feedback.setAttribute('role', 'status');
-  feedback.textContent = thunderStatus({ state: initial.verification_state, amount: initial.verified_amount });
+  feedback.textContent = thunderStatus({ state: initial.verification_state, reason:initial.receiver_review_reason, amount: initial.verified_amount });
   container.append(button, feedback);
 
   button.addEventListener('click', async () => {

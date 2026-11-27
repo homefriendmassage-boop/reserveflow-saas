@@ -113,7 +113,7 @@ begin
   begin
     set local role service_role;
     if public.finish_booking_slip_checked(booking,'provider_verified','wrong-receiver',379,
-      '9999999999',array['Wrong Name'],now())->>'state' is distinct from 'receiver_review'
+      '9999999999',array['Wrong Name'],now())->>'reason' is distinct from 'receiver_account_mismatch'
       then raise exception 'wrong recipient was classified as an amount mismatch'; end if;
     set local role authenticated;
     perform set_config('request.jwt.claim.sub',account::text,true);
@@ -129,8 +129,12 @@ begin
   begin
     set local role service_role;
     if public.finish_booking_slip_checked(booking,'provider_verified','wrong-name',380,
-      '1234567890',array['Wrong Name'],now())->>'state' is distinct from 'receiver_review'
+      '1234567890',array['Wrong Name'],now())->>'reason' is distinct from 'receiver_name_mismatch'
       then raise exception 'account match bypassed the receiver name'; end if;
+    if public.claim_thunder_booking_slip(booking,'0891234567',null)->>'state' is distinct from 'receiver_review'
+      then raise exception 'customer could restart a rejected recipient check'; end if;
+    if public.claim_thunder_booking_slip(booking,null,account)->>'state' is distinct from 'claimed'
+      then raise exception 'authorized staff could not retry a rejected recipient check'; end if;
     raise sqlstate 'RF913';
   exception when sqlstate 'RF913' then null;
   end;
