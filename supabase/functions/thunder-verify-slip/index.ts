@@ -81,7 +81,7 @@ Deno.serve(async request => {
   }
   let result;
   try {
-    result = payload ? await verifySlip(payload, key) : { outcome:'qr_unreadable' };
+    result = payload ? await verifySlip(payload, key, fetch, true) : { outcome:'qr_unreadable' };
   } catch (error) {
     result = {outcome:'retry',providerState:error instanceof Error && error.name === 'TimeoutError'
       ? 'provider_timeout' : 'provider_unavailable'};

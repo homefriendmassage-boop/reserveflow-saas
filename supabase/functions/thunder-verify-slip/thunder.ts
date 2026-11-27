@@ -1,10 +1,15 @@
 const thunderUrl = 'https://api.thunder.in.th/v2/verify/bank';
 
-export async function verifySlip(payload: string, key: string, send = fetch) {
+function fullAccount(value: unknown) {
+  const account = typeof value === 'string' ? value.replace(/[\s-]/g, '') : '';
+  return /^[0-9]{6,20}$/.test(account) ? account : null;
+}
+
+export async function verifySlip(payload: string, key: string, send = fetch, matchAccount = false) {
   const response = await send(thunderUrl, {
     method: 'POST', redirect: 'error',
     headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ payload }), signal: AbortSignal.timeout(12000)
+    body: JSON.stringify({ payload, ...(matchAccount ? { matchAccount:true } : {}) }), signal: AbortSignal.timeout(12000)
   });
   if (!response.ok) {
     await response.body?.cancel();
@@ -18,7 +23,8 @@ export async function verifySlip(payload: string, key: string, send = fetch) {
   } catch {
     return {outcome:'retry',providerState:'provider_response_incomplete'};
   }
-  const data = body?.data;
+  const result = body?.data;
+  const data = result?.rawSlip ?? result;
   if (body?.success !== true) return { outcome: 'not_verified' };
   const reference = typeof data?.transRef === 'string' ? data.transRef.trim() : '';
   if (!reference || reference.length > 200) return {outcome:'retry',providerState:'provider_reference_unavailable'};
@@ -37,10 +43,16 @@ export async function verifySlip(payload: string, key: string, send = fetch) {
   const account = typeof proxy?.account === 'string' ? proxy.account.replace(/[\s-]/g, '') : '';
   const mobile = proxy?.type === 'MSISDN'
     ? account.replace(/^(?:0066|\+66|66)([689][0-9]{8})$/, '0$1') : '';
-  const bankAccount = data.receiver?.account?.bank?.account;
-  const receiverAccount = typeof bankAccount === 'string' ? bankAccount.replace(/[\s-]/g, '') : '';
+  const rawAccount = fullAccount(data.receiver?.account?.bank?.account);
+  const matched = matchAccount ? result?.matchedAccount : null;
+  const matchedNumber = fullAccount(matched?.bankNumber);
+  const receiverAccount = rawAccount && matchedNumber && rawAccount !== matchedNumber
+    ? null : rawAccount ?? matchedNumber;
   const name = data.receiver?.account?.name;
-  const receiverNames = [typeof name === 'string' ? name : name?.th, name?.en]
+  const candidates = rawAccount
+    ? [typeof name === 'string' ? name : name?.th, name?.en]
+    : matchedNumber ? [matched.nameTh, matched.nameEn] : [];
+  const receiverNames = candidates
     .filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
   const time = typeof data.date === 'string' && /(?:Z|[+-]\d{2}:\d{2})$/.test(data.date)
     ? Date.parse(data.date) : NaN;
@@ -48,7 +60,7 @@ export async function verifySlip(payload: string, key: string, send = fetch) {
     outcome: 'provider_verified',
     reference,
     amount,
-    receiverAccount: /^[0-9]{6,20}$/.test(receiverAccount) ? receiverAccount : null,
+    receiverAccount,
     receiverNames,
     mobile: /^0[689][0-9]{8}$/.test(mobile) ? mobile : null,
     paidAt: Number.isFinite(time) ? new Date(time).toISOString() : null
