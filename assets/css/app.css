@@ -588,3 +588,8 @@
   background: #eef0ff;
 }
 .booking-offer-card small { color: #42506e; font-size: 0.9em; }
+
+.booking-hour-stepper { display: flex; align-items: end; gap: 8px; }
+.booking-hour-stepper .field { width: 105px; }
+.booking-hour-stepper input { text-align: center; appearance: textfield; }
+.booking-hour-stepper input::-webkit-inner-spin-button { appearance: none; }

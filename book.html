@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>จองคิว | ReserveFlow</title>
-  <link rel="stylesheet" href="./assets/css/app.css?v=booking-flow-order">
+  <link rel="stylesheet" href="./assets/css/app.css?v=booking-hour-stepper">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/customer-portal.js?v=booking-packages-first"></script>
+  <script type="module" src="./src/features/customer-portal.js?v=booking-hour-stepper"></script>
 </head>
 <body>
 <header>
@@ -50,12 +50,20 @@
           <p id="floorStatus" class="sub" role="status"></p>
           <div class="layout-shell"><div class="plan customer-plan live-booking-plan" id="bookingFloor"></div></div>
         </section>
-        <section id="bookingOfferField" class="booking-offers hidden" aria-labelledby="bookingOfferTitle">
-          <h3 id="bookingOfferTitle">เลือกแพ็กเกจ</h3>
-          <div id="bookingOffer" class="booking-offer-list" role="group" aria-labelledby="bookingOfferTitle"></div>
+        <section class="booking-offers" aria-labelledby="bookingOfferTitle">
+          <h3 id="bookingOfferTitle">เลือกจำนวนชั่วโมง</h3>
+          <div class="booking-hour-stepper">
+            <button id="bookingHoursMinus" type="button" class="btn soft" aria-label="ลดจำนวนชั่วโมง">−</button>
+            <div class="field"><label for="hours">จำนวนชั่วโมง</label><input id="hours" name="hours" type="number" min="1" value="1" readonly></div>
+            <button id="bookingHoursPlus" type="button" class="btn soft" aria-label="เพิ่มจำนวนชั่วโมง">+</button>
+          </div>
+          <p id="bookingCurrentOffer" aria-live="polite"></p>
+          <div id="bookingOfferField" class="hidden">
+            <h4>โปรถัดไปที่แนะนำ</h4>
+            <div id="bookingOffer" class="booking-offer-list"></div>
+          </div>
           <p id="bookingOfferStatus" class="sub" role="status"></p>
         </section>
-        <div class="field hidden" id="bookingHoursField"><label for="hours">จำนวนชั่วโมงที่ต้องการจอง</label><input id="hours" name="hours" type="number" min="1" value="1" required></div>
         <div class="fields live-booking-date">
           <div class="field"><label for="date">วันที่ใช้บริการ (รอบ 06:00 ถึงก่อน 06:00 วันถัดไป)</label><input id="date" name="date" type="date" required></div>
         </div>
