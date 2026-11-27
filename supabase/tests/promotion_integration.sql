@@ -27,6 +27,7 @@ declare
   quote jsonb;
   job record;
   merchant_booking uuid;
+  scan uuid;
   image text := 'data:image/png;base64,iVBORw0KGgo=';
   expiry date := (now() at time zone 'Asia/Bangkok')::date + 1;
   client_liff text := '2012709644-AaBbCcDd';
@@ -63,6 +64,8 @@ begin
   reset role;
   if (select amount from public.bookings where id=merchant_booking) is distinct from 380::numeric then
     raise exception 'online-only policy allowed a counter discount'; end if;
+  if reserveflow_private.booking_pass_details(merchant_booking)->>'booking_channel' is distinct from 'staff'
+    then raise exception 'staff booking not marked as staff'; end if;
   set local role anon;
   if jsonb_array_length(public.rf_booking_offers('promo-test-a','seat',3))<>2
     or jsonb_array_length(public.rf_booking_offers('promo-test-b','seat',3))<>0 then
@@ -115,6 +118,12 @@ begin
   if (select count(*) from reserveflow_private.line_outbox q where q.customer_booking_id=booking
     and q.payload->>'notification_stage'='confirmed') <> 1 then
     raise exception 'confirmed Flex did not queue once';
+  end if;
+  if (select count(*) from reserveflow_private.line_outbox q where q.customer_booking_id=booking
+    and q.payload @> jsonb_build_object('booking_channel','online','package_name','Gift 3 hours',
+      'package_hours','3','package_gift','One drink')
+    and q.payload->>'notification_stage' in ('pending','confirmed')) <> 2 then
+    raise exception 'booking channel and package were not included in both Flex messages';
   end if;
   if public.rf_booking_voucher(pass) is not null or exists (
     select 1 from public.rf_promotion_vouchers where booking_id=booking
@@ -170,10 +179,18 @@ begin
     verified_paid_at=now(),thunder_reference='promo-fixture-second' where booking_id=second_booking;
   update public.bookings set status='completed' where id=second_booking;
   if public.rf_booking_voucher(pass) is not null then raise exception 'completion bypassed check-in'; end if;
-  update public.bookings set status='checked_in' where id=second_booking;
+  update public.bookings set status='confirmed',starts_at=now()+interval '5 minutes',
+    ends_at=now()+interval '3 hours 5 minutes' where id=second_booking;
+  select scan_token into scan from reserveflow_private.booking_passes where booking_id=second_booking;
+  set local role authenticated;
+  perform set_config('request.jwt.claim.sub',account::text,true);
+  perform public.check_in_booking_pass(scan);
+  reset role;
   update public.bookings set status='completed' where id=second_booking;
   second_token:=public.rf_booking_voucher(pass);
   if second_token is null then raise exception 'website booking lacks coupon'; end if;
+  if public.get_customer_booking_pass(pass)->>'gift_coupon_status' is distinct from 'not_linked'
+    then raise exception 'customer pass did not distinguish coupon from LINE delivery'; end if;
   set local role authenticated;
   perform set_config('request.jwt.claim.sub',stranger::text,true);
   begin

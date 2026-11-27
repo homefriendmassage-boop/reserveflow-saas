@@ -40,6 +40,16 @@ function lineMessage(kind: string, payload: Record<string, string>, site: string
         { type: 'text', text: value, color: '#182440', size: 'sm', weight: 'bold', flex: 4, align: 'end', wrap: true }
       ]
     });
+    const channel = payload.booking_channel === 'online' ? 'จองออนไลน์'
+      : payload.booking_channel === 'staff' ? 'พนักงานจองให้' : '';
+    const packageDetails = payload.package_name ? [
+      payload.package_name,
+      Number(payload.package_hours) > 0 ? Number(payload.package_hours) + ' ชั่วโมง' : '',
+      Number(payload.package_extra_hours) > 0 ? '+ ราคาปกติ ' + Number(payload.package_extra_hours) + ' ชม.' : ''
+    ].filter(Boolean).join(' · ') : '';
+    const savings = Number(payload.package_savings);
+    const benefit = payload.package_gift ? payload.package_gift + ' · รับคูปองหลังเช็กอิน'
+      : savings > 0 ? 'ส่วนลด ' + new Intl.NumberFormat('th-TH',{style:'currency',currency:'THB'}).format(savings) : '';
     return { type: 'flex', altText: (pending ? 'รับรายการจองแล้ว · รอยืนยัน · ' : 'ยืนยันการจองแล้ว · ') + payload.shop, contents: {
       type: 'bubble', size: 'mega',
       header: { type: 'box', layout: 'vertical', paddingAll: '20px', spacing: 'sm', backgroundColor: '#303C80', contents: [
@@ -52,6 +62,9 @@ function lineMessage(kind: string, payload: Record<string, string>, site: string
         row('รายการที่จอง', payload.item),
         row('ช่วงเวลาที่จอง', payload.period),
         row('จำนวนชั่วโมง', Number(payload.hours) + ' ชั่วโมง'),
+        ...(channel ? [row('ช่องทางจอง',channel)] : []),
+        ...(packageDetails ? [row('แพ็กเกจ',packageDetails)] : []),
+        ...(benefit ? [row('สิทธิที่ได้รับ',benefit)] : []),
         { type: 'separator' },
         row('รวมค่าจอง / บริการ', new Intl.NumberFormat('th-TH', {style:'currency',currency:'THB'}).format(Number(payload.amount)))
       ] },

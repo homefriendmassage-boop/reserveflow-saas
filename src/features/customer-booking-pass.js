@@ -62,6 +62,17 @@ async function load() {
     const giftPass = get('bookingGiftPass');
     giftPass.classList.toggle('hidden',!voucher);
     if (voucher) giftPass.href = './promotion-pass.html#' + encodeURIComponent(voucher);
+    const couponStatus = {
+      check_in_required: 'คูปองของแถมจะขึ้นหลังร้านยืนยันเช็กอิน',
+      payment_review: 'เช็กอินแล้ว · คูปองยังรอตรวจยืนยันยอดชำระ กรุณาติดต่อร้าน',
+      queued: 'คูปองพร้อมใช้ในบัตรแล้ว · กำลังรอส่งทาง LINE',
+      failed: 'ส่งคูปองทาง LINE ไม่สำเร็จ · กดเปิดคูปองจากบัตรนี้ได้',
+      not_linked: 'คูปองพร้อมในบัตรนี้ · รายการยังไม่ได้เชื่อม LINE',
+      redeemed: 'รับของแถมแล้ว',
+      expired: 'คูปองของแถมหมดอายุแล้ว',
+      void: 'คูปองของแถมถูกยกเลิกแล้ว'
+    };
+    get('passCouponStatus').textContent = couponStatus[data.gift_coupon_status] || '';
     renderCounterPayment(client,get('counterPayment'),payment,token,load);
     const deliveryStatus = {
       accepted: 'LINE รับข้อความแล้ว · เปิดแชตกับ LINE OA ของร้านเพื่อดูบัตร',
