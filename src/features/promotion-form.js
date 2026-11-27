@@ -109,6 +109,15 @@ export function mountPromotionForm(root, client, shopId, {platform=false,categor
       const article=document.createElement('article');article.className='booking';
       const heading=document.createElement('h3');heading.textContent=o.name;article.append(heading);
       const summary=document.createElement('p');summary.textContent=`${categoryByCode.get(o.category_code)?.name || 'โปรเดิม · ยังไม่ระบุหมวด'} · ${o.hours} ชั่วโมง · ${thb(o.price)} · ${o.mode==='gift'?'ของแถม '+(o.gift_name||''):'ส่วนลด'} · ${o.active?'เปิดใช้งาน':'ปิดใช้งาน'}`;article.append(summary);
+      const category = categoryByCode.get(o.category_code);
+      const regular = Number(category?.price) * o.hours;
+      if (o.active && category && o.mode === 'gift' && Math.round(Number(o.price)*100) !== Math.round(regular*100)) {
+        const warning = document.createElement('p');
+        warning.className = 'sub';
+        warning.textContent = 'โปรนี้ยังไม่แสดงบนหน้าจอง เพราะราคาโปร '+thb(o.price)
+          +' ไม่ตรงกับราคาหมวดปัจจุบัน '+thb(regular)+' เปิดแก้ไขแล้วตรวจยอดก่อนบันทึกใหม่';
+        article.append(warning);
+      }
       const edit=document.createElement('button');edit.className='btn soft small';edit.textContent='แก้ไข';edit.onclick=()=>{
         $('offerId').value=o.id;picker.value=o.category_code || '';$('name').value=o.name;$('hours').value=o.hours;
         $('mode').value=o.mode;$('price').value=o.price;$('gift').value=o.gift_name||'';

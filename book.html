@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="./assets/css/app.css?v=booking-hour-stepper">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/customer-portal.js?v=manual-slip-review"></script>
+  <script type="module" src="./src/features/customer-portal.js?v=select-hourly-packages"></script>
 </head>
 <body>
 <header>
@@ -61,9 +61,10 @@
           </div>
           <p id="bookingCurrentOffer" aria-live="polite"></p>
           <div id="bookingOfferField" class="hidden">
-            <h4>โปรถัดไปที่แนะนำ</h4>
+            <h4 id="bookingOfferListTitle">โปรถัดไปที่แนะนำ</h4>
             <div id="bookingOffer" class="booking-offer-list"></div>
           </div>
+          <p id="bookingOfferLoadStatus" class="sub" role="status"></p>
           <p id="bookingOfferStatus" class="sub" role="status"></p>
         </section>
         <div class="fields live-booking-date">

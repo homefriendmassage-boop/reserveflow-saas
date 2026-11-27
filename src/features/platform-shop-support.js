@@ -1,4 +1,4 @@
-import { mountPromotionForm } from './promotion-form.js?v=promotion-delete';
+import { mountPromotionForm } from './promotion-form.js?v=offer-price-feedback';
 import { renderMerchantSettings } from './merchant-settings.js?v=online-promotions';
 
 function node(tag,text = '') {

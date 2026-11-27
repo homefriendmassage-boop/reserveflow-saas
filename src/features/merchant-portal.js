@@ -1,4 +1,4 @@
-import { mountPromotionForm } from './promotion-form.js?v=promotion-delete';
+import { mountPromotionForm } from './promotion-form.js?v=offer-price-feedback';
 import { cancelPromotionLogin, resumePromotionLogin } from './promotion-login.js';
 import { bookingPrice } from './booking-pricing.js';
 import { counterPaymentRpc, openMerchantCounterPayment } from './counter-payment.js?v=customer-qr-handoff';
@@ -7,7 +7,7 @@ import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-
 import { renderDailyReport } from './daily-report.js?v=report-labels-45';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=platform-shop-management-43';
 import { addThunderCheck } from './thunder-slip.js?v=manual-slip-review';
-import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=online-promotions';
+import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=offer-price-feedback';
 import { renderMerchantTeam } from './merchant-team.js?v=team-slip-credits-1';
 import { renderMerchantSettings } from './merchant-settings.js?v=manual-slip-review';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, timeAtShop } from './booking-slots.js?v=display-time-only';

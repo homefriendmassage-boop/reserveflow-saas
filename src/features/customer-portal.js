@@ -73,10 +73,16 @@ function setQuantity(field, visible, max) {
   }
 }
 
+function offersForHours(hours) {
+  const exact = availableOffers.filter(offer => offer.hours === hours);
+  if (exact.length) return exact;
+  const highest = availableOffers.at(-1)?.hours;
+  return hours > highest ? availableOffers.filter(offer => offer.hours === highest && offer.allows_extra_hours) : [];
+}
+
 function offerForHours(hours) {
-  const exact = availableOffers.find(offer => offer.hours === hours);
-  const highest = availableOffers.find(offer => offer.hours === availableOffers.at(-1)?.hours);
-  return exact || (highest?.allows_extra_hours && hours > highest.hours ? highest : undefined);
+  const offers = offersForHours(hours);
+  return offers.find(offer => offer.id === selectedOfferId) || offers[0];
 }
 
 function offerTotal(category, offer, hours) {
@@ -464,20 +470,34 @@ async function start() {
       : hourly ? bookingPrice(category, hours).total : null;
     document.getElementById('bookingCurrentOffer').textContent = loadingOffers ? 'กำลังโหลดโปรโมชั่น…'
       : (current ? describeOffer(current,hours) : hours + ' ชั่วโมง') + (price === null ? '' : ' · ' + money.format(price));
-    const offer = availableOffers.find(item => item.hours > hours);
-    offerField.classList.toggle('hidden', !offer || awaitingSlip);
+    const currentOffers = offersForHours(hours);
+    const nextHours = availableOffers.find(item => item.hours > hours)?.hours;
+    const nextOffers = availableOffers.filter(offer => offer.hours === nextHours);
+    const choices = [...currentOffers,...nextOffers];
+    document.getElementById('bookingOfferListTitle').textContent = currentOffers.length
+      ? 'แพ็กเกจสำหรับช่วงที่เลือก' : 'โปรถัดไปที่แนะนำ';
+    offerField.classList.toggle('hidden', !choices.length || awaitingSlip);
     offerPicker.replaceChildren();
-    if (offer && !awaitingSlip) {
+    if (awaitingSlip) return;
+    for (const offer of choices) {
+      const isCurrent = currentOffers.includes(offer);
+      if (currentOffers.length && offer === nextOffers[0]) {
+        const heading = document.createElement('h4');
+        heading.textContent = 'โปรถัดไปที่แนะนำ';
+        offerPicker.append(heading);
+      }
+      const bookingHours = isCurrent ? hours : offer.hours;
       const card = document.createElement('button');
       card.type = 'button';
       card.className = 'booking-offer-card';
+      card.setAttribute('aria-pressed',String(offer.id === current?.id));
       const title = document.createElement('strong');
       title.textContent = offer.name;
       card.append(title);
       const details = document.createElement('small');
-      const nextPrice = Number(offer.price) + Number(category.service_fee);
+      const nextPrice = offerTotal(category,offer,bookingHours);
       const extra = nextPrice - price;
-      details.textContent = offer.hours + ' ชั่วโมง · ' + money.format(nextPrice)
+      details.textContent = bookingHours + ' ชั่วโมง · ' + money.format(nextPrice)
         + (category.template === 'seat' ? ' / ที่นั่ง' : '')
         + (price !== null && extra > 0 ? ' · เพิ่ม ' + money.format(extra) : '');
       card.append(details);
@@ -486,15 +506,16 @@ async function start() {
         gift.textContent = 'ฟรี ' + offer.gift;
         card.append(gift);
       }
-      card.onclick = () => void chooseHours(offer.hours);
+      card.onclick = () => void chooseHours(bookingHours,offer.id);
       offerPicker.append(card);
     }
   }
 
-  async function chooseHours(hours) {
+  async function chooseHours(hours, offerId) {
     if (sending || awaitingSlip || loadingOffers || checkingOffer || hours < 1 || hours > Number(fields.hours.max)) return;
     clearNextAvailable();
-    const offer = offerForHours(hours);
+    const offer = offerId ? offersForHours(hours).find(item => item.id === offerId) : offerForHours(hours);
+    if (offerId && !offer) return;
     const check = ++offerCheck;
     offerStatus.textContent = '';
     checkingOffer = false;
@@ -536,6 +557,8 @@ async function start() {
     const category = selectedCategory();
     loadingOffers = ['staff', 'seat', 'vip'].includes(category.template);
     availableOffers = [];
+    const feedback = document.getElementById('bookingOfferLoadStatus');
+    feedback.textContent = '';
     selectedOfferId = '';
     renderOffers();
     updateEstimate();
@@ -546,6 +569,9 @@ async function start() {
       })));
     if (requested !== offerRevision) return;
     loadingOffers = false;
+    if (results.some(result => result.status === 'rejected' || result.value.error)) {
+      feedback.textContent = 'โหลดโปรโมชั่นได้ไม่ครบ กรุณารีเฟรชก่อนจองหากต้องการใช้โปรโมชั่น';
+    }
     availableOffers = results.flatMap(result => result.status === 'fulfilled' && Array.isArray(result.value.data)
       ? result.value.data : []);
     selectedOfferId = offerForHours(Number(fields.hours.value))?.id || '';
