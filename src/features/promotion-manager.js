@@ -1,6 +1,6 @@
 import { cancelPromotionLogin, signInForPromotion } from './promotion-login.js';
 import { SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
-import { mountPromotionForm } from './promotion-form.js';
+import { mountPromotionForm } from './promotion-form.js?v=category-promos';
 import { listMerchantShops } from '../data/supabase-store.js';
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 const $=id=>document.getElementById(id);
@@ -8,7 +8,7 @@ let shops=[];
 const say=t=>{$('feedback').textContent=t};
 const contextShop = new URLSearchParams(location.search).get('shop');
 const loginShopKey = 'reserveflow.promotion-shop';
-function selectShop() {
+async function selectShop() {
   const shop = shops.find(item=>item.id===$('shop').value);
   $('shopEditor').classList.toggle('hidden',!shop);
   $('backToShop').href = shop ? './merchant.html?' + new URLSearchParams({shop:shop.slug}) : './merchant.html';
@@ -18,7 +18,12 @@ function selectShop() {
   history.replaceState(history.state,'',url);
   $('shopEditor').replaceChildren();
   say('');
-  if (shop) mountPromotionForm($('shopEditor'),client,shop.id);
+  if (!shop) return;
+  const {data:categories,error}=await client.from('categories')
+    .select('code,name,template,price,visible').eq('shop_id',shop.id).order('sort_order');
+  if ($('shop').value!==shop.id) return;
+  if (error) { say('โหลดหมวดการจองไม่สำเร็จ');return; }
+  mountPromotionForm($('shopEditor'),client,shop.id,{categories:categories || []});
 }
 $('shop').onchange = selectShop;
 $('loginLine').onclick = async () => {
@@ -49,7 +54,7 @@ async function init() {
     $('shop').replaceChildren(new Option('เลือกร้านค้า',''),...shops.map(s=>new Option(s.name,s.id)));
     $('shop').value=selected?.id || '';
     $('authStatus').textContent='';
-    selectShop();
+    await selectShop();
     if (!shops.length) say('บัญชี LINE นี้ยังไม่มีสิทธิ์จัดการโปรโมชั่นของร้าน');
     else if (requested && !selected) say('บัญชี LINE นี้ไม่มีสิทธิ์เข้าร้านตามลิงก์');
   } catch {
