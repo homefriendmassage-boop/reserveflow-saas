@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.98.0';
 
 const cors = {
-  'Access-Control-Allow-Origin': 'https://homefriendmassage-boop.github.io',
+  'Access-Control-Allow-Origin': Deno.env.get('BOOKING_SITE_ORIGIN') ?? 'https://homefriendmassage-boop.github.io',
   'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Cache-Control': 'no-store',

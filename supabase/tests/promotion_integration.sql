@@ -1,0 +1,155 @@
+-- Run only against a disposable database with all migrations installed.
+begin;
+
+insert into auth.users(id) values('85510000-0000-4000-8000-000000000001'),('85510000-0000-4000-8000-000000000002');
+insert into public.shops(id,slug,name,public_booking_enabled) values
+('85510000-0000-4000-8000-000000000003','promo-test-a','Promo test A',true),
+('85510000-0000-4000-8000-000000000004','promo-test-b','Promo test B',true);
+insert into public.shop_members(shop_id,user_id,role) values
+('85510000-0000-4000-8000-000000000003','85510000-0000-4000-8000-000000000001','owner'),
+('85510000-0000-4000-8000-000000000004','85510000-0000-4000-8000-000000000002','owner');
+
+do $$
+declare
+  shop uuid := '85510000-0000-4000-8000-000000000003';
+  shop_b uuid := '85510000-0000-4000-8000-000000000004';
+  account uuid := '85510000-0000-4000-8000-000000000001';
+  stranger uuid := '85510000-0000-4000-8000-000000000002';
+  booking uuid := '85510000-0000-4000-8000-000000000005';
+  second_booking uuid := '85510000-0000-4000-8000-000000000006';
+  offer uuid;
+  discount uuid;
+  token uuid;
+  second_token uuid;
+  v_id uuid;
+  pass uuid;
+  request jsonb;
+  quote jsonb;
+  job record;
+  image text := 'data:image/png;base64,iVBORw0KGgo=';
+  expiry date := (now() at time zone 'Asia/Bangkok')::date + 1;
+  client_liff text := '2012709644-AaBbCcDd';
+begin
+  insert into public.categories(shop_id,code,name,template,price,service_fee,hour_promotions)
+    values (shop,'seat','Seat','seat',120,20,'{"3":300}'),(shop_b,'seat','Other','seat',120,20,'{}');
+  insert into public.resources(shop_id,category_code,code,name) values
+    (shop,'seat','S1','Seat 1'),(shop,'seat','S2','Seat 2'),(shop_b,'seat','S1','Other seat');
+  insert into public.shop_promptpay(shop_id,mobile) values(shop,'0891234567'),(shop_b,'0891112222');
+  insert into reserveflow_private.shop_line_channels(shop_id,secret_id,bot_id,bot_name,booking_liff_id)
+    values(shop,vault.create_secret('{"token":"fake-oa-a"}'),'U'||repeat('7',32),'OA A',client_liff),
+      (shop_b,vault.create_secret('{"token":"fake-oa-b"}'),'U'||repeat('8',32),'OA B','2012709645-DdCcBbAa');
+  set local role authenticated;
+  perform set_config('request.jwt.claim.sub',account::text,true);
+  offer:=public.rf_save_promotion_offer(shop,null,'Gift 3 hours',3,'gift',360,'One drink',40,true,null,null,1);
+  discount:=public.rf_save_promotion_offer(shop,null,'Discount 3 hours',3,'discount',300,null,0,true);
+  begin
+    perform public.rf_save_promotion_offer(shop,null,'Stacked',3,'discount',300,'Gift',20,true);
+    raise exception 'accepted stacked promotion';
+  exception when invalid_parameter_value then null; end;
+  perform set_config('request.jwt.claim.sub',stranger::text,true);
+  begin
+    perform public.rf_save_promotion_offer(shop,offer,'Cross tenant',3,'gift',360,'Gift',20,true);
+    raise exception 'accepted cross-tenant edit';
+  exception when insufficient_privilege then null; end;
+  set local role anon;
+  if jsonb_array_length(public.rf_booking_offers('promo-test-a','seat',3))<>2
+    or jsonb_array_length(public.rf_booking_offers('promo-test-b','seat',3))<>0 then
+    raise exception 'wrong public offer scope';
+  end if;
+  request:=jsonb_build_object('p_request_id',booking,'p_shop_slug','promo-test-a','p_category_code','seat',
+    'p_resource_code','S1','p_date',expiry,'p_hour',12,'p_minute',0,'p_hours',3,'p_name','Customer',
+    'p_phone','0891234567','offer_id',offer,'price',1);
+  begin
+    perform public.quote_customer_payment(request||jsonb_build_object('p_shop_slug','promo-test-b'));
+    raise exception 'accepted foreign offer';
+  exception when raise_exception then if sqlerrm<>'PROMOTION_UNAVAILABLE' then raise; end if; end;
+  quote:=public.quote_customer_payment(request||jsonb_build_object('p_request_id',gen_random_uuid(),'offer_id',discount));
+  if (quote->>'amount')::numeric<>320 then raise exception 'discount total does not match'; end if;
+  quote:=public.quote_customer_payment(request);
+  if (quote->>'amount')::numeric<>380 or quote->>'qr' not like '%5406380.00%' then
+    raise exception 'gift stacked a discount or wrong QR amount';
+  end if;
+  begin
+    perform public.quote_customer_payment(request||jsonb_build_object('p_request_id',gen_random_uuid()));
+    raise exception 'quota not reserved';
+  exception when raise_exception then if sqlerrm<>'PROMOTION_SOLD_OUT' then raise; end if; end;
+  begin
+    perform public.submit_customer_payment(request,1,image);
+    raise exception 'accepted forged total';
+  exception when invalid_parameter_value then if sqlerrm<>'BOOKING_PRICE_CHANGED' then raise; end if; end;
+  set local role service_role;
+  perform set_config('request.jwt.claim.sub','',true);
+  pass := (public.submit_verified_liff_booking(request,380,image,client_liff,'U'||repeat('1',32))->>'pass_token')::uuid;
+  reset role;
+  if public.rf_booking_voucher(pass) is not null then raise exception 'voucher issued for pending payment'; end if;
+  update public.bookings set status='confirmed' where id=booking;
+  if public.rf_booking_voucher(pass) is not null then raise exception 'status alone issued voucher'; end if;
+  update public.bookings set status='pending_confirm' where id=booking;
+  set local role service_role;
+  if public.finish_thunder_booking_slip(booking,'provider_verified','promo-fixture-verified',380,'0891234567',now())->>'state'<>'confirmed' then
+    raise exception 'existing verifier did not confirm payment';
+  end if;
+  reset role;
+  token:=public.rf_booking_voucher(pass);
+  if token is null or not public.rf_promotion_qr_available(token) then raise exception 'verified voucher missing'; end if;
+  set local role service_role;
+  v_id:=public.rf_issue_promotion_voucher(booking,offer,'U'||repeat('1',32),now()+interval '1 day');
+  if v_id is distinct from public.rf_issue_promotion_voucher(booking,offer,null,now()) then raise exception 'issuance not idempotent'; end if;
+  select * into job from public.rf_claim_promotion_events(1);
+  if job.access_token is distinct from 'fake-oa-a' or job.line_user_id is distinct from 'U'||repeat('1',32)
+    then raise exception 'LINE routed to wrong account'; end if;
+  if not public.rf_finish_promotion_event(job.id,job.lease_id,false,'500') then raise exception 'failed job not tracked'; end if;
+  reset role;
+  update public.rf_promotion_events set next_attempt_at=now() where id=job.id;
+  set local role service_role;
+  select * into job from public.rf_claim_promotion_events(1);
+  if not public.rf_finish_promotion_event(job.id,job.lease_id,true,null) then raise exception 'retry did not complete'; end if;
+  set local role authenticated;
+  perform set_config('request.jwt.claim.sub',stranger::text,true);
+  if public.rf_preview_promotion_voucher(token)->>'valid'<>'false'
+    or public.rf_redeem_promotion_voucher(token)->>'ok'<>'false' then raise exception 'cross-tenant voucher access'; end if;
+  perform set_config('request.jwt.claim.sub',account::text,true);
+  if public.rf_preview_promotion_voucher(token)->>'valid'<>'true'
+    or public.rf_preview_promotion_voucher(token)->>'valid'<>'true' then raise exception 'preview consumed token'; end if;
+  if public.rf_redeem_promotion_voucher(token)->>'ok'<>'true'
+    or public.rf_redeem_promotion_voucher(token)->>'reason'<>'ALREADY_REDEEMED' then raise exception 'duplicate redemption'; end if;
+  if public.rf_booking_voucher(pass) is not null then raise exception 'used QR still visible'; end if;
+  reset role;
+
+  update public.rf_promotion_offers set usage_limit=4 where id=offer;
+  set local role anon;
+  request:=request||jsonb_build_object('p_request_id',second_booking,'p_resource_code','S2');
+  perform public.quote_customer_payment(request);
+  pass:=(public.submit_customer_payment(request,380,image)->>'pass_token')::uuid;
+  reset role;
+  update public.bookings set status='confirmed' where id=second_booking;
+  update public.booking_slip_attachments set verification_state='confirmed',verified_amount=380,
+    verified_paid_at=now(),thunder_reference='promo-fixture-second' where booking_id=second_booking;
+  second_token:=public.rf_booking_voucher(pass);
+  if second_token is null then raise exception 'website booking lacks coupon'; end if;
+  update public.rf_promotion_vouchers set expires_at=now()-interval '1 second' where booking_id=second_booking;
+  if public.rf_promotion_qr_available(second_token) then raise exception 'expired QR still rendered'; end if;
+  set local role authenticated;
+  perform set_config('request.jwt.claim.sub',account::text,true);
+  if public.rf_redeem_promotion_voucher(second_token)->>'reason'<>'EXPIRED' then raise exception 'expired QR accepted'; end if;
+  reset role;
+  update public.rf_promotion_vouchers set expires_at=now()+interval '1 day' where booking_id=second_booking;
+  set local role service_role;
+  perform public.rf_record_booking_refund(second_booking,'refund-fixture');
+  reset role;
+  if (select status from public.rf_promotion_vouchers where booking_id=second_booking)<>'void' then raise exception 'refund left usable voucher'; end if;
+  delete from reserveflow_private.rf_promotion_refunds where booking_id=second_booking;
+  update public.rf_promotion_vouchers set status='issued' where booking_id=second_booking;
+  update public.bookings set status='cancelled' where id=second_booking;
+  if public.rf_promotion_qr_available(second_token) then raise exception 'cancelled QR still rendered'; end if;
+end;
+$$;
+
+-- The shell concurrency test keeps the fixture in a disposable database and launches two sessions.
+\if :{?promo_concurrency}
+update public.rf_promotion_vouchers set status='issued',redeemed_at=null,redeemed_by=null
+where booking_id='85510000-0000-4000-8000-000000000005';
+commit;
+\else
+rollback;
+\endif

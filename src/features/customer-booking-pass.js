@@ -28,9 +28,10 @@ async function copy(value, fallback) {
 async function load() {
   refresh.disabled = true;
   try {
-    const [{ data, error }, payment] = await Promise.all([
+    const [{ data, error }, payment, voucher] = await Promise.all([
       client.rpc('get_customer_booking_pass',{p_token:token}),
-      counterPaymentRpc(client,'counter_booking_payment_details',{p_token:token}).catch(() => null)
+      counterPaymentRpc(client,'counter_booking_payment_details',{p_token:token}).catch(() => null),
+      counterPaymentRpc(client,'rf_booking_voucher',{p_pass:token}).catch(() => null)
     ]);
     if (error) throw error;
     if (!data) {
@@ -59,6 +60,9 @@ async function load() {
       new window.QRCode(qr, { text: link.href, width: 240, height: 240 });
       qr.classList.remove('hidden');
     };
+    const giftPass = get('bookingGiftPass');
+    giftPass.classList.toggle('hidden',!voucher);
+    if (voucher) giftPass.href = './promotion-pass.html#' + encodeURIComponent(voucher);
     renderCounterPayment(client,get('counterPayment'),payment,token,load);
     line.classList.toggle('hidden', !data.line_code);
     const friend = get('passLineFriend');

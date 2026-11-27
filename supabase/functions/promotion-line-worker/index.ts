@@ -1,17 +1,16 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.98.0';
-const site='https://homefriendmassage-boop.github.io/reserveflow-saas/';
+const site=Deno.env.get('PROMOTION_SITE_URL') ?? 'https://homefriendmassage-boop.github.io/reserveflow-saas/';
 const supabaseUrl=Deno.env.get('SUPABASE_URL')||'';
-const lineToken=Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN')||'';
 const secret=Deno.env.get('PROMOTION_WORKER_SECRET')||'';
 const db=createClient(supabaseUrl,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false,autoRefreshToken:false}});
-type Job={id:string;lease_id:string;kind:'issued'|'redeemed';token:string;shop_name:string;offer_name:string;gift_name:string|null;expires_at:string;line_user_id:string};
+type Job={id:string;lease_id:string;kind:'issued'|'redeemed';token:string;shop_name:string;offer_name:string;gift_name:string|null;expires_at:string;line_user_id:string;access_token:string};
 function flex(job:Job){
   const row=(label:string,value:string)=>({type:'box',layout:'horizontal',spacing:'sm',contents:[
     {type:'text',text:label,size:'sm',color:'#72809C',flex:2,wrap:true},
     {type:'text',text:value,size:'sm',weight:'bold',color:'#203052',flex:3,wrap:true}
   ]});
   const issued=job.kind==='issued';
-  const baseUrl=new URL('promotion-pass.html',site);baseUrl.searchParams.set('code',job.token);
+  const baseUrl=new URL('promotion-pass.html',site);baseUrl.hash=job.token;
   const qrUrl=new URL('functions/v1/promotion-qr',supabaseUrl+'/');
   qrUrl.searchParams.set('code',job.token);
   return {type:'flex',altText:issued?'🎁 คูปองสิทธิพิเศษ · '+job.shop_name:'✅ ยืนยันการรับสิทธิ์เรียบร้อย',
@@ -38,25 +37,25 @@ function flex(job:Job){
 function constantTime(a:string,b:string){if(a.length!==b.length)return false;let d=0;for(let i=0;i<a.length;i++)d|=a.charCodeAt(i)^b.charCodeAt(i);return d===0}
 Deno.serve(async req=>{
  if(req.method!=='POST')return new Response('Method not allowed',{status:405});
- if(!secret||!lineToken)return new Response('Not configured',{status:503});
+ if(!secret)return new Response('Not configured',{status:503});
  if(!constantTime(req.headers.get('x-promotion-worker-secret')||'',secret))return new Response('Forbidden',{status:403});
- const {data,error}=await db.rpc('rf_claim_promotion_events',{p_limit:10});
+ const {data,error}=await db.rpc('rf_claim_promotion_events',{p_limit:5});
  if(error)return Response.json({error:'claim_failed'},{status:500});
  let sent=0,failed=0;
  for(const job of (data||[]) as Job[]){
    let success=false,details='';
    try{
      const resp=await fetch('https://api.line.me/v2/bot/message/push',{method:'POST',headers:{
-       'Authorization':'Bearer '+lineToken,'Content-Type':'application/json','X-Line-Retry-Key':job.id
+       'Authorization':'Bearer '+job.access_token,'Content-Type':'application/json','X-Line-Retry-Key':job.id
      },body:JSON.stringify({to:job.line_user_id,messages:[flex(job)]}),signal:AbortSignal.timeout(12000)});
      success=resp.ok || (resp.status===409 && resp.headers.has('x-line-accepted-request-id'));
      details=success?'':String(resp.status);
      await resp.body?.cancel();
-   }catch(e){details=String(e)}
-   const {error:finishError}=await db.rpc('rf_finish_promotion_event',{
+   }catch{details='LINE_NETWORK_ERROR'}
+   const {data:finished,error:finishError}=await db.rpc('rf_finish_promotion_event',{
      p_id:job.id,p_lease_id:job.lease_id,p_sent:success,p_error:details
    });
-   if(finishError || !success)failed++;else sent++;
+   if(finishError || !finished || !success)failed++;else sent++;
  }
  return Response.json({handled:(data||[]).length,sent,failed});
 });

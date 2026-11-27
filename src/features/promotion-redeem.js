@@ -21,23 +21,32 @@ function show(data){
   else message('ตรวจสอบผ่าน กรุณาตรวจรายละเอียดกับลูกค้าก่อนกดยืนยันรับสิทธิ์');
 }
 async function preview(){
+  if(redeeming)return;
+  currentToken='';
   $('confirm').classList.add('hidden');$('details').classList.add('hidden');
   const token=tokenFrom($('voucherInput').value);
   if(!UUID.test(token)){message('รหัส QR ไม่ถูกต้อง');return}
   currentToken=token;message('กำลังตรวจสอบกับเซิร์ฟเวอร์…');
   const {data,error}=await client.rpc('rf_preview_promotion_voucher',{p_token:token});
-  if(error){message('ตรวจสิทธิ์ไม่สำเร็จ: '+error.message);return}
+  if(currentToken!==token)return;
+  if(error){message('ตรวจสิทธิ์ไม่สำเร็จ');return}
+  if(data?.reason==='NOT_FOUND'){message('ไม่พบคูปองสำหรับร้านที่คุณมีสิทธิ์');return}
   show(data);
 }
 $('preview').onclick=preview;
+$('voucherInput').addEventListener('input',()=>{
+  currentToken='';
+  $('confirm').classList.add('hidden');
+  $('details').classList.add('hidden');
+});
 $('confirm').onclick=async()=>{
-  if(redeeming||!currentToken||!confirm('ยืนยันว่าลูกค้าได้รับของแถม/ใช้สิทธิ์จริงแล้ว? การกระทำนี้ย้อนกลับไม่ได้'))return;
+  if(redeeming||!currentToken||tokenFrom($('voucherInput').value)!==currentToken||!confirm('ยืนยันว่าลูกค้าได้รับของแถม/ใช้สิทธิ์จริงแล้ว? การกระทำนี้ย้อนกลับไม่ได้'))return;
   redeeming=true;$('confirm').disabled=true;message('กำลังบันทึกการรับสิทธิ์…');
   try{
     const {data,error}=await client.rpc('rf_redeem_promotion_voucher',{p_token:currentToken});
     if(error)throw error;
-    if(data?.ok){message('บันทึกใช้สิทธิ์เรียบร้อยแล้ว · ระบบจะส่ง LINE แจ้งยืนยันเมื่อบริการแจ้งเตือนทำงาน');await preview()}
-    else{message(data?.reason==='ALREADY_REDEEMED'?'คูปองถูกใช้ไปแล้ว':data?.reason==='EXPIRED'?'คูปองหมดอายุ':'ไม่สามารถใช้สิทธิ์ได้');await preview()}
+    if(data?.ok){message('บันทึกใช้สิทธิ์เรียบร้อยแล้ว · ระบบจะส่ง LINE แจ้งยืนยันเมื่อบริการแจ้งเตือนทำงาน');redeeming=false;await preview()}
+    else{message(data?.reason==='ALREADY_REDEEMED'?'คูปองถูกใช้ไปแล้ว':data?.reason==='EXPIRED'?'คูปองหมดอายุ':'ไม่สามารถใช้สิทธิ์ได้');redeeming=false;await preview()}
   }catch(e){message('ยืนยันไม่สำเร็จ: '+e.message)}
   finally{redeeming=false;$('confirm').disabled=false}
 };
@@ -46,7 +55,9 @@ $('loginForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.curr
   if(error)$('authStatus').textContent=error.message;else await checkAuth();
 };
 $('lineLogin').onclick=async()=>{
-  const {error}=await client.auth.signInWithOAuth({provider:'custom:line-manual',options:{redirectTo:location.href}});
+  const code=location.hash.slice(1)||new URLSearchParams(location.search).get('code')||'';
+  if(UUID.test(code)) sessionStorage.setItem('reserveflow-promotion-scan',code);
+  const {error}=await client.auth.signInWithOAuth({provider:'custom:line-manual',options:{redirectTo:new URL('./promotion-redeem.html',location.href).href}});
   if(error)$('authStatus').textContent=error.message;
 };
 async function checkAuth(){
@@ -54,7 +65,7 @@ async function checkAuth(){
   $('loginForm').classList.toggle('hidden',ready);$('lineLogin').classList.toggle('hidden',ready);
   $('scanner').classList.toggle('hidden',!ready);
   $('authStatus').textContent=ready?'เข้าสู่ระบบแล้ว · ตรวจสอบสิทธิ์พนักงานอีกครั้งเมื่อสแกน':'กรุณาเข้าสู่ระบบด้วยบัญชีพนักงานของร้าน';
-  if(ready){const initial=new URLSearchParams(location.search).get('code');if(initial&&UUID.test(initial)){$('voucherInput').value=initial;await preview()}}
+  if(ready){const initial=location.hash.slice(1)||new URLSearchParams(location.search).get('code')||sessionStorage.getItem('reserveflow-promotion-scan');sessionStorage.removeItem('reserveflow-promotion-scan');if(initial&&UUID.test(initial)){$('voucherInput').value=initial;redeeming=false;await preview()}}
 }
 async function closeCamera(){reading=false;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('video').style.display='none'}
 $('stop').onclick=closeCamera;

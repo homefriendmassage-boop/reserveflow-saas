@@ -4,6 +4,8 @@ const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY)
 const $=id=>document.getElementById(id);
 let offers=[],shops=[];
 const say=t=>{$('feedback').textContent=t};
+const toThaiInput = value => value ? new Date(Date.parse(value)+7*3600000).toISOString().slice(0,16) : '';
+const fromThaiInput = value => value ? value+'+07:00' : null;
 const thb=n=>Number(n||0).toLocaleString('th-TH',{style:'currency',currency:'THB'});
 const presets={
  discount:[[1,120,'ตกกุ้ง 1 ชั่วโมง'],[2,220,'ตกกุ้ง 2 ชั่วโมง'],[3,300,'ตกกุ้ง 3 ชั่วโมง'],[4,380,'ตกกุ้ง 4 ชั่วโมง'],[5,450,'ตกกุ้ง 5 ชั่วโมง']],
@@ -12,10 +14,10 @@ const presets={
  [4,480,'ตกกุ้ง 4 ชั่วโมง ฟรีของทานเล่น','ของทานเล่น 1 จาน มูลค่าไม่เกิน 59 บาท',59],
  [5,600,'ตกกุ้ง 5 ชั่วโมง ฟรีอาหาร','อาหาร 1 จาน มูลค่าไม่เกิน 89 บาท',89]]
 };
-function resetForm(){for(const key of ['offerId','name','gift'])$(key).value='';$('hours').value='3';$('mode').value='gift';$('price').value='360';$('giftValue').value='0';$('active').value='true'}
+function resetForm(){for(const key of ['offerId','name','gift','startsAt','endsAt','usageLimit'])$(key).value='';$('hours').value='3';$('mode').value='gift';$('price').value='360';$('giftValue').value='0';$('active').value='true'}
 async function load(){
   const shopId=$('shop').value;
-  const {data,error}=await client.from('rf_promotion_offers').select('id,name,hours,mode,price,gift_name,gift_value,active').eq('shop_id',shopId).order('hours').order('mode');
+  const {data,error}=await client.from('rf_promotion_offers').select('id,name,hours,mode,price,gift_name,gift_value,active,starts_at,ends_at,usage_limit').eq('shop_id',shopId).order('hours').order('mode');
   if(error){say(error.message);return}
   offers=data||[];
   const root=$('offers');root.replaceChildren();
@@ -28,6 +30,7 @@ async function load(){
       $('offerId').value=o.id;$('name').value=o.name;$('hours').value=o.hours;
       $('mode').value=o.mode;$('price').value=o.price;$('gift').value=o.gift_name||'';
       $('giftValue').value=o.gift_value;$('active').value=String(o.active);
+      $('startsAt').value=toThaiInput(o.starts_at);$('endsAt').value=toThaiInput(o.ends_at);$('usageLimit').value=o.usage_limit ?? '';
       $('offerForm').scrollIntoView({behavior:'smooth'});
     };article.append(edit);root.append(article)
   }
@@ -36,7 +39,8 @@ async function save(input){
   const {error}=await client.rpc('rf_save_promotion_offer',{
     p_shop_id:$('shop').value,p_id:input.id||null,p_name:input.name,p_hours:input.hours,
     p_mode:input.mode,p_price:input.price,p_gift_name:input.gift||null,
-    p_gift_value:input.giftValue||0,p_active:input.active
+    p_gift_value:input.giftValue||0,p_active:input.active,p_starts_at:input.startsAt||null,
+    p_ends_at:input.endsAt||null,p_usage_limit:input.usageLimit||null
   });
   if(error)throw error;
 }
@@ -44,7 +48,9 @@ $('offerForm').onsubmit=async e=>{
   e.preventDefault();try{
     const obj={id:$('offerId').value,name:$('name').value.trim(),hours:Number($('hours').value),
       mode:$('mode').value,price:Number($('price').value),gift:$('gift').value.trim(),
-      giftValue:Number($('giftValue').value),active:$('active').value==='true'};
+      giftValue:Number($('giftValue').value),active:$('active').value==='true',
+      startsAt:fromThaiInput($('startsAt').value),endsAt:fromThaiInput($('endsAt').value),
+      usageLimit:$('usageLimit').value ? Number($('usageLimit').value) : null};
     await save(obj);resetForm();say('บันทึกสำเร็จ');await load();
   }catch(e){say('บันทึกไม่สำเร็จ: '+e.message)}
 };
@@ -55,9 +61,9 @@ async function applyPreset(type){
   try{
     for(const [hours,price,name,gift='',giftValue=0] of presets[type]){
       const existing=offers.find(o=>o.hours===hours&&o.mode===type);
-      await save({id:existing?.id||null,name,hours,mode:type,price,gift,giftValue,active:true});
+      await save({id:existing?.id||null,name,hours,mode:type,price,gift,giftValue,active:true,startsAt:existing?.starts_at,endsAt:existing?.ends_at,usageLimit:existing?.usage_limit});
     }
-    say('บันทึกชุดโปรโมชั่นเรียบร้อย · โปรสองแบบอาจแสดงพร้อมกัน จึงต้องกำหนดกติกาเลือกแพ็กเกจที่หน้าลูกค้าก่อนใช้งานจริง');
+    say('บันทึกชุดโปรโมชั่นเรียบร้อย · ลูกค้าเลือกได้หนึ่งโปรต่อรายการ');
     await load();
   }catch(e){say('บันทึกไม่สำเร็จ: '+e.message)}
 }
