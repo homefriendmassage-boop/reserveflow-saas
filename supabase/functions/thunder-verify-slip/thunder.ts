@@ -43,7 +43,9 @@ export async function verifySlip(payload: string, key: string, send = fetch, mat
   const account = typeof proxy?.account === 'string' ? proxy.account.replace(/[\s-]/g, '') : '';
   const mobile = proxy?.type === 'MSISDN'
     ? account.replace(/^(?:0066|\+66|66)([689][0-9]{8})$/, '0$1') : '';
-  const rawAccount = fullAccount(data.receiver?.account?.bank?.account);
+  const bankIdentifier = data.receiver?.account?.bank;
+  // V2 can return TOKEN or DUMMY identifiers in the same field as BANKAC.
+  const rawAccount = bankIdentifier?.type === 'BANKAC' ? fullAccount(bankIdentifier.account) : null;
   const matched = matchAccount ? result?.matchedAccount : null;
   const matchedNumber = fullAccount(matched?.bankNumber);
   const receiverAccount = rawAccount && matchedNumber && rawAccount !== matchedNumber
