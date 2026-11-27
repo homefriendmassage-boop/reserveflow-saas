@@ -125,12 +125,11 @@ function updateEstimate() {
     total:offerTotal(category,offer,duration),packageHours:0
   } : bookingPrice(category,Number(units))) : null;
   estimate.textContent = price ? money.format(price.total) : '—';
-  const promotion = document.getElementById('bookingPromotion');
-  document.getElementById('bookingPromotionRow').classList.toggle('hidden',!(price?.packageHours || (price && offer)));
-  promotion.textContent = price && offer ? describeOffer(offer,duration)
-    : price?.packageHours
-    ? 'โปร '+price.packageHours+' ชม.'+(price.extraHours ? ' + ราคาปกติ '+price.extraHours+' ชม.' : '')
-      +' · ประหยัด '+money.format(price.savings) : '';
+  const savings = offer && price
+    ? Math.max(0, Math.round(Number(category.price) * 100) * offer.hours - Math.round(Number(offer.price) * 100)) / 100
+    : price?.savings;
+  document.getElementById('bookingPromotion').textContent = price && offer?.gift
+    ? offer.gift + ' · 1 สิทธิ์' : savings > 0 ? 'ส่วนลด ' + money.format(savings) : '';
   submit.disabled = !resource || !validPeriod || floorLoading || sending || checkingOffer;
   highlightTable(fields.resource.value);
   for (const card of resourceCards.children) {
