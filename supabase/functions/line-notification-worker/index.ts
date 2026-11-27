@@ -12,12 +12,27 @@ function fixedTimeMatch(expected: string, supplied: string) {
   return difference === 0;
 }
 
-function lineMessage(kind: string, payload: Record<string, string>, site: string) {
+async function availableBookingQr(payload: Record<string, string>) {
+  if (payload.notification_stage === 'pending') return undefined;
+  const qr = new URL('/functions/v1/promotion-qr', Deno.env.get('SUPABASE_URL')!);
+  if (qr.protocol !== 'https:') return undefined;
+  qr.searchParams.set('booking',payload.pass_token);
+  try {
+    const response = await fetch(qr, { redirect:'error', signal:AbortSignal.timeout(2500) });
+    const available = response.ok && response.headers.get('content-type')?.split(';')[0] === 'image/png';
+    await response.body?.cancel();
+    if (available) return qr.href;
+    console.warn('Booking QR unavailable for Flex',{status:response.status});
+  } catch {
+    console.warn('Booking QR preview failed for Flex');
+  }
+  return undefined;
+}
+
+function lineMessage(kind: string, payload: Record<string, string>, site: string, qrUrl?: string) {
   if (kind === 'booking_pass') {
     const pending = payload.notification_stage === 'pending';
     const link = new URL('booking-pass.html', site);
-    const qr = new URL('/functions/v1/promotion-qr', Deno.env.get('SUPABASE_URL')!);
-    qr.searchParams.set('booking',payload.pass_token);
     link.hash = payload.pass_token;
     const row = (label: string, value: string) => ({
       type: 'box', layout: 'horizontal', spacing: 'sm', contents: [
@@ -40,10 +55,10 @@ function lineMessage(kind: string, payload: Record<string, string>, site: string
         { type: 'separator' },
         row('รวมค่าจอง / บริการ', new Intl.NumberFormat('th-TH', {style:'currency',currency:'THB'}).format(Number(payload.amount)))
       ] },
-      ...(!pending ? { hero: { type:'image', url:qr.href, size:'full', aspectRatio:'1:1', aspectMode:'fit' } } : {}),
+      ...(!pending && qrUrl ? { hero: { type:'image', url:qrUrl, size:'full', aspectRatio:'1:1', aspectMode:'fit' } } : {}),
       footer: { type: 'box', layout: 'vertical', contents: [
         { type: 'button', style: 'primary', color: '#404FBA', action: {
-          type: 'uri', label: 'เปิดบัตรจอง', uri: link.href
+          type: 'uri', label: pending || qrUrl ? 'เปิดบัตรจอง' : 'เปิดบัตรและ QR เข้างาน', uri: link.href
         } }
       ] }
     } };
@@ -176,6 +191,7 @@ Deno.serve(async request => {
     let delivered = false;
     try {
       if (accessToken) {
+        const qrUrl = job.kind === 'booking_pass' ? await availableBookingQr(job.payload) : undefined;
         const response = await fetch('https://api.line.me/v2/bot/message/push', {
           method: 'POST',
           headers: {
@@ -183,7 +199,7 @@ Deno.serve(async request => {
             'Content-Type': 'application/json',
             'X-Line-Retry-Key': job.id
           },
-          body: JSON.stringify({ to: job.target, messages: [lineMessage(job.kind, job.payload, site)] }),
+          body: JSON.stringify({ to: job.target, messages: [lineMessage(job.kind, job.payload, site, qrUrl)] }),
           signal: AbortSignal.timeout(10000)
         });
         status = response.status;
