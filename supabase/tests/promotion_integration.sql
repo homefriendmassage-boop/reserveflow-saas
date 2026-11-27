@@ -138,6 +138,24 @@ begin
     verified_paid_at=now(),thunder_reference='promo-fixture-second' where booking_id=second_booking;
   second_token:=public.rf_booking_voucher(pass);
   if second_token is null then raise exception 'website booking lacks coupon'; end if;
+  set local role authenticated;
+  perform set_config('request.jwt.claim.sub',stranger::text,true);
+  begin
+    perform public.rf_archive_promotion_offer(shop,offer);
+    raise exception 'cross-tenant promotion deletion';
+  exception when insufficient_privilege then null;
+  end;
+  perform set_config('request.jwt.claim.sub',account::text,true);
+  perform public.rf_archive_promotion_offer(shop,offer);
+  perform public.rf_archive_promotion_offer(shop,offer);
+  if exists(select 1 from public.rf_promotion_offers where id=offer)
+    then raise exception 'deleted promotion still visible to merchant'; end if;
+  reset role;
+  if exists(select 1 from jsonb_array_elements(public.rf_booking_offers(request->>'p_shop_slug','seat',3)) as x
+    where x->>'id'=offer::text) then raise exception 'deleted promotion still available'; end if;
+  if public.rf_booking_voucher(pass) is distinct from second_token then
+    raise exception 'deleting promotion removed existing coupon';
+  end if;
   update public.rf_promotion_vouchers set expires_at=now()-interval '1 second' where booking_id=second_booking;
   if public.rf_promotion_qr_available(second_token) then raise exception 'expired QR still rendered'; end if;
   set local role authenticated;

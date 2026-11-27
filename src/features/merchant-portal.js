@@ -1,4 +1,4 @@
-import { mountPromotionForm } from './promotion-form.js?v=hourly-gift-window';
+import { mountPromotionForm } from './promotion-form.js?v=promotion-delete';
 import { cancelPromotionLogin, resumePromotionLogin } from './promotion-login.js';
 import { bookingPrice } from './booking-pricing.js';
 import { counterPaymentRpc, openMerchantCounterPayment } from './counter-payment.js?v=customer-qr-handoff';
@@ -7,9 +7,9 @@ import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-
 import { renderDailyReport } from './daily-report.js?v=report-labels-45';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=platform-shop-management-43';
 import { addThunderCheck } from './thunder-slip.js?v=bank-slip-preview-37';
-import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=hourly-gift-window';
+import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=promotion-delete';
 import { renderMerchantTeam } from './merchant-team.js?v=team-slip-credits-1';
-import { renderMerchantSettings } from './merchant-settings.js?v=hourly-gift-window';
+import { renderMerchantSettings } from './merchant-settings.js?v=promotion-delete';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, timeAtShop } from './booking-slots.js?v=business-day-1';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=platform-shop-management-43';

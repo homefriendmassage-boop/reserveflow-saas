@@ -1,6 +1,6 @@
 import { cancelPromotionLogin, signInForPromotion } from './promotion-login.js';
 import { SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
-import { mountPromotionForm } from './promotion-form.js?v=hourly-gift-window';
+import { mountPromotionForm } from './promotion-form.js?v=promotion-delete';
 import { listMerchantShops } from '../data/supabase-store.js';
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 const $=id=>document.getElementById(id);

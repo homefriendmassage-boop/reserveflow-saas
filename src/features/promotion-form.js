@@ -116,7 +116,35 @@ export function mountPromotionForm(root, client, shopId, {platform=false,categor
         $('offerTitle').textContent = 'แก้ไขโปรโมชั่น';
         updatePreview();
         $('offerForm').scrollIntoView({behavior:'smooth'});
-      };article.append(edit);list.append(article)
+      };
+      const remove=document.createElement('button');
+      remove.type='button';
+      remove.className='btn danger small';
+      remove.textContent='ลบโปรโมชั่น';
+      remove.onclick=async()=>{
+        if (!window.confirm('ลบโปรโมชั่น “'+o.name+'” ออกจากรายการ? ลูกค้าที่จองไปแล้วจะยังใช้สิทธิ์ได้')) return;
+        edit.disabled=true;
+        remove.disabled=true;
+        try {
+          const {error}=await client.rpc('rf_archive_promotion_offer',{p_shop_id:shopId,p_offer_id:o.id});
+          if (error) throw error;
+          if (!root.isConnected) return;
+          if ($('offerId').value===o.id) resetForm();
+          article.remove();
+          say('ลบโปรโมชั่นแล้ว');
+          await load();
+        } catch (error) {
+          if (root.isConnected) say(error.code==='PGRST202' ? 'รัน SQL โปรโมชั่น 08 เพื่อเปิดการลบโปรโมชั่น' : 'ลบโปรโมชั่นไม่สำเร็จ กรุณาลองใหม่');
+        } finally {
+          edit.disabled=false;
+          remove.disabled=false;
+        }
+      };
+      const actions=document.createElement('div');
+      actions.className='inline-actions';
+      actions.append(edit,remove);
+      article.append(actions);
+      list.append(article);
     }
   }
   async function save(input){

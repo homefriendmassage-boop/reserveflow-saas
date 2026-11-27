@@ -1,5 +1,5 @@
-import { mountPromotionForm } from './promotion-form.js?v=hourly-gift-window';
-import { renderMerchantSettings } from './merchant-settings.js?v=hourly-gift-window';
+import { mountPromotionForm } from './promotion-form.js?v=promotion-delete';
+import { renderMerchantSettings } from './merchant-settings.js?v=promotion-delete';
 
 function node(tag,text = '') {
   const item = document.createElement(tag);
