@@ -11,7 +11,7 @@ function flex(job:Job){
     {type:'text',text:value,size:'sm',weight:'bold',color:'#203052',flex:3,wrap:true}
   ]});
   const issued=job.kind==='issued';
-  const baseUrl=new URL('promotion-redeem.html',site);baseUrl.searchParams.set('code',job.token);
+  const baseUrl=new URL('promotion-pass.html',site);baseUrl.searchParams.set('code',job.token);
   const qrUrl=new URL('functions/v1/promotion-qr',supabaseUrl+'/');
   qrUrl.searchParams.set('code',job.token);
   return {type:'flex',altText:issued?'🎁 คูปองสิทธิพิเศษ · '+job.shop_name:'✅ ยืนยันการรับสิทธิ์เรียบร้อย',
