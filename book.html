@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="./assets/css/app.css?v=booking-flow-order">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/customer-portal.js?v=booking-flow-order"></script>
+  <script type="module" src="./src/features/customer-portal.js?v=booking-packages-first"></script>
 </head>
 <body>
 <header>
@@ -51,11 +51,11 @@
           <div class="layout-shell"><div class="plan customer-plan live-booking-plan" id="bookingFloor"></div></div>
         </section>
         <section id="bookingOfferField" class="booking-offers hidden" aria-labelledby="bookingOfferTitle">
-          <h3 id="bookingOfferTitle">เลือกแพ็กเกจหรือจองรายชั่วโมง</h3>
+          <h3 id="bookingOfferTitle">เลือกแพ็กเกจ</h3>
           <div id="bookingOffer" class="booking-offer-list" role="group" aria-labelledby="bookingOfferTitle"></div>
           <p id="bookingOfferStatus" class="sub" role="status"></p>
         </section>
-        <div class="field" id="bookingHoursField"><label for="hours">จำนวนชั่วโมงที่ต้องการจอง</label><input id="hours" name="hours" type="number" min="1" value="1" required></div>
+        <div class="field hidden" id="bookingHoursField"><label for="hours">จำนวนชั่วโมงที่ต้องการจอง</label><input id="hours" name="hours" type="number" min="1" value="1" required></div>
         <div class="fields live-booking-date">
           <div class="field"><label for="date">วันที่ใช้บริการ (รอบ 06:00 ถึงก่อน 06:00 วันถัดไป)</label><input id="date" name="date" type="date" required></div>
         </div>

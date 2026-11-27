@@ -34,6 +34,7 @@ const offerPicker = document.getElementById('bookingOffer');
 const offerField = document.getElementById('bookingOfferField');
 const hoursField = document.getElementById('bookingHoursField');
 let availableOffers = [];
+let loadingOffers = true;
 let selectedOfferId = '';
 const selectedOffer = () => availableOffers.find(offer => offer.id === selectedOfferId);
 let pendingRequest;
@@ -78,7 +79,8 @@ function updateEstimate() {
   const offer = selectedOffer();
   fields.hours.max = template === 'seat' ? 6 : 5;
   if (Number(fields.hours.value) > Number(fields.hours.max)) fields.hours.value = fields.hours.max;
-  hoursField.classList.toggle('hidden', Boolean(offer));
+  const needsOffer = availableOffers.length > 0 && !offer;
+  hoursField.classList.toggle('hidden', loadingOffers || availableOffers.length > 0);
   setQuantity(fields.guests, ['table', 'vip'].includes(template), Math.min(resource?.capacity ?? 100, 100));
   setQuantity(fields.tickets, template === 'ticket', Math.min(resource?.capacity ?? 10, 10));
 
@@ -90,7 +92,7 @@ function updateEstimate() {
   const end = [Math.floor(endMinutes / 60) % 24, endMinutes % 60]
     .map(value => String(value).padStart(2, '0')).join(':') + (hour < 6 || endMinutes >= 1440 ? ' (+1 วัน)' : '');
   const endField = document.getElementById('bookingEnd');
-  const validPeriod = Boolean(fields.hour.value) && duration > 0 &&
+  const validPeriod = !loadingOffers && !needsOffer && Boolean(fields.hour.value) && duration > 0 &&
     (fields.hours.disabled || fields.hours.validity.valid);
   endField.value = validPeriod ? end : '—';
   document.getElementById('bookingSummaryResource').textContent = resource
@@ -109,7 +111,7 @@ function updateEstimate() {
     : price?.packageHours
     ? 'โปร '+price.packageHours+' ชม.'+(price.extraHours ? ' + ราคาปกติ '+price.extraHours+' ชม.' : '')
       +' · ประหยัด '+money.format(price.savings) : '';
-  submit.disabled = !resource || floorLoading || sending || checkingOffer;
+  submit.disabled = !resource || !validPeriod || floorLoading || sending || checkingOffer;
   highlightTable(fields.resource.value);
   for (const card of resourceCards.children) {
     const selected = card.dataset.code === fields.resource.value;
@@ -351,29 +353,27 @@ async function start() {
   const offerStatus = document.getElementById('bookingOfferStatus');
 
   function renderOffers() {
-    const show = availableOffers.length && fields.resource.value && !awaitingSlip;
+    const show = availableOffers.length && !awaitingSlip;
     offerField.classList.toggle('hidden', !show);
     if (!show) return;
     offerPicker.replaceChildren();
-    for (const offer of [null, ...availableOffers]) {
+    for (const offer of availableOffers) {
       const card = document.createElement('button');
       card.type = 'button';
       card.className = 'booking-offer-card';
-      card.setAttribute('aria-pressed', String(selectedOfferId === (offer?.id || '')));
+      card.setAttribute('aria-pressed', String(selectedOfferId === offer.id));
       const title = document.createElement('strong');
-      title.textContent = offer ? offer.name : 'จองรายชั่วโมง';
+      title.textContent = offer.name;
       card.append(title);
-      if (offer) {
-        const details = document.createElement('small');
-        const price = Number(offer.price) + Number(selectedCategory().service_fee);
-        details.textContent = offer.hours + ' ชั่วโมง · ' + money.format(price)
-          + (selectedCategory().template === 'seat' ? ' / ที่นั่ง' : '');
-        card.append(details);
-        if (offer.gift) {
-          const gift = document.createElement('small');
-          gift.textContent = 'ฟรี ' + offer.gift;
-          card.append(gift);
-        }
+      const details = document.createElement('small');
+      const price = Number(offer.price) + Number(selectedCategory().service_fee);
+      details.textContent = offer.hours + ' ชั่วโมง · ' + money.format(price)
+        + (selectedCategory().template === 'seat' ? ' / ที่นั่ง' : '');
+      card.append(details);
+      if (offer.gift) {
+        const gift = document.createElement('small');
+        gift.textContent = 'ฟรี ' + offer.gift;
+        card.append(gift);
       }
       card.onclick = () => void chooseOffer(offer);
       offerPicker.append(card);
@@ -387,7 +387,7 @@ async function start() {
     checkingOffer = false;
     const category = selectedCategory();
     const resource = fields.resource.value;
-    if (offer && ['seat', 'vip'].includes(category.template)) {
+    if (resource && ['seat', 'vip'].includes(category.template)) {
       const args = slotArguments(category);
       offerStatus.textContent = 'กำลังตรวจที่ว่างสำหรับโปรนี้…';
       checkingOffer = true;
@@ -410,8 +410,8 @@ async function start() {
       }
     }
     offerStatus.textContent = '';
-    selectedOfferId = offer?.id || '';
-    if (offer) fields.hours.value = offer.hours;
+    selectedOfferId = offer.id;
+    fields.hours.value = offer.hours;
     renderOffers();
     updateEstimate();
     void syncSelection();
@@ -421,19 +421,22 @@ async function start() {
   async function refreshOffers() {
     const requested = ++offerRevision;
     const category = selectedCategory();
+    loadingOffers = ['staff', 'seat', 'vip'].includes(category.template);
     availableOffers = [];
     selectedOfferId = '';
     renderOffers();
     updateEstimate();
-    if (!['staff', 'seat', 'vip'].includes(category.template)) return;
+    if (!loadingOffers) return;
     const results = await Promise.allSettled(Array.from({length:5}, (_, index) =>
       client.rpc('rf_booking_offers',{
         p_shop_slug:shopSlug,p_category_code:category.code,p_hours:index+1
       })));
     if (requested !== offerRevision) return;
+    loadingOffers = false;
     availableOffers = results.flatMap(result => result.status === 'fulfilled' && Array.isArray(result.value.data)
       ? result.value.data : []);
     renderOffers();
+    updateEstimate();
   }
 
   function invalidateOfferCheck() {
