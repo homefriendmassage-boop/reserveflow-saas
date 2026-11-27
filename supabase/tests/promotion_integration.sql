@@ -109,6 +109,17 @@ begin
   if public.rf_preview_promotion_voucher(token)->>'valid'<>'false'
     or public.rf_redeem_promotion_voucher(token)->>'ok'<>'false' then raise exception 'cross-tenant voucher access'; end if;
   perform set_config('request.jwt.claim.sub',account::text,true);
+  if public.rf_preview_promotion_voucher(token)->>'status' is distinct from 'not_yet_valid'
+    or public.rf_redeem_promotion_voucher(token)->>'reason' is distinct from 'NOT_YET_VALID'
+    then raise exception 'future coupon accepted'; end if;
+  reset role;
+  if not exists (
+    select 1 from public.rf_promotion_vouchers v where v.booking_id=booking
+      and v.valid_from=(expiry + time '06:00') at time zone 'Asia/Bangkok'
+      and v.expires_at=(expiry + 1 + time '06:00') at time zone 'Asia/Bangkok'
+  ) then raise exception 'incorrect coupon business day'; end if;
+  update public.rf_promotion_vouchers v set valid_from=now()-interval '1 minute' where v.booking_id=booking;
+  set local role authenticated;
   if public.rf_preview_promotion_voucher(token)->>'valid'<>'true'
     or public.rf_preview_promotion_voucher(token)->>'valid'<>'true' then raise exception 'preview consumed token'; end if;
   if public.rf_redeem_promotion_voucher(token)->>'ok'<>'true'

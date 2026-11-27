@@ -1,5 +1,5 @@
-import { mountInlinePromotion } from './promotion-form.js?v=category-promos';
-import { renderMerchantSettings } from './merchant-settings.js?v=hour-promotions-51';
+import { mountPromotionForm } from './promotion-form.js?v=hourly-gift-window';
+import { renderMerchantSettings } from './merchant-settings.js?v=hourly-gift-window';
 
 function node(tag,text = '') {
   const item = document.createElement(tag);
@@ -80,9 +80,9 @@ export function shopSupportPanel(client,shop,onShopChanged) {
         if (error) throw error;
         return data;
       },
+      mountGiftForm:(root,category)=>mountPromotionForm(root,client,shop.shop_id,{platform:true,categories:[category],fixedGift:true}),
       reload:loadEditors
     });
-    mountInlinePromotion(categoryEditor,client,shop.shop_id,{platform:true,categories:data.categories});
   }
   panel.addEventListener('toggle',async () => {
     if (!panel.open || body.childElementCount || status.dataset.loading) return;

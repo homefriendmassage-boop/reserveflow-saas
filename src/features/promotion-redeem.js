@@ -13,12 +13,13 @@ function tokenFrom(input){
 }
 function show(data){
   const dl=$('details');dl.replaceChildren();
-  for(const [k,v] of [['โปรโมชั่น',data.offer],['ของแถม',data.gift||'—'],['ชั่วโมง',String(data.hours||'')],['สถานะ',data.status],['วันหมดอายุ',new Date(data.expires_at).toLocaleString('th-TH')]]){
+  for(const [k,v] of [['โปรโมชั่น',data.offer],['ของแถม',data.gift||'—'],['ชั่วโมง',String(data.hours||'')],['สถานะ',data.status],['วันหมดอายุ',new Date(data.expires_at).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'})]]){
     const p=document.createElement('p');p.textContent=k+': '+v;dl.append(p);
   }
   dl.classList.remove('hidden');
   $('confirm').classList.toggle('hidden',!data.valid);
-  if(!data.valid)message(data.status==='redeemed'?'คูปองนี้รับสิทธิ์ไปแล้ว ไม่สามารถใช้ซ้ำได้':'คูปองหมดอายุหรือไม่สามารถใช้ได้');
+  if(data.status==='not_yet_valid')message('คูปองใช้ได้ตั้งแต่ '+new Date(data.valid_from).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'}));
+  else if(!data.valid)message(data.status==='redeemed'?'คูปองนี้รับสิทธิ์ไปแล้ว ไม่สามารถใช้ซ้ำได้':'คูปองหมดอายุหรือไม่สามารถใช้ได้');
   else message('ตรวจสอบผ่าน กรุณาตรวจรายละเอียดกับลูกค้าก่อนกดยืนยันรับสิทธิ์');
 }
 async function preview(){

@@ -48,7 +48,7 @@ function panel(title) {
 
 const templates = [['table','โต๊ะ'],['staff','พนักงาน'],['vip','ห้อง VIP'],['seat','ที่นั่ง'],['ticket','บัตร']];
 
-export function renderMerchantSettings(container, { categoryContainer, categories, resources, layouts, owner, save, reload }) {
+export function renderMerchantSettings(container, { categoryContainer, categories, resources, layouts, owner, save, reload, mountGiftForm }) {
   const message = node('p');
   message.setAttribute('role', 'status');
   let saving = false;
@@ -199,8 +199,9 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
         const detail = node('details');
         detail.className = 'merchant-settings-panel';
         detail.dataset.hourPromotions = category.code;
-        detail.append(node('summary','โปรตามชั่วโมง · '+category.name),
-          node('p','กรอกราคารวมของโปร เว้นว่างช่วงที่ไม่มีโปร ชั่วโมงที่เกินคิดราคาปกติ'));
+        detail.append(node('summary','โปรตามชั่วโมง · '+category.name));
+        const pricing = node('div');
+        pricing.append(node('p','กรอกราคารวมของโปร เว้นว่างช่วงที่ไม่มีโปร ชั่วโมงที่เกินคิดราคาปกติ'));
         const promotions = node('form');
         promotions.className = 'fields';
         const maxHours = category.template === 'seat' ? 6 : 5;
@@ -218,7 +219,20 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
             .filter(([,control]) => control.value !== '').map(([hours,control]) => [hours,Number(control.value)]));
           void persist('save_merchant_hour_promotions',{p_code:category.code,p_promotions},'categories');
         };
-        detail.append(promotions);
+        pricing.append(promotions);
+        if (mountGiftForm) {
+          const mode=field(detail,'ประเภทโปรโมชั่น',select([['discount','ลดราคาตามชั่วโมง'],['gift','แจกของแถม']]));
+          mode.setAttribute('aria-label','ประเภทโปรโมชั่น');
+          const gifts=node('div');
+          gifts.classList.add('hidden');
+          mode.onchange=()=>{
+            const gift=mode.value==='gift';
+            pricing.classList.toggle('hidden',gift);
+            gifts.classList.toggle('hidden',!gift);
+            if (gift && !gifts.childElementCount) mountGiftForm(gifts,category);
+          };
+          detail.append(pricing,gifts);
+        } else detail.append(pricing);
         categoryPanel.append(detail);
       }
 
