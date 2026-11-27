@@ -73,7 +73,7 @@ Deno.serve(async request => {
     if (debit.error || !debit.data) {
       await admin.rpc('finish_booking_slip_checked', {
         p_booking_id: bookingId, p_outcome: 'retry', p_reference: null,
-        p_amount: null, p_account: null, p_receiver_names: null, p_paid_at: null
+        p_amount: null, p_account: null, p_receiver_names: null, p_paid_at: null, p_promptpay: null
       });
       if (debit.error) console.warn('Slip verification credit check failed',{code:debit.error.code});
       return json({state:debit.error ? 'verification_save_unavailable' : 'no_credit'});
@@ -93,7 +93,8 @@ Deno.serve(async request => {
   const finished = await admin.rpc('finish_booking_slip_checked', {
     p_booking_id: bookingId, p_outcome: result.outcome, p_reference: result.reference ?? null,
     p_amount: result.amount ?? null, p_account: result.receiverAccount ?? null,
-    p_receiver_names: result.receiverNames ?? null, p_paid_at: result.paidAt ?? null
+    p_receiver_names: result.receiverNames ?? null, p_paid_at: result.paidAt ?? null,
+    p_promptpay: result.receiverPromptPay ?? null
   });
   if (finished.error) {
     console.warn('Slip verification save failed',{code:finished.error.code});
@@ -104,7 +105,7 @@ Deno.serve(async request => {
     return json({state:result.providerState});
   }
   if (finished.data?.state === 'receiver_review') {
-    if (!result.receiverAccount) return json({...finished.data,state:'receiver_account_unavailable'});
+    if (!result.receiverAccount && !result.receiverPromptPay && !finished.data.reason) return json({...finished.data,state:'receiver_account_unavailable'});
     if (!result.receiverNames?.length) return json({...finished.data,state:'receiver_name_unavailable'});
   }
   return json(finished.data);

@@ -112,6 +112,22 @@ begin
   update public.bookings set status='pending_confirm' where id=booking;
   begin
     set local role service_role;
+    if public.finish_booking_slip_checked(booking,'provider_verified','wrong-promptpay',380,
+      null,array['Test Recipient'],now(),'0891112222')->>'reason' is distinct from 'receiver_account_mismatch'
+      then raise exception 'wrong PromptPay identifier was accepted'; end if;
+    raise sqlstate 'RF913';
+  exception when sqlstate 'RF913' then null;
+  end;
+  begin
+    set local role service_role;
+    if public.finish_booking_slip_checked(booking,'provider_verified','valid-promptpay',380,
+      null,array['Test Recipient'],now(),'0891234567')->>'state' is distinct from 'confirmed'
+      then raise exception 'matching PromptPay and name were not accepted'; end if;
+    raise sqlstate 'RF913';
+  exception when sqlstate 'RF913' then null;
+  end;
+  begin
+    set local role service_role;
     if public.finish_booking_slip_checked(booking,'provider_verified','wrong-receiver',379,
       '9999999999',array['Wrong Name'],now())->>'reason' is distinct from 'receiver_account_mismatch'
       then raise exception 'wrong recipient was classified as an amount mismatch'; end if;

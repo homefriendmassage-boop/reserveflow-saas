@@ -38,7 +38,7 @@ export async function verifySlip(payload: string, key: string, send = fetch, mat
   if (!Number.isFinite(amount) || amount <= 0 || amount > 9999999999.99)
     return {outcome:'retry',providerState:'provider_amount_unavailable'};
 
-  // Only a complete mobile proxy identifies the configured PromptPay receiver.
+  // Mobile and national-ID proxies identify PromptPay independently of bank accounts.
   const proxy = data.receiver?.account?.proxy;
   const account = typeof proxy?.account === 'string' ? proxy.account.replace(/[\s-]/g, '') : '';
   const mobile = proxy?.type === 'MSISDN'
@@ -48,21 +48,30 @@ export async function verifySlip(payload: string, key: string, send = fetch, mat
   const rawAccount = bankIdentifier?.type === 'BANKAC' ? fullAccount(bankIdentifier.account) : null;
   const matched = matchAccount ? result?.matchedAccount : null;
   const matchedNumber = fullAccount(matched?.bankNumber);
-  const receiverAccount = rawAccount && matchedNumber && rawAccount !== matchedNumber
-    ? null : rawAccount ?? matchedNumber;
+  const rawProxy = proxy?.type === 'NATID' && /^\d{13}$/.test(account) ? account
+    : /^0[689][0-9]{8}$/.test(mobile) ? mobile : null;
+  const matchedIsPromptPay = [matched?.bank?.shortCode,matched?.bank?.nameEn,matched?.bank?.nameTh]
+    .some(value => typeof value === 'string' && /^(promptpay|พร้อมเพย์)$/i.test(value.replace(/\s/g,'')));
+  const matchedProxy = matchedIsPromptPay ? matchedNumber : null;
+  const proxyConflict = rawProxy && matchedProxy && rawProxy !== matchedProxy;
+  const receiverPromptPay = rawProxy ?? matchedProxy;
+  const bankNumber = rawAccount && rawAccount !== receiverPromptPay ? rawAccount : null;
+  const matchedBank = matchedIsPromptPay ? null : matchedNumber;
+  const receiverAccount = bankNumber && matchedBank && bankNumber !== matchedBank
+    ? null : bankNumber ?? matchedBank;
   const name = data.receiver?.account?.name;
-  const candidates = rawAccount
-    ? [typeof name === 'string' ? name : name?.th, name?.en]
-    : matchedNumber ? [matched.nameTh, matched.nameEn] : [];
-  const receiverNames = candidates
-    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+  const presentName = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
+  const slipNames = [typeof name === 'string' ? name : name?.th, name?.en].filter(presentName);
+  const receiverNames = slipNames.length || !matchedNumber ? slipNames
+    : [matched.nameTh, matched.nameEn].filter(presentName);
   const time = typeof data.date === 'string' && /(?:Z|[+-]\d{2}:\d{2})$/.test(data.date)
     ? Date.parse(data.date) : NaN;
   return {
     outcome: 'provider_verified',
     reference,
     amount,
-    receiverAccount,
+    receiverAccount: proxyConflict ? null : receiverAccount,
+    receiverPromptPay: proxyConflict || (bankNumber && !receiverAccount) ? null : receiverPromptPay,
     receiverNames,
     mobile: /^0[689][0-9]{8}$/.test(mobile) ? mobile : null,
     paidAt: Number.isFinite(time) ? new Date(time).toISOString() : null
