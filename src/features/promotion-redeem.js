@@ -1,3 +1,4 @@
+import { cancelPromotionLogin, signInForPromotion } from './promotion-login.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 const $=id=>document.getElementById(id);
@@ -53,8 +54,13 @@ $('confirm').onclick=async()=>{
 $('lineLogin').onclick=async()=>{
   const code=location.hash.slice(1)||new URLSearchParams(location.search).get('code')||'';
   if(UUID.test(code)) sessionStorage.setItem('reserveflow-promotion-scan',code);
-  const {error}=await client.auth.signInWithOAuth({provider:'custom:line-manual',options:{redirectTo:new URL('./promotion-redeem.html',location.href).href}});
-  if(error)$('authStatus').textContent=error.message;
+  try {
+    const {error}=await signInForPromotion(client,'promotion-redeem.html');
+    if (error) throw error;
+  } catch {
+    cancelPromotionLogin();
+    $('authStatus').textContent='เข้าสู่ระบบ LINE ไม่สำเร็จ กรุณาลองใหม่';
+  }
 };
 async function checkAuth(){
   const {data}=await client.auth.getUser();const ready=!!data.user;

@@ -1,3 +1,4 @@
+import { cancelPromotionLogin, resumePromotionLogin } from './promotion-login.js';
 import { bookingPrice } from './booking-pricing.js';
 import { counterPaymentRpc, openMerchantCounterPayment } from './counter-payment.js?v=customer-qr-handoff';
 import { editBookingRecipient, renderBookingHistory } from './merchant-booking-tools.js?v=merchant-tools-1';
@@ -843,6 +844,7 @@ if (typeof window.supabase?.createClient !== 'function') {
         }
         return;
       }
+      if (resumePromotionLogin()) return;
       if (haveScan()) {
         login.classList.add('hidden');
         status.textContent = '';
@@ -913,6 +915,7 @@ if (typeof window.supabase?.createClient !== 'function') {
     signIn.disabled = true;
     status.textContent = 'กำลังเปิด LINE Login…';
     try {
+      cancelPromotionLogin();
       const redirectTo = new URL('./merchant.html', location.href).href;
       const requestedShop = new URLSearchParams(location.search).get('shop');
       try {

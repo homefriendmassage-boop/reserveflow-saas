@@ -1,3 +1,4 @@
+import { cancelPromotionLogin, signInForPromotion } from './promotion-login.js';
 import { SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 import { listMerchantShops } from '../data/supabase-store.js';
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
@@ -119,10 +120,13 @@ function selectShop() {
 $('shop').onchange = selectShop;
 $('loginLine').onclick = async () => {
   if (contextShop) sessionStorage.setItem(loginShopKey,contextShop);
-  const {error}=await client.auth.signInWithOAuth({
-    provider:'custom:line-manual',options:{redirectTo:new URL('./promotion-manager.html',location.href).href}
-  });
-  if (error) $('authStatus').textContent='เข้าสู่ระบบ LINE ไม่สำเร็จ กรุณาลองใหม่';
+  try {
+    const {error}=await signInForPromotion(client,'promotion-manager.html');
+    if (error) throw error;
+  } catch {
+    cancelPromotionLogin();
+    $('authStatus').textContent='เข้าสู่ระบบ LINE ไม่สำเร็จ กรุณาลองใหม่';
+  }
 };
 
 async function init() {
