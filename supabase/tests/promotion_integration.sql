@@ -148,6 +148,17 @@ begin
     reset role;
     if (select status from public.bookings where id=booking)<>'confirmed'
       then raise exception 'staff could not approve an amount mismatch'; end if;
+    if public.rf_booking_voucher(pass) is not null then raise exception 'approval issued coupon before check-in'; end if;
+    select scan_token into scan from reserveflow_private.booking_passes where booking_id=booking;
+    update public.bookings set starts_at=now()+interval '5 minutes',ends_at=now()+interval '3 hours 5 minutes'
+      where id=booking;
+    set local role authenticated;
+    perform set_config('request.jwt.claim.sub',account::text,true);
+    perform public.check_in_booking_pass(scan);
+    reset role;
+    if public.rf_booking_voucher(pass) is null then raise exception 'staff check-in did not release online coupon'; end if;
+    if not exists(select 1 from public.rf_promotion_events where kind='issued')
+      then raise exception 'online coupon was not queued after staff check-in'; end if;
     raise sqlstate 'RF913';
   exception when sqlstate 'RF913' then null;
   end;
