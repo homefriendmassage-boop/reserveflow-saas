@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="./assets/css/app.css?v=floor-template-41">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/merchant-portal.js?v=hour-promotions-51"></script>
+  <script type="module" src="./src/features/merchant-portal.js?v=promotion-line-first"></script>
 </head>
 <body>
 <header>
@@ -19,7 +19,7 @@
     </nav>
   </div>
 </header>
-<main><div class="panel"><a class="btn soft" href="./promotion-manager.html">🎣 จัดการโปรตกกุ้ง / ของแถม</a> <a class="btn soft" href="./promotion-redeem.html">🎟️ ตรวจ QR รับสิทธิ์</a></div>
+<main><div class="panel"><a class="btn soft" href="./promotion-redeem.html">🎟️ ตรวจ QR รับสิทธิ์</a></div>
   <section class="panel hidden" id="merchantLogin">
     <h2>เข้าสู่ระบบร้านค้า</h2>
     <button type="button" id="merchantSignIn" class="btn primary" disabled>เข้าสู่ระบบด้วย LINE</button>
@@ -97,6 +97,10 @@
       <div class="stat"><strong>—</strong><span>รอคอนเฟิร์ม</span></div>
       <div class="stat"><strong>—</strong><span>จองแล้ว/เช็กอิน</span></div>
     </div>
+    <section id="merchantPromotionPanel" class="panel hidden">
+      <h2>จัดการโปรโมชั่น</h2>
+      <a id="merchantPromotionLink" class="btn soft" href="./promotion-manager.html">สร้างหรือแก้ไขโปรโมชั่น</a>
+    </section>
     <div id="merchantCategorySettings" class="merchant-editor"></div>
     <section id="merchantShopSettings" class="panel hidden">
       <h2>🏪 ตั้งค่าร้านค้า</h2>

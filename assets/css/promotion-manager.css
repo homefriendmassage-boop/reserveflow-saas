@@ -1,0 +1,16 @@
+.promotion-manager { max-width: 880px; }
+.promotion-manager h1 { font-size: 1.25rem; }
+.promotion-offer-form { display: grid; gap: .75rem; margin: 1rem 0; padding: 1rem; border: 1px solid #d8e0f2; border-radius: 16px; }
+.promotion-offer-form h2, .promotion-preview h3 { margin: 0; }
+.promotion-offer-form .field { margin: 0; }
+.promotion-offer-form .field input, .promotion-offer-form .field select { width: 100%; border-radius: 20px; }
+.promotion-pair { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .75rem; }
+#giftFields { display: grid; gap: .75rem; }
+#giftFields.hidden { display: none; }
+.promotion-preview { border-top: 1px solid #d8e0f2; padding-top: .75rem; }
+.promotion-preview p { margin: .35rem 0; }
+#previewPrice { font-size: 1.25rem; font-weight: 700; }
+#previewGift { color: #087646; }
+@media (max-width: 460px) {
+  .promotion-pair { grid-template-columns: 1fr; }
+}

@@ -679,6 +679,8 @@ if (typeof window.supabase?.createClient !== 'function') {
     setShopUrl(shop);
     const request = ++bookingRequest;
     currentRole = shop.dataset.role;
+    byId('merchantPromotionPanel').classList.toggle('hidden',!['owner','admin'].includes(currentRole));
+    byId('merchantPromotionLink').href = './promotion-manager.html?' + new URLSearchParams({shop:shop.dataset.slug || ''});
     const report = byId('merchantDailyReport');
     report.replaceChildren();
     if (canManageTables()) renderDailyReport(client, report, shop.value, shop.dataset.timezone);

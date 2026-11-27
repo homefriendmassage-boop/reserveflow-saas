@@ -50,10 +50,6 @@ $('confirm').onclick=async()=>{
   }catch(e){message('ยืนยันไม่สำเร็จ: '+e.message)}
   finally{redeeming=false;$('confirm').disabled=false}
 };
-$('loginForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);
-  const {error}=await client.auth.signInWithPassword({email:f.get('email'),password:f.get('password')});
-  if(error)$('authStatus').textContent=error.message;else await checkAuth();
-};
 $('lineLogin').onclick=async()=>{
   const code=location.hash.slice(1)||new URLSearchParams(location.search).get('code')||'';
   if(UUID.test(code)) sessionStorage.setItem('reserveflow-promotion-scan',code);
@@ -62,9 +58,9 @@ $('lineLogin').onclick=async()=>{
 };
 async function checkAuth(){
   const {data}=await client.auth.getUser();const ready=!!data.user;
-  $('loginForm').classList.toggle('hidden',ready);$('lineLogin').classList.toggle('hidden',ready);
+  $('lineLogin').classList.toggle('hidden',ready);
   $('scanner').classList.toggle('hidden',!ready);
-  $('authStatus').textContent=ready?'เข้าสู่ระบบแล้ว · ตรวจสอบสิทธิ์พนักงานอีกครั้งเมื่อสแกน':'กรุณาเข้าสู่ระบบด้วยบัญชีพนักงานของร้าน';
+  $('authStatus').textContent=ready?'เข้าสู่ระบบแล้ว · ตรวจสอบสิทธิ์พนักงานอีกครั้งเมื่อสแกน':'ใช้ LINE บัญชีที่ร้านกำหนดสิทธิ์พนักงานเพื่อเข้าสู่ระบบ';
   if(ready){const initial=location.hash.slice(1)||new URLSearchParams(location.search).get('code')||sessionStorage.getItem('reserveflow-promotion-scan');sessionStorage.removeItem('reserveflow-promotion-scan');if(initial&&UUID.test(initial)){$('voucherInput').value=initial;redeeming=false;await preview()}}
 }
 async function closeCamera(){reading=false;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('video').style.display='none'}
