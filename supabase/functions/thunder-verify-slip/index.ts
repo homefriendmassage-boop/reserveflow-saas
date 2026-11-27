@@ -61,7 +61,11 @@ Deno.serve(async request => {
   const claim = await admin.rpc('claim_thunder_booking_slip', {
     p_booking_id: bookingId, p_phone: phone || null, p_staff: staffId
   });
-  if (claim.error || !claim.data) return json({state:'unavailable'});
+  if (claim.error) {
+    console.warn('Slip verification claim failed',{code:claim.error.code});
+    return json({state:'verification_save_unavailable'});
+  }
+  if (!claim.data) return json({state:'unavailable'});
   if (claim.data.state !== 'claimed') return json(claim.data);
   const payload = decodeSlipQr(claim.data.image);
   if (payload) {
@@ -71,14 +75,16 @@ Deno.serve(async request => {
         p_booking_id: bookingId, p_outcome: 'retry', p_reference: null,
         p_amount: null, p_account: null, p_receiver_names: null, p_paid_at: null
       });
-      return json({state:debit.error ? 'retry' : 'no_credit'});
+      if (debit.error) console.warn('Slip verification credit check failed',{code:debit.error.code});
+      return json({state:debit.error ? 'verification_save_unavailable' : 'no_credit'});
     }
   }
   let result;
   try {
     result = payload ? await verifySlip(payload, key) : { outcome:'qr_unreadable' };
-  } catch {
-    result = {outcome:'retry'};
+  } catch (error) {
+    result = {outcome:'retry',providerState:error instanceof Error && error.name === 'TimeoutError'
+      ? 'provider_timeout' : 'provider_unavailable'};
   }
   if (payload && result.outcome === 'retry') {
     const refund = await admin.rpc('refund_booking_slip_credit', { p_booking_id: bookingId });
@@ -89,5 +95,17 @@ Deno.serve(async request => {
     p_amount: result.amount ?? null, p_account: result.receiverAccount ?? null,
     p_receiver_names: result.receiverNames ?? null, p_paid_at: result.paidAt ?? null
   });
-  return json(finished.error ? {state:'unavailable'} : result.providerState ? {state:result.providerState} : finished.data);
+  if (finished.error) {
+    console.warn('Slip verification save failed',{code:finished.error.code});
+    return json({state:'verification_save_unavailable'});
+  }
+  if (result.providerState) {
+    console.warn('Slip verification provider response',{state:result.providerState});
+    return json({state:result.providerState});
+  }
+  if (finished.data?.state === 'receiver_review') {
+    if (!result.receiverAccount) return json({...finished.data,state:'receiver_account_unavailable'});
+    if (!result.receiverNames?.length) return json({...finished.data,state:'receiver_name_unavailable'});
+  }
+  return json(finished.data);
 });

@@ -10,13 +10,18 @@ export async function verifySlip(payload: string, key: string, send = fetch) {
     await response.body?.cancel();
     if (response.status === 429) return { outcome:'retry', providerState:'thunder_limit' };
     if ([401,403].includes(response.status)) return { outcome:'retry', providerState:'thunder_access' };
-    return { outcome: response.status >= 500 ? 'retry' : 'not_verified' };
+    return response.status >= 500 ? { outcome:'retry', providerState:'provider_unavailable' } : { outcome:'not_verified' };
   }
-  const body = await response.json();
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    return {outcome:'retry',providerState:'provider_response_incomplete'};
+  }
   const data = body?.data;
   if (body?.success !== true) return { outcome: 'not_verified' };
   if (typeof data?.transRef !== 'string' || !data.transRef.trim() ||
-      typeof data?.amount?.amount !== 'number' || !Number.isFinite(data.amount.amount)) return { outcome: 'retry' };
+      typeof data?.amount?.amount !== 'number' || !Number.isFinite(data.amount.amount)) return {outcome:'retry',providerState:'provider_response_incomplete'};
 
   // Only a complete mobile proxy identifies the configured PromptPay receiver.
   const proxy = data.receiver?.account?.proxy;
