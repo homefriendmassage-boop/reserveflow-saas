@@ -20,6 +20,7 @@ const customerPhoto = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$
 const resourceField = document.getElementById('bookingResourceField');
 let floorLoading = false;
 let sending = false;
+let checkingOffer = false;
 const categoryIcons = { table: '🍽️', seat: '💺', staff: '👤', vip: '🚪', ticket: '🎟️' };
 const pageParams = new URLSearchParams(location.search);
 const shopSlug = pageParams.get('shop');
@@ -32,7 +33,8 @@ let categories = [];
 const offerPicker = document.getElementById('bookingOffer');
 const offerField = document.getElementById('bookingOfferField');
 let availableOffers = [];
-const selectedOffer = () => availableOffers.find(offer => offer.id===offerPicker.value);
+let selectedOfferId = '';
+const selectedOffer = () => availableOffers.find(offer => offer.id === selectedOfferId);
 let pendingRequest;
 
 const errorMessages = {
@@ -104,7 +106,7 @@ function updateEstimate() {
     : price?.packageHours
     ? 'โปร '+price.packageHours+' ชม.'+(price.extraHours ? ' + ราคาปกติ '+price.extraHours+' ชม.' : '')
       +' · ประหยัด '+money.format(price.savings) : '';
-  submit.disabled = !resource || floorLoading || sending;
+  submit.disabled = !resource || floorLoading || sending || checkingOffer;
   highlightTable(fields.resource.value);
   for (const card of resourceCards.children) {
     const selected = card.dataset.code === fields.resource.value;
@@ -324,6 +326,8 @@ async function start() {
       }
       if (occupied.has(fields.resource.value)) {
         fields.resource.value = '';
+        invalidateOfferCheck();
+        renderOffers();
         void syncSelection();
       }
       if (quiet) refreshFloorAvailability(plan);
@@ -340,33 +344,103 @@ async function start() {
   }
 
   let offerRevision = 0;
+  let offerCheck = 0;
+  const offerStatus = document.getElementById('bookingOfferStatus');
+
+  function renderOffers() {
+    const show = availableOffers.length && fields.resource.value && !awaitingSlip;
+    offerField.classList.toggle('hidden', !show);
+    if (!show) return;
+    offerPicker.replaceChildren();
+    for (const offer of [null, ...availableOffers]) {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'booking-offer-card';
+      card.setAttribute('aria-pressed', String(selectedOfferId === (offer?.id || '')));
+      const title = document.createElement('strong');
+      title.textContent = offer ? offer.name : 'ใช้ราคาทั่วไป';
+      card.append(title);
+      if (offer) {
+        const details = document.createElement('small');
+        const price = Number(offer.price) + Number(selectedCategory().service_fee);
+        details.textContent = offer.hours + ' ชั่วโมง · ' + money.format(price)
+          + (selectedCategory().template === 'seat' ? ' / ที่นั่ง' : '');
+        card.append(details);
+        if (offer.gift) {
+          const gift = document.createElement('small');
+          gift.textContent = 'ฟรี ' + offer.gift;
+          card.append(gift);
+        }
+      }
+      card.onclick = () => void chooseOffer(offer);
+      offerPicker.append(card);
+    }
+  }
+
+  async function chooseOffer(offer) {
+    if (sending || awaitingSlip) return;
+    const check = ++offerCheck;
+    offerStatus.textContent = '';
+    checkingOffer = false;
+    const category = selectedCategory();
+    const resource = fields.resource.value;
+    if (offer && ['seat', 'vip'].includes(category.template)) {
+      const args = slotArguments(category);
+      offerStatus.textContent = 'กำลังตรวจที่ว่างสำหรับโปรนี้…';
+      checkingOffer = true;
+      updateEstimate();
+      try {
+        const {data, error} = await client.rpc('booking_resource_plan', {...args, p_hours: offer.hours});
+        if (check !== offerCheck || sending || awaitingSlip) return;
+        if (error || !data?.tables?.some(table => table.code === resource && !table.occupied)) {
+          offerStatus.textContent = 'ที่เลือกไว้ไม่ว่างครบ ' + offer.hours + ' ชั่วโมง กรุณาเปลี่ยนเวลา หรือเลือกที่อื่น';
+          return;
+        }
+      } catch {
+        if (check === offerCheck) offerStatus.textContent = 'ตรวจที่ว่างไม่สำเร็จ กรุณาลองใหม่';
+        return;
+      } finally {
+        if (check === offerCheck) {
+          checkingOffer = false;
+          updateEstimate();
+        }
+      }
+    }
+    offerStatus.textContent = '';
+    selectedOfferId = offer?.id || '';
+    if (offer) fields.hours.value = offer.hours;
+    renderOffers();
+    updateEstimate();
+    void syncSelection();
+    void loadFloor();
+  }
+
   async function refreshOffers() {
     const requested = ++offerRevision;
     const category = selectedCategory();
-    const prior = offerPicker.value;
     availableOffers = [];
-    offerPicker.replaceChildren(new Option('ใช้ราคาทั่วไป',''));
-    offerField.classList.add('hidden');
+    selectedOfferId = '';
+    renderOffers();
     updateEstimate();
-    if (!category || !['staff','seat','vip'].includes(category.template)) return;
-    try {
-      const {data,error} = await client.rpc('rf_booking_offers',{
-        p_shop_slug:shopSlug,p_category_code:category.code,p_hours:Number(fields.hours.value)
-      });
-      if (requested !== offerRevision || error || !Array.isArray(data)) return;
-      availableOffers = data;
-      for (const offer of data) {
-        offerPicker.add(new Option(offer.name + ' · ' + money.format(offer.price)
-          + (offer.gift ? ' · ' + offer.gift : ''),offer.id));
-      }
-      if (data.some(offer => offer.id===prior)) offerPicker.value = prior;
-      offerField.classList.toggle('hidden',!data.length || awaitingSlip);
-      updateEstimate();
-    } catch {}
+    if (!['staff', 'seat', 'vip'].includes(category.template)) return;
+    const results = await Promise.allSettled(Array.from({length:5}, (_, index) =>
+      client.rpc('rf_booking_offers',{
+        p_shop_slug:shopSlug,p_category_code:category.code,p_hours:index+1
+      })));
+    if (requested !== offerRevision) return;
+    availableOffers = results.flatMap(result => result.status === 'fulfilled' && Array.isArray(result.value.data)
+      ? result.value.data : []);
+    renderOffers();
   }
-  offerPicker.addEventListener('change',updateEstimate);
+
+  function invalidateOfferCheck() {
+    ++offerCheck;
+    checkingOffer = false;
+    offerStatus.textContent = '';
+  }
 
   fields.category.addEventListener('change', () => {
+    invalidateOfferCheck();
     markCategory();
     updateResources();
     void refreshOffers();
@@ -374,18 +448,26 @@ async function start() {
     void loadFloor();
   });
   for (const input of [fields.date, fields.hour]) input.addEventListener('change', () => {
+    invalidateOfferCheck();
     refreshCustomerSlot();
     void syncSelection();
     void loadFloor();
   });
   fields.hours.addEventListener('change', () => {
-    void refreshOffers();
+    invalidateOfferCheck();
+    if (Number(fields.hours.value) !== selectedOffer()?.hours) selectedOfferId = '';
+    renderOffers();
+    updateEstimate();
     if (['table', 'seat', 'vip'].includes(selectedCategory().template)) {
       void syncSelection();
       void loadFloor();
     }
   });
-  fields.resource.addEventListener('input', () => void syncSelection());
+  fields.resource.addEventListener('input', () => {
+    invalidateOfferCheck();
+    renderOffers();
+    void syncSelection();
+  });
   document.addEventListener('visibilitychange', () => void syncSelection());
   setInterval(() => {
     if (document.hidden || sending || awaitingSlip) return;
@@ -409,6 +491,7 @@ async function start() {
   ];
 
   function openPayment(draft) {
+    invalidateOfferCheck();
     awaitingSlip = true;
     offerField.classList.add('hidden');
     paymentGrid.classList.add('booking-payment-active');

@@ -566,3 +566,24 @@
   border-color: #e9b769;
   color: #754a18;
 }
+
+.booking-offers { margin-bottom: 14px; }
+.booking-offers h3 { margin: 0 0 8px; }
+.booking-offer-list { display: grid; gap: 8px; }
+.booking-offer-card {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  text-align: start;
+  font: inherit;
+  color: inherit;
+  background: white;
+  border: 1px solid var(--line, #dce3ef);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.booking-offer-card[aria-pressed="true"] {
+  border-color: #5865eb;
+  background: #eef0ff;
+}
+.booking-offer-card small { color: #42506e; font-size: 0.9em; }

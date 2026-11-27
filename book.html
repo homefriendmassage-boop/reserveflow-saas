@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>จองคิว | ReserveFlow</title>
-  <link rel="stylesheet" href="./assets/css/app.css?v=bank-slip-preview-37">
+  <link rel="stylesheet" href="./assets/css/app.css?v=booking-offer-cards">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/customer-portal.js?v=promotion-booking"></script>
+  <script type="module" src="./src/features/customer-portal.js?v=booking-offer-cards"></script>
 </head>
 <body>
 <header>
@@ -70,7 +70,11 @@
           <div class="field"><label for="note">หมายเหตุ (ไม่บังคับ)</label><textarea id="note" name="note" maxlength="500"></textarea></div>
         </div>
         <h2 class="booking-summary-title">สรุปการจอง</h2>
-        <label id="bookingOfferField" class="field hidden"><span>โปรโมชั่นสำหรับรายการจอง</span><select id="bookingOffer"><option value="">ใช้ราคาทั่วไป</option></select></label>
+        <section id="bookingOfferField" class="booking-offers hidden" aria-labelledby="bookingOfferTitle">
+          <h3 id="bookingOfferTitle">โปรโมชั่นสำหรับรายการจอง</h3>
+          <div id="bookingOffer" class="booking-offer-list" role="group" aria-labelledby="bookingOfferTitle"></div>
+          <p id="bookingOfferStatus" class="sub" role="status"></p>
+        </section>
         <div class="summary" aria-live="polite">
           <div><strong>วันที่ใช้บริการ</strong><span id="bookingSummaryDate">—</span></div>
           <div><strong>รายการที่จอง</strong><span id="bookingSummaryResource">ยังไม่ได้เลือก</span></div>
