@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="./assets/css/app.css?v=bank-slip-preview-37">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/customer-portal.js?v=hour-promotions-51"></script>
+  <script type="module" src="./src/features/customer-portal.js?v=promotion-booking"></script>
 </head>
 <body>
 <header>
@@ -70,6 +70,7 @@
           <div class="field"><label for="note">หมายเหตุ (ไม่บังคับ)</label><textarea id="note" name="note" maxlength="500"></textarea></div>
         </div>
         <h2 class="booking-summary-title">สรุปการจอง</h2>
+        <label id="bookingOfferField" class="field hidden"><span>โปรโมชั่นสำหรับรายการจอง</span><select id="bookingOffer"><option value="">ใช้ราคาทั่วไป</option></select></label>
         <div class="summary" aria-live="polite">
           <div><strong>วันที่ใช้บริการ</strong><span id="bookingSummaryDate">—</span></div>
           <div><strong>รายการที่จอง</strong><span id="bookingSummaryResource">ยังไม่ได้เลือก</span></div>

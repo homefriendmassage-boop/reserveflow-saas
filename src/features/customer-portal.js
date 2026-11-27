@@ -1,6 +1,6 @@
 import { bookingPrice } from './booking-pricing.js';
 import { initBookingLiff, submitLiffPayment } from './booking-liff.js';
-import { prepareSlipAttachment } from './customer-slip.js?v=booking-liff-48';
+import { prepareSlipAttachment } from './customer-slip.js?v=promotion-booking';
 import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=unfinished-floor-44';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, nextBookingDate, timeAtShop } from './booking-slots.js?v=business-day-1';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
@@ -29,9 +29,17 @@ if (shopSlug) {
 }
 const money = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' });
 let categories = [];
+const offerPicker = document.getElementById('bookingOffer');
+const offerField = document.getElementById('bookingOfferField');
+let availableOffers = [];
+const selectedOffer = () => availableOffers.find(offer => offer.id===offerPicker.value);
 let pendingRequest;
 
 const errorMessages = {
+  PROMOTION_UNAVAILABLE: 'โปรโมชั่นนี้ไม่พร้อมใช้งาน กรุณาเลือกใหม่',
+  PROMOTION_SOLD_OUT: 'โปรโมชั่นนี้ครบจำนวนสิทธิ์แล้ว กรุณาเลือกใหม่',
+  PROMOTION_QUOTE_EXPIRED: 'หมดเวลาจองสิทธิ์ กรุณาเริ่มรายการใหม่',
+  PROMOTION_QUOTE_MISMATCH: 'ข้อมูลโปรโมชั่นเปลี่ยน กรุณาเริ่มรายการใหม่',
   BOOKING_LINE_UNAVAILABLE: 'เปิดการเชื่อม LINE ไม่ได้ กรุณาเปิดหน้าจองใหม่จากเมนู LINE ของร้าน',
   BOOKING_LINE_EXPIRED: 'การเชื่อม LINE หมดอายุ กรุณาเปิดหน้าจองใหม่จากเมนู LINE ของร้าน',
   BOOKING_PAYMENT_UNAVAILABLE: 'ร้านยังไม่ได้เปิดรับชำระพร้อมเพย์สำหรับรายการนี้',
@@ -85,11 +93,15 @@ function updateEstimate() {
   document.getElementById('bookingSummaryTime').textContent = validPeriod
     ? fields.hour.selectedOptions[0].textContent + ' – ' + end : '—';
   document.getElementById('bookingSummaryHours').textContent = validPeriod ? duration + ' ชั่วโมง' : '—';
-  const price = resource && validPeriod ? bookingPrice(category,Number(units)) : null;
+  const offer = selectedOffer();
+  const price = resource && validPeriod ? (offer ? {
+    total:Number(offer.price)+Number(category.service_fee),packageHours:0
+  } : bookingPrice(category,Number(units))) : null;
   estimate.textContent = price ? money.format(price.total) : '—';
   const promotion = document.getElementById('bookingPromotion');
-  promotion.classList.toggle('hidden',!price?.packageHours);
-  promotion.textContent = price?.packageHours
+  promotion.classList.toggle('hidden',!(price?.packageHours || (price && offer)));
+  promotion.textContent = price && offer ? offer.name + (offer.gift ? ' · รับ '+offer.gift+' 1 สิทธิ์ต่อรายการ' : '')
+    : price?.packageHours
     ? 'โปร '+price.packageHours+' ชม.'+(price.extraHours ? ' + ราคาปกติ '+price.extraHours+' ชม.' : '')
       +' · ประหยัด '+money.format(price.savings) : '';
   submit.disabled = !resource || floorLoading || sending;
@@ -327,9 +339,37 @@ async function start() {
     }
   }
 
+  let offerRevision = 0;
+  async function refreshOffers() {
+    const requested = ++offerRevision;
+    const category = selectedCategory();
+    const prior = offerPicker.value;
+    availableOffers = [];
+    offerPicker.replaceChildren(new Option('ใช้ราคาทั่วไป',''));
+    offerField.classList.add('hidden');
+    updateEstimate();
+    if (!category || !['staff','seat','vip'].includes(category.template)) return;
+    try {
+      const {data,error} = await client.rpc('rf_booking_offers',{
+        p_shop_slug:shopSlug,p_category_code:category.code,p_hours:Number(fields.hours.value)
+      });
+      if (requested !== offerRevision || error || !Array.isArray(data)) return;
+      availableOffers = data;
+      for (const offer of data) {
+        offerPicker.add(new Option(offer.name + ' · ' + money.format(offer.price)
+          + (offer.gift ? ' · ' + offer.gift : ''),offer.id));
+      }
+      if (data.some(offer => offer.id===prior)) offerPicker.value = prior;
+      offerField.classList.toggle('hidden',!data.length || awaitingSlip);
+      updateEstimate();
+    } catch {}
+  }
+  offerPicker.addEventListener('change',updateEstimate);
+
   fields.category.addEventListener('change', () => {
     markCategory();
     updateResources();
+    void refreshOffers();
     void syncSelection();
     void loadFloor();
   });
@@ -339,6 +379,7 @@ async function start() {
     void loadFloor();
   });
   fields.hours.addEventListener('change', () => {
+    void refreshOffers();
     if (['table', 'seat', 'vip'].includes(selectedCategory().template)) {
       void syncSelection();
       void loadFloor();
@@ -369,6 +410,7 @@ async function start() {
 
   function openPayment(draft) {
     awaitingSlip = true;
+    offerField.classList.add('hidden');
     paymentGrid.classList.add('booking-payment-active');
     for (const element of paymentHidden) element.classList.add('hidden');
     submit.classList.add('hidden');
@@ -380,6 +422,9 @@ async function start() {
       if (error) throw error;
       return data;
     }, (message, saved) => {
+      if (!saved && draft.payload.offer_id) {
+        void client.rpc('rf_release_promotion_quote',{p_request:draft.payload});
+      }
       try { localStorage.removeItem(draftKey); } catch {}
       pendingRequest = undefined;
       awaitingSlip = false;
@@ -392,6 +437,7 @@ async function start() {
       fields.hour.value = '';
       refreshCustomerSlot();
       updateResources();
+      void refreshOffers();
       if (saved?.pass_token) {
         try { localStorage.setItem(passKey, saved.pass_token); } catch {}
         showLastPass(saved.pass_token);
@@ -420,6 +466,7 @@ async function start() {
   } catch {}
   if (savedDraft) openPayment(savedDraft);
   else void loadFloor();
+  void refreshOffers();
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
@@ -436,7 +483,8 @@ async function start() {
       p_shop_slug: shopSlug, p_category_code: fields.category.value, p_resource_code: fields.resource.value,
       p_date: calendarSlotDate(fields.date.value, fields.hour.value), p_hour: hour, p_minute: minute,
       p_hours: count(fields.hours), p_guests: count(fields.guests), p_tickets: count(fields.tickets),
-      p_name: fields.customerName.value, p_phone: fields.customerPhone.value, p_note: fields.note.value
+      p_name: fields.customerName.value, p_phone: fields.customerPhone.value, p_note: fields.note.value,
+      ...(selectedOffer() ? {offer_id:selectedOffer().id} : {})
     };
     const fingerprint = JSON.stringify(payload);
     if (pendingRequest?.fingerprint !== fingerprint) {
@@ -452,7 +500,7 @@ async function start() {
     const resource = category.resources.find(row => row.code === payload.p_resource_code);
     const label = [category.name, resource?.name || payload.p_resource_code, document.getElementById('bookingSummaryDate').textContent,
       document.getElementById('bookingSummaryTime').textContent,
-      document.getElementById('bookingSummaryHours').textContent].join(' · ');
+      document.getElementById('bookingSummaryHours').textContent, selectedOffer()?.name].filter(Boolean).join(' · ');
 
     try {
       if (throughLiff) {
@@ -469,7 +517,8 @@ async function start() {
       const request = { p_request_id: pendingRequest.id, ...payload };
       const { data, error } = await client.rpc('quote_customer_payment', { p_request: request });
       if (error) throw error;
-      const draft = { booking: data, payload: request, label, expires: Date.now() + 86400000 };
+      const expires = data.promotion?.held_until ? Date.parse(data.promotion.held_until) : Date.now()+86400000;
+      const draft = {booking:data,payload:request,label,expires};
       try { localStorage.setItem(draftKey, JSON.stringify(draft)); } catch {}
       openPayment(draft);
     } catch (error) {
