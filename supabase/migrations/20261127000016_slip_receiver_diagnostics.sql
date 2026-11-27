@@ -1,6 +1,6 @@
 begin;
 
-alter table public.booking_slip_attachments add column receiver_review_reason text;
+alter table public.booking_slip_attachments add column if not exists receiver_review_reason text;
 
 create or replace function public.finish_booking_slip_checked(
   p_booking_id uuid,p_outcome text,p_reference text,p_amount numeric,p_account text,
