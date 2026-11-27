@@ -61,6 +61,10 @@ export function addThunderCheck(container, client, bookingId, initial, refresh) 
     try {
       const result = await checkThunderSlip(client, bookingId);
       feedback.textContent = thunderStatus(result);
+      if (result?.reason === 'receiver_name_mismatch' && Array.isArray(result.receiver_names) && result.receiver_names.length) {
+        feedback.append(document.createElement('br'), 'ชื่อผู้รับที่ระบบได้จากผลตรวจ ' +
+          result.receiver_names.map(name => '“' + name + '”').join(' / '));
+      }
       if (['confirmed','amount_review'].includes(result?.state) && initial.verification_state !== result.state) await refresh();
     } catch {
       feedback.textContent = 'ตรวจสลิปไม่ได้ กรุณาลองตรวจใหม่';

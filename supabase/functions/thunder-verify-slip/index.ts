@@ -5,7 +5,8 @@ import { verifySlip } from './thunder.ts';
 const cors = {
   'Access-Control-Allow-Origin': 'https://homefriendmassage-boop.github.io',
   'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Cache-Control': 'no-store'
 };
 const json = (body: unknown, status = 200) => Response.json(body, { headers: cors, status });
 
@@ -105,6 +106,9 @@ Deno.serve(async request => {
     return json({state:result.providerState});
   }
   if (finished.data?.state === 'receiver_review') {
+    if (staffId && finished.data.reason === 'receiver_name_mismatch' && result.receiverNames?.length) {
+      return json({...finished.data,receiver_names:result.receiverNames.slice(0,2).map(name=>name.slice(0,160))});
+    }
     if (!result.receiverAccount && !result.receiverPromptPay && !finished.data.reason) return json({...finished.data,state:'receiver_account_unavailable'});
     if (!result.receiverNames?.length) return json({...finished.data,state:'receiver_name_unavailable'});
   }
