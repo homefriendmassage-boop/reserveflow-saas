@@ -20,8 +20,17 @@ export async function verifySlip(payload: string, key: string, send = fetch) {
   }
   const data = body?.data;
   if (body?.success !== true) return { outcome: 'not_verified' };
-  if (typeof data?.transRef !== 'string' || !data.transRef.trim() ||
-      typeof data?.amount?.amount !== 'number' || !Number.isFinite(data.amount.amount)) return {outcome:'retry',providerState:'provider_response_incomplete'};
+  const reference = typeof data?.transRef === 'string' ? data.transRef.trim() : '';
+  if (!reference || reference.length > 200) return {outcome:'retry',providerState:'provider_reference_unavailable'};
+
+  // Accept a JSON number or a decimal string without guessing currency or units.
+  const rawAmount = typeof data.amount === 'object' && data.amount !== null
+    ? data.amount.amount : data.amount;
+  const amount = typeof rawAmount === 'number' ? rawAmount
+    : typeof rawAmount === 'string' && /^\d{1,10}(?:\.\d{1,2})?$/.test(rawAmount.trim())
+      ? Number(rawAmount.trim()) : NaN;
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 9999999999.99)
+    return {outcome:'retry',providerState:'provider_amount_unavailable'};
 
   // Only a complete mobile proxy identifies the configured PromptPay receiver.
   const proxy = data.receiver?.account?.proxy;
@@ -37,8 +46,8 @@ export async function verifySlip(payload: string, key: string, send = fetch) {
     ? Date.parse(data.date) : NaN;
   return {
     outcome: 'provider_verified',
-    reference: data.transRef.trim(),
-    amount: data.amount.amount,
+    reference,
+    amount,
     receiverAccount: /^[0-9]{6,20}$/.test(receiverAccount) ? receiverAccount : null,
     receiverNames,
     mobile: /^0[689][0-9]{8}$/.test(mobile) ? mobile : null,
