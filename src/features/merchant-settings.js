@@ -48,7 +48,7 @@ function panel(title) {
 
 const templates = [['table','โต๊ะ'],['staff','พนักงาน'],['vip','ห้อง VIP'],['seat','ที่นั่ง'],['ticket','บัตร']];
 
-export function renderMerchantSettings(container, { categoryContainer, categories, resources, layouts, owner, promotionsOnlineOnly, save, reload, mountGiftForm }) {
+export function renderMerchantSettings(container, { categoryContainer, categories, resources, layouts, owner, promotionsOnlineOnly, manualSlipOnly, save, reload, mountGiftForm }) {
   const message = node('p');
   message.setAttribute('role', 'status');
   let saving = false;
@@ -130,6 +130,20 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
       policy.onsubmit = event => {
         event.preventDefault();
         void persist('set_merchant_promotions_online_only',{p_enabled:online.value === 'true'},'categories');
+      };
+      categoryPanel.append(policy);
+    }
+
+    if (typeof manualSlipOnly === 'boolean') {
+      const policy = node('form');
+      policy.className = 'fields';
+      const mode = select([['false','ตรวจอัตโนมัติ'],['true','ให้แอดมินตรวจด้วยตนเอง']]);
+      mode.value = String(manualSlipOnly);
+      field(policy,'วิธีตรวจสลิปของร้าน',mode);
+      policy.append(button('บันทึกวิธีตรวจสลิป','submit'));
+      policy.onsubmit = event => {
+        event.preventDefault();
+        void persist('set_shop_slip_manual_only',{p_enabled:mode.value === 'true'},'categories');
       };
       categoryPanel.append(policy);
     }

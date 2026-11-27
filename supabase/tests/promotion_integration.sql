@@ -116,6 +116,36 @@ begin
   if public.rf_booking_voucher(pass) is not null then raise exception 'status alone issued voucher'; end if;
   update public.bookings set status='pending_confirm' where id=booking;
   begin
+    set local role authenticated;
+    perform set_config('request.jwt.claim.sub',account::text,true);
+    perform public.set_shop_slip_manual_only(shop,true);
+    set local role service_role;
+    if public.claim_thunder_booking_slip(booking,'0891234567',null)->>'state' is distinct from 'manual_review'
+      then raise exception 'manual-only shop still requested API verification'; end if;
+    set local role authenticated;
+    perform set_config('request.jwt.claim.sub',stranger::text,true);
+    begin
+      perform public.confirm_merchant_slip_manually(shop,booking,380,'manual-fixture-ref');
+      raise exception 'cross-tenant manual approval accepted';
+    exception when insufficient_privilege then null; end;
+    perform set_config('request.jwt.claim.sub',account::text,true);
+    perform public.confirm_merchant_slip_manually(shop,booking,380,'manual-fixture-ref');
+    reset role;
+    if not exists(select 1 from public.booking_slip_attachments where booking_id=booking
+      and manual_reviewed_by=account and manual_amount=380 and thunder_reference is null)
+      then raise exception 'manual payment audit missing or provider reference fabricated'; end if;
+    if public.rf_booking_voucher(pass) is not null then raise exception 'manual payment issued coupon before check-in'; end if;
+    update public.bookings set starts_at=now()+interval '5 minutes',ends_at=now()+interval '3 hours 5 minutes'
+      where id=booking;
+    select scan_token into scan from reserveflow_private.booking_passes where booking_id=booking;
+    set local role authenticated;
+    perform public.check_in_booking_pass(scan);
+    reset role;
+    if public.rf_booking_voucher(pass) is null then raise exception 'manual payment did not release coupon after check-in'; end if;
+    raise sqlstate 'RF913';
+  exception when sqlstate 'RF913' then null;
+  end;
+  begin
     set local role service_role;
     if public.finish_booking_slip_checked(booking,'provider_verified','wrong-promptpay',380,
       null,array['Test Recipient'],now(),'0891112222')->>'reason' is distinct from 'receiver_account_mismatch'

@@ -6,10 +6,10 @@ import { editBookingRecipient, renderBookingHistory } from './merchant-booking-t
 import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-details.js?v=display-time-only';
 import { renderDailyReport } from './daily-report.js?v=report-labels-45';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=platform-shop-management-43';
-import { addThunderCheck } from './thunder-slip.js?v=staff-slip-name';
+import { addThunderCheck } from './thunder-slip.js?v=manual-slip-review';
 import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=online-promotions';
 import { renderMerchantTeam } from './merchant-team.js?v=team-slip-credits-1';
-import { renderMerchantSettings } from './merchant-settings.js?v=online-promotions';
+import { renderMerchantSettings } from './merchant-settings.js?v=manual-slip-review';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, timeAtShop } from './booking-slots.js?v=display-time-only';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=platform-shop-management-43';
@@ -61,6 +61,7 @@ const categoryMenu = byId('merchantBookingCategory');
 const hoursField = byId('merchantBookingHours');
 const ticketsField = byId('merchantBookingTickets');
 let shopResources = [];
+let slipManualOnly = false;
 const tableMode = byId('merchantTableMode');
 const dateField = byId('merchantTableDate');
 const timeField = byId('merchantTableTime');
@@ -92,6 +93,9 @@ const actionErrors = {
   BOOKING_PRICE_CHANGED: 'ยอดจองเปลี่ยนระหว่างทำรายการ โหลดหน้าร้านใหม่แล้วตรวจยอดก่อนบันทึก',
   COUNTER_PHONE_REQUIRED: 'ใส่เบอร์โทรลูกค้าเพื่อสร้าง QR รับชำระ',
   BOOKING_PAYMENT_UNAVAILABLE: 'ตรวจช่องทางรับเงินและราคาที่นั่งก่อนสร้าง QR',
+  MANUAL_SLIP_REVIEW_DISABLED: 'ร้านยังไม่ได้เปิดโหมดตรวจสลิปด้วยตนเอง',
+  INVALID_MANUAL_PAYMENT_REFERENCE: 'ตรวจเลขอ้างอิงรายการโอนอีกครั้ง',
+  MANUAL_PAYMENT_REFERENCE_USED: 'เลขอ้างอิงนี้ถูกใช้กับรายการอื่นแล้ว',
   BOOKING_SLIP_APPROVAL_NOT_ALLOWED: 'ยืนยันเองได้เฉพาะสลิปที่ตรวจชื่อและบัญชีผู้รับผ่าน แต่ยอดไม่ตรง',
   SLIP_BOOKING_UNAVAILABLE: 'รายการนี้หมดเวลาหรือยังไม่มีสลิปให้ยืนยัน',
   BOOKING_RESOURCE_IN_USE: 'จุดนี้ยังมีผู้ใช้บริการ กรุณาสิ้นสุดการใช้งานเดิมก่อน',
@@ -270,12 +274,40 @@ function bookingCard(booking, timezone, changeStatus, readSlip, client, refresh,
           note.textContent = 'ยังไม่มีสลิปแนบ';
           return;
         }
-        note.textContent = 'สลิปที่ลูกค้าแนบ · รอตรวจ';
+        note.textContent = data.manual_reviewed_at ? 'แอดมินยืนยันรับชำระด้วยตนเองแล้ว' : 'สลิปที่ลูกค้าแนบ · รอตรวจ';
         const image = document.createElement('img');
         image.className = 'booking-slip-image';
         image.alt = 'รูปสลิปที่ลูกค้าแนบ';
         image.src = data.image;
         attachment.append(image);
+        if (data.manual_reviewed_at || data.verification_state === 'confirmed') return;
+        if (slipManualOnly && booking.status !== 'cancelled') {
+          const review = document.createElement('form');
+          review.className = 'fields';
+          const label = document.createElement('label');
+          label.className = 'field';
+          const transfer = document.createElement('input');
+          transfer.required = true;
+          transfer.minLength = 6;
+          transfer.maxLength = 200;
+          label.append('เลขอ้างอิงจากรายการเงินเข้า',transfer);
+          const checkLabel = document.createElement('label');
+          const verified = document.createElement('input');
+          verified.type = 'checkbox';
+          verified.required = true;
+          checkLabel.append(verified,' ตรวจชื่อผู้รับ บัญชี และเงินเข้าตรงยอด '+amount.format(booking.amount)+' แล้ว');
+          const approve = document.createElement('button');
+          approve.type = 'submit';
+          approve.className = 'btn primary small';
+          approve.textContent = 'ยืนยันรับชำระด้วยตนเอง';
+          review.append(label,checkLabel,approve);
+          review.onsubmit = event => {
+            event.preventDefault();
+            changeStatus(booking.id,'manual_paid',{p_reference:transfer.value.trim(),p_amount:Number(booking.amount)});
+          };
+          attachment.append(review);
+          return;
+        }
         addThunderCheck(attachment, client, booking.id, data, refresh);
         if (data.verification_state === 'amount_review' && data.receiver_verified &&
           ['pending_confirm','slip_review'].includes(booking.status)) {
@@ -504,7 +536,10 @@ if (typeof window.supabase?.createClient !== 'function') {
     return openMerchantCounterPayment(client,byId('merchantCounterPayment'),token);
   }
 
-  function changeStatus(id, next) {
+  function changeStatus(id, next, manualDetails) {
+    if (next === 'manual_paid') return runAction(() =>
+      counterPaymentRpc(client,'confirm_merchant_slip_manually',{p_shop_id:shopMenu.value,p_booking_id:id,...manualDetails}),
+    'ยืนยันรับชำระด้วยตนเองแล้ว');
     if (next === 'counter_paid') return runAction(() =>
       counterPaymentRpc(client,'confirm_counter_booking_payment',{p_shop_id:shopMenu.value,p_booking_id:id}),
     'ยืนยันรับชำระแล้ว');
@@ -743,6 +778,7 @@ if (typeof window.supabase?.createClient !== 'function') {
         store.getShop()
       ]);
       if (request !== bookingRequest) return;
+      slipManualOnly = shopSettings?.slip_manual_only === true;
       const editableTemplates = new Map((templateAccess?.data || []).map(row => [row.code,row.editable]));
       for (const category of categories) category.template_editable = editableTemplates.get(category.code);
       const tableCodes = new Set(categories.filter(category => ['table','seat'].includes(category.template)).map(category => category.code));
@@ -758,6 +794,7 @@ if (typeof window.supabase?.createClient !== 'function') {
       loadMerchantResources();
       if (canEditLayout()) renderMerchantSettings(advancedSettings, { categoryContainer: categorySettings, categories, resources, layouts, owner: currentRole === 'owner',
         promotionsOnlineOnly: shopSettings?.promotions_online_only,
+        manualSlipOnly: shopSettings?.slip_manual_only,
         save: async (rpc, parameters) => {
           if (shopMenu.value !== shop.value) throw new Error('Shop changed');
           const { data, error } = await client.rpc(rpc, { ...parameters, p_shop_id: shop.value });

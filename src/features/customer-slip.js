@@ -1,5 +1,5 @@
 import { bindSlipImage } from './slip-image-picker.js';
-import { checkThunderSlip, thunderStatus } from './thunder-slip.js?v=slip-review-reason';
+import { checkThunderSlip, thunderStatus } from './thunder-slip.js?v=manual-slip-review';
 
 export function prepareSlipAttachment(client, draft, sendPayment, onComplete) {
   const section = document.getElementById('bookingSlip');
