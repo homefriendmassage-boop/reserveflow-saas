@@ -14,7 +14,10 @@ function fixedTimeMatch(expected: string, supplied: string) {
 
 function lineMessage(kind: string, payload: Record<string, string>, site: string) {
   if (kind === 'booking_pass') {
+    const pending = payload.notification_stage === 'pending';
     const link = new URL('booking-pass.html', site);
+    const qr = new URL('/functions/v1/promotion-qr', Deno.env.get('SUPABASE_URL')!);
+    qr.searchParams.set('booking',payload.pass_token);
     link.hash = payload.pass_token;
     const row = (label: string, value: string) => ({
       type: 'box', layout: 'horizontal', spacing: 'sm', contents: [
@@ -22,11 +25,11 @@ function lineMessage(kind: string, payload: Record<string, string>, site: string
         { type: 'text', text: value, color: '#182440', size: 'sm', weight: 'bold', flex: 4, align: 'end', wrap: true }
       ]
     });
-    return { type: 'flex', altText: 'ยืนยันการจองแล้ว · ' + payload.shop, contents: {
+    return { type: 'flex', altText: (pending ? 'รับรายการจองแล้ว · รอยืนยัน · ' : 'ยืนยันการจองแล้ว · ') + payload.shop, contents: {
       type: 'bubble', size: 'mega',
       header: { type: 'box', layout: 'vertical', paddingAll: '20px', spacing: 'sm', backgroundColor: '#303C80', contents: [
         { type: 'text', text: 'ReserveFlow', color: '#DBE4FF', size: 'xs', weight: 'bold' },
-        { type: 'text', text: 'บัตรจอง · ยืนยันแล้ว', color: '#FFFFFF', size: 'xl', weight: 'bold', wrap: true },
+        { type: 'text', text: pending ? 'รับรายการจองแล้ว · รอยืนยัน' : 'บัตรจอง · ยืนยันแล้ว', color: '#FFFFFF', size: 'xl', weight: 'bold', wrap: true },
         { type: 'text', text: payload.shop, color: '#EBEFFF', size: 'sm', wrap: true }
       ] },
       body: { type: 'box', layout: 'vertical', spacing: 'md', contents: [
@@ -37,6 +40,7 @@ function lineMessage(kind: string, payload: Record<string, string>, site: string
         { type: 'separator' },
         row('รวมค่าจอง / บริการ', new Intl.NumberFormat('th-TH', {style:'currency',currency:'THB'}).format(Number(payload.amount)))
       ] },
+      ...(!pending ? { hero: { type:'image', url:qr.href, size:'full', aspectRatio:'1:1', aspectMode:'fit' } } : {}),
       footer: { type: 'box', layout: 'vertical', contents: [
         { type: 'button', style: 'primary', color: '#404FBA', action: {
           type: 'uri', label: 'เปิดบัตรจอง', uri: link.href

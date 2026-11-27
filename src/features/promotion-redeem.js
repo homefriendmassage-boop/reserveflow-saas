@@ -5,6 +5,19 @@ const $=id=>document.getElementById(id);
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 let currentToken='',stream=null,reading=false,redeeming=false;
 const message=t=>{$('feedback').textContent=t};
+function openBookingQr(input) {
+  try {
+    const scanned = new URL(input);
+    const merchant = new URL('./merchant.html', location.href);
+    const token = new URLSearchParams(scanned.hash.slice(1)).get('scan');
+    if (scanned.origin !== merchant.origin || scanned.pathname !== merchant.pathname || !UUID.test(token || '')) return false;
+    merchant.hash = new URLSearchParams({scan: token}).toString();
+    location.assign(merchant.href);
+    return true;
+  } catch {
+    return false;
+  }
+}
 function tokenFrom(input){
   try {
     const url=new URL(input);
@@ -26,6 +39,7 @@ async function preview(){
   if(redeeming)return;
   currentToken='';
   $('confirm').classList.add('hidden');$('details').classList.add('hidden');
+  if (openBookingQr($('voucherInput').value)) return;
   const token=tokenFrom($('voucherInput').value);
   if(!UUID.test(token)){message('รหัส QR ไม่ถูกต้อง');return}
   currentToken=token;message('กำลังตรวจสอบกับเซิร์ฟเวอร์…');
@@ -81,7 +95,13 @@ $('camera').onclick=async()=>{
     const detector=new BarcodeDetector({formats:['qr_code']});reading=true;message('นำ QR ให้อยู่ในกรอบกล้อง');
     while(reading){
       const found=await detector.detect(video).catch(()=>[]);
-      if(found.length){const token=tokenFrom(found[0].rawValue);if(UUID.test(token)){$('voucherInput').value=token;await closeCamera();await preview();break}}
+      if(found.length){
+        const input=found[0].rawValue;
+        if(openBookingQr(input)){await closeCamera();break}
+        const token=tokenFrom(input);
+        if(UUID.test(token)){$('voucherInput').value=token;await closeCamera();await preview();break}
+        message('QR นี้ไม่ใช่บัตรจองหรือคูปองของร้าน');
+      }
       await new Promise(resolve=>setTimeout(resolve,220));
     }
   }catch(e){await closeCamera();message('เปิดกล้องไม่ได้: '+e.message)}

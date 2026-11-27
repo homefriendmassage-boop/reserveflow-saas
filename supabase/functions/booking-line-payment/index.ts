@@ -15,10 +15,11 @@ Deno.serve(async request => {
   if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
   if (request.method !== 'POST') return new Response(null, { status: 405, headers: cors });
   try {
-    const { id_token, payment } = await request.json();
+    const { id_token, access_token, payment } = await request.json();
     const slug = payment?.p_request?.p_shop_slug;
     if (typeof slug !== 'string' || !/^[a-z0-9-]{1,100}$/.test(slug) ||
       typeof id_token !== 'string' || !id_token || id_token.length > 4096 ||
+      typeof access_token !== 'string' || !access_token || access_token.length > 4096 ||
       typeof payment.p_image !== 'string' || payment.p_image.length > 1450000 ||
       typeof payment.p_amount !== 'number' || !Number.isFinite(payment.p_amount)) return message('BOOKING_LINE_UNAVAILABLE');
 
@@ -34,6 +35,20 @@ Deno.serve(async request => {
     const identity = await verification.json();
     if (identity.iss !== 'https://access.line.me' || identity.aud !== channelId ||
       typeof identity.sub !== 'string' || !/^U[0-9a-f]{32}$/.test(identity.sub)) return message('BOOKING_LINE_EXPIRED');
+
+    const headers = { Authorization: 'Bearer ' + access_token };
+    const [tokenCheck, profile, friendship] = await Promise.all([
+      fetch('https://api.line.me/oauth2/v2.1/verify?' + new URLSearchParams({ access_token }), {
+        signal: AbortSignal.timeout(8000), redirect: 'error',
+      }),
+      fetch('https://api.line.me/v2/profile', { headers, signal: AbortSignal.timeout(8000), redirect: 'error' }),
+      fetch('https://api.line.me/friendship/v1/status', { headers, signal: AbortSignal.timeout(8000), redirect: 'error' }),
+    ]);
+    if (!tokenCheck.ok || !profile.ok || !friendship.ok ||
+      String((await tokenCheck.json()).client_id) !== channelId || (await profile.json()).userId !== identity.sub) {
+      return message('BOOKING_LINE_EXPIRED');
+    }
+    if ((await friendship.json()).friendFlag !== true) return message('BOOKING_LINE_FRIEND_REQUIRED');
 
     const { data, error } = await client.rpc('submit_verified_liff_booking', {
       p_request: payment.p_request,p_amount: payment.p_amount,p_image: payment.p_image,

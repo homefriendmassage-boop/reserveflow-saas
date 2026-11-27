@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="./assets/css/app.css?v=booking-hour-stepper">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/customer-portal.js?v=booking-benefit-summary"></script>
+  <script type="module" src="./src/features/customer-portal.js?v=booking-line-auto-receipt"></script>
 </head>
 <body>
 <header>
@@ -22,7 +22,7 @@
   <section id="customerBookingResult" class="panel booking-result hidden" aria-labelledby="customerBookingResultTitle">
     <h2 id="customerBookingResultTitle" tabindex="-1">ส่งคำขอจองแล้ว</h2>
     <p id="customerBookingResultStatus" role="status"></p>
-    <p>เปิดบัตรเพื่อดูสถานะและเชื่อม LINE OA ของร้านสำหรับรับข้อความยืนยัน</p>
+    <p>เปิดบัตรเพื่อดูสถานะการจอง</p>
     <div class="inline-actions">
       <a id="customerBookingPass" class="btn primary">เปิดบัตรจอง</a>
       <button id="customerStartNewBooking" class="btn soft" type="button">จองรายการใหม่</button>
@@ -94,6 +94,7 @@
           <div><strong>รวมค่าจอง / บริการ</strong><span id="bookingEstimate">—</span></div>
         </div>
         <button id="sendBooking" type="submit" class="btn primary full" disabled>แสดงช่องทางชำระเงิน</button>
+        <a id="bookingLineAction" class="btn soft hidden"></a>
         <p id="bookingSubmitStatus" role="status" tabindex="-1"></p>
         <section class="inline-booking-payment hidden" id="bookingSlip" tabindex="-1">
           <h2>ชำระเงินและส่งสลิป</h2>

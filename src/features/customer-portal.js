@@ -1,6 +1,6 @@
 import { bookingPrice } from './booking-pricing.js';
-import { initBookingLiff, submitLiffPayment } from './booking-liff.js';
-import { prepareSlipAttachment } from './customer-slip.js?v=promotion-booking';
+import { initBookingLiff, submitLiffPayment } from './booking-liff.js?v=friendship-verification';
+import { prepareSlipAttachment } from './customer-slip.js?v=line-friend-required';
 import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=next-available-start';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, nextBookingDate, timeAtShop } from './booking-slots.js?v=business-day-1';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
@@ -24,7 +24,7 @@ let checkingOffer = false;
 const categoryIcons = { table: '🍽️', seat: '💺', staff: '👤', vip: '🚪', ticket: '🎟️' };
 const pageParams = new URLSearchParams(location.search);
 const shopSlug = pageParams.get('shop');
-const throughLiff = pageParams.get('line') === '1';
+const throughLiff = pageParams.get('line') === '1' || pageParams.has('liff.state');
 if (shopSlug) {
   document.getElementById('bookingMerchantLink').href = './merchant.html?' + new URLSearchParams({shop:shopSlug});
 }
@@ -193,7 +193,41 @@ async function start() {
   const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: { persistSession: false, detectSessionInUrl: false, autoRefreshToken: false }
   });
+  const liffConfig = Promise.resolve(client.rpc('shop_booking_liff',{p_shop_slug:shopSlug})).catch(() => ({data:null}));
   const lineSession = throughLiff ? initBookingLiff(client,shopSlug) : Promise.resolve(null);
+  const lineAction = document.getElementById('bookingLineAction');
+
+  function showLineAction(url,text,message) {
+    lineAction.href = url;
+    lineAction.textContent = text;
+    lineAction.classList.remove('hidden');
+    submitStatus.textContent = message;
+  }
+
+  async function requireLineFriendship() {
+    const {data:liffId} = await liffConfig;
+    if (!throughLiff) {
+      if (!liffId) return true;
+      showLineAction('https://liff.line.me/' + liffId,'จองผ่าน LINE','เปิดหน้าจองผ่าน LINE เพื่อรับข้อความและบัตรจองในแชตของร้าน');
+      return false;
+    }
+    const liff = await lineSession;
+    if (!liff) throw new Error('BOOKING_LINE_UNAVAILABLE');
+    if (!liff.isLoggedIn()) {
+      const redirectUri = new URL('./book.html',location.href);
+      redirectUri.search = new URLSearchParams({shop:shopSlug,line:'1'});
+      liff.login({redirectUri:redirectUri.href});
+      return false;
+    }
+    if (!liff.getIDToken() || !liff.getAccessToken()) throw new Error('BOOKING_LINE_EXPIRED');
+    const friendship = await liff.getFriendship();
+    if (friendship.friendFlag) return true;
+    const {data:basicId} = await client.rpc('booking_line_friend_id',{p_shop_slug:shopSlug});
+    if (/^@[A-Za-z0-9._-]{1,49}$/.test(basicId || '')) {
+      showLineAction('https://line.me/R/ti/p/' + encodeURIComponent(basicId),'เพิ่มเพื่อน LINE ร้าน','เพิ่มเพื่อนแล้วกลับมากดแสดงช่องทางชำระเงินอีกครั้ง');
+    } else submitStatus.textContent = 'เพิ่มเพื่อน LINE OA ของร้าน แล้วกลับมากดแสดงช่องทางชำระเงินอีกครั้ง';
+    return false;
+  }
   const { data, error } = await client.rpc('booking_catalog', { p_shop_slug: shopSlug });
   if (error) throw error;
   if (!data?.categories.length) {
@@ -578,6 +612,7 @@ async function start() {
     invalidateOfferCheck();
     awaitingSlip = true;
     offerField.classList.add('hidden');
+    lineAction.classList.add('hidden');
     paymentGrid.classList.add('booking-payment-active');
     for (const element of paymentHidden) element.classList.add('hidden');
     submit.classList.add('hidden');
@@ -612,7 +647,7 @@ async function start() {
         lastPass.classList.add('hidden');
         form.classList.add('hidden');
         result.classList.remove('hidden');
-        document.getElementById('customerBookingResultStatus').textContent = message + (saved.line_linked ? ' · เชื่อม LINE แล้ว ระบบจะส่งบัตรหลังยืนยันการจอง' : '') + ' · เลขจอง ' + saved.id;
+        document.getElementById('customerBookingResultStatus').textContent = message + (saved.line_linked ? ' · เชื่อม LINE แล้ว ระบบจะแจ้งสถานะในแชตของร้าน' : '') + ' · เลขจอง ' + saved.id;
         resultTitle.focus();
         return;
       }
@@ -631,7 +666,7 @@ async function start() {
       savedDraft = null;
     }
   } catch {}
-  if (savedDraft) openPayment(savedDraft);
+  if (savedDraft && (throughLiff || !(await liffConfig).data)) openPayment(savedDraft);
   else void loadFloor();
   void refreshOffers();
 
@@ -670,17 +705,8 @@ async function start() {
       document.getElementById('bookingSummaryHours').textContent, selectedOffer() && describeOffer(selectedOffer(),Number(fields.hours.value),false)].filter(Boolean).join(' · ');
 
     try {
-      if (throughLiff) {
-        const liff = await lineSession;
-        if (!liff) throw new Error('BOOKING_LINE_UNAVAILABLE');
-        if (!liff.isLoggedIn()) {
-          const redirectUri = new URL('./book.html',location.href);
-          redirectUri.search = new URLSearchParams({shop:shopSlug,line:'1'});
-          liff.login({redirectUri:redirectUri.href});
-          return;
-        }
-        if (!liff.getIDToken()) throw new Error('BOOKING_LINE_EXPIRED');
-      }
+      lineAction.classList.add('hidden');
+      if (!await requireLineFriendship()) return;
       const request = { p_request_id: pendingRequest.id, ...payload };
       const { data, error } = await client.rpc('quote_customer_payment', { p_request: request });
       if (error) throw error;

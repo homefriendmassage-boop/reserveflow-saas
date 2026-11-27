@@ -95,6 +95,7 @@ export function prepareSlipAttachment(client, draft, sendPayment, onComplete) {
       status.textContent = ({
         PROMOTION_QUOTE_EXPIRED: 'หมดเวลาจองสิทธิ์ หากโอนแล้ว กรุณาติดต่อร้านพร้อมสลิป',
         PROMOTION_QUOTE_MISMATCH: 'ข้อมูลโปรโมชั่นเปลี่ยน หากโอนแล้ว กรุณาติดต่อร้านพร้อมสลิป',
+        BOOKING_LINE_FRIEND_REQUIRED: 'กรุณาเพิ่มเพื่อน LINE OA ของร้าน แล้วกลับมาแนบสลิปเดิมอีกครั้ง',
         BOOKING_LINE_EXPIRED: 'การเชื่อม LINE หมดอายุ เปิดหน้าจองใหม่จากเมนู LINE แล้วแนบสลิปเดิมอีกครั้ง',
         BOOKING_LINE_UNAVAILABLE: 'เชื่อม LINE ไม่สำเร็จ กรุณาลองส่งอีกครั้งโดยใช้สลิปเดิม',
         BOOKING_LINE_ALREADY_LINKED: 'รายการนี้เชื่อมกับ LINE บัญชีอื่นแล้ว กรุณาติดต่อร้าน',

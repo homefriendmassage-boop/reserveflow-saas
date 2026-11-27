@@ -97,6 +97,11 @@ begin
   pass := (public.submit_verified_liff_booking(request,380,image,client_liff,'U'||repeat('1',32))->>'pass_token')::uuid;
   reset role;
   if public.rf_booking_voucher(pass) is not null then raise exception 'voucher issued for pending payment'; end if;
+  perform reserveflow_private.queue_customer_booking_pass(booking);
+  if (select count(*) from reserveflow_private.line_outbox q where q.customer_booking_id=booking
+    and q.payload->>'notification_stage'='pending') <> 1 then
+    raise exception 'pending Flex did not queue once';
+  end if;
   update public.bookings set status='confirmed' where id=booking;
   if public.rf_booking_voucher(pass) is not null then raise exception 'status alone issued voucher'; end if;
   update public.bookings set status='pending_confirm' where id=booking;
@@ -107,6 +112,10 @@ begin
   reset role;
   if public.booking_resource_next_start('promo-test-a','seat','S1',expiry,time '12:00',3)
     is distinct from '15:00' then raise exception 'next booking start did not respect existing slot'; end if;
+  if (select count(*) from reserveflow_private.line_outbox q where q.customer_booking_id=booking
+    and q.payload->>'notification_stage'='confirmed') <> 1 then
+    raise exception 'confirmed Flex did not queue once';
+  end if;
   token:=public.rf_booking_voucher(pass);
   if token is null or not public.rf_promotion_qr_available(token) then raise exception 'verified voucher missing'; end if;
   set local role service_role;

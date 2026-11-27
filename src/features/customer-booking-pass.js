@@ -8,20 +8,18 @@ const status = get('passStatus');
 const showQr = get('passShowQr');
 const refresh = get('passRefresh');
 const qr = get('passQr');
-const line = get('passLine');
 const lineStatus = get('passLineStatus');
 const feedback = get('passFeedback');
 const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: { persistSession: false, detectSessionInUrl: false, autoRefreshToken: false }
 });
 
-async function copy(value, fallback) {
+async function copy(value) {
   try {
     await navigator.clipboard.writeText(value);
     feedback.textContent = 'คัดลอกแล้ว';
   } catch {
-    fallback?.select();
-    feedback.textContent = fallback ? 'เลือกข้อความแล้ว กดคัดลอกจากเบราว์เซอร์' : 'คัดลอกลิงก์จากแถบที่อยู่ได้เลย';
+    feedback.textContent = 'คัดลอกลิงก์จากแถบที่อยู่ได้เลย';
   }
 }
 
@@ -64,20 +62,6 @@ async function load() {
     giftPass.classList.toggle('hidden',!voucher);
     if (voucher) giftPass.href = './promotion-pass.html#' + encodeURIComponent(voucher);
     renderCounterPayment(client,get('counterPayment'),payment,token,load);
-    line.classList.toggle('hidden', !data.line_code);
-    const friend = get('passLineFriend');
-    const chat = get('passLineChat');
-    const basicId = payment?.line_friend_id;
-    const canLink = !!data.line_code && /^@[A-Za-z0-9._-]{1,49}$/.test(basicId || '');
-    friend.classList.toggle('hidden',!canLink);
-    chat.classList.toggle('hidden',!canLink);
-    if (canLink) {
-      friend.href = 'https://line.me/R/ti/p/' + encodeURIComponent(basicId);
-      chat.href = 'https://line.me/R/oaMessage/' + encodeURIComponent(basicId) + '/?' + encodeURIComponent('บัตร ' + data.line_code);
-    }
-    get('passLineHelp').textContent = 'คัดลอกข้อความด้านล่างแล้วกดส่งในแชตส่วนตัวกับ LINE OA «'
-      + (data.bot_name || data.shop) + '» จากนั้นกลับมากดอัปเดตสถานะ';
-    get('passLineCode').value = data.line_code ? 'บัตร ' + data.line_code : '';
     const deliveryStatus = {
       accepted: 'LINE รับข้อความแล้ว · เปิดแชตกับ LINE OA ของร้านเพื่อดูบัตร',
       queued: 'เชื่อม LINE แล้ว · กำลังรอส่งบัตร',
@@ -86,8 +70,8 @@ async function load() {
     lineStatus.textContent = deliveryStatus[data.line_delivery] || (data.line_linked
       ? (['confirmed','checked_in','completed'].includes(data.status)
         ? 'เชื่อม LINE แล้ว · โปรดตรวจข้อความยืนยันในแชตกับ LINE OA ของร้าน'
-        : 'เชื่อม LINE แล้ว · ระบบจะส่งบัตรเมื่อร้านยืนยันการจอง')
-      : data.line_code ? 'สถานะ LINE · รอเชื่อมบัตรเพื่อจัดส่ง Flex ในแชตของร้าน'
+        : 'เชื่อม LINE แล้ว · ระบบจะแจ้งสถานะทางแชตของร้าน')
+      : data.line_code ? 'รายการนี้ยังไม่ได้เชื่อม LINE หากต้องการให้ร้านตรวจสอบ กรุณาเปิดบัตรนี้ให้ร้านดู'
         : !data.expired && ['pending_payment','pending_confirm','slip_review','confirmed'].includes(data.status)
           ? 'ร้านยังไม่เปิดรับบัตรผ่าน LINE คุณเปิดบัตรจากหน้านี้ได้' : '');
 
@@ -100,10 +84,9 @@ async function load() {
 }
 
 get('passCopyLink').onclick = () => copy(location.href);
-get('passCopyCode').onclick = () => copy(get('passLineCode').value, get('passLineCode'));
 refresh.onclick = load;
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && !line.classList.contains('hidden') && !refresh.disabled) void load();
+  if (!document.hidden && passTokenPattern.test(token) && !refresh.disabled) void load();
 });
 if (passTokenPattern.test(token)) void load();
 else status.textContent = 'ลิงก์บัตรจองไม่ถูกต้อง กรุณาเปิดจากหน้าจองหรือจาก LINE';

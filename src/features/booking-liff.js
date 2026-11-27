@@ -21,9 +21,10 @@ export async function initBookingLiff(client, shopSlug) {
 
 export async function submitLiffPayment(client,liff,payment) {
   const idToken = liff?.getIDToken();
-  if (!idToken) throw new Error('BOOKING_LINE_EXPIRED');
+  const accessToken = liff?.getAccessToken();
+  if (!idToken || !accessToken) throw new Error('BOOKING_LINE_EXPIRED');
   const {data,error} = await client.functions.invoke('booking-line-payment',{
-    body:{id_token:idToken,payment}
+    body:{id_token:idToken,access_token:accessToken,payment}
   });
   if (error) throw new Error('BOOKING_LINE_UNAVAILABLE');
   if (data?.error) throw new Error(data.error);
