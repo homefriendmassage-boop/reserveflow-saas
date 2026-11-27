@@ -1,4 +1,4 @@
-import { shopSupportPanel } from './platform-shop-support.js?v=promotion-delete';
+import { shopSupportPanel } from './platform-shop-support.js?v=online-promotions';
 function element(tag, text) {
   const node = document.createElement(tag);
   if (text) node.textContent = text;

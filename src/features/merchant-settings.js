@@ -48,7 +48,7 @@ function panel(title) {
 
 const templates = [['table','โต๊ะ'],['staff','พนักงาน'],['vip','ห้อง VIP'],['seat','ที่นั่ง'],['ticket','บัตร']];
 
-export function renderMerchantSettings(container, { categoryContainer, categories, resources, layouts, owner, save, reload, mountGiftForm }) {
+export function renderMerchantSettings(container, { categoryContainer, categories, resources, layouts, owner, promotionsOnlineOnly, save, reload, mountGiftForm }) {
   const message = node('p');
   message.setAttribute('role', 'status');
   let saving = false;
@@ -120,6 +120,20 @@ export function renderMerchantSettings(container, { categoryContainer, categorie
     hint.className = 'sub';
     categoryPanel.append(hint);
     categoryPanel.dataset.section = 'categories';
+    if (owner && typeof promotionsOnlineOnly === 'boolean') {
+      const policy = node('form');
+      policy.className = 'fields';
+      const online = select([['true','เปิด'],['false','ปิด']]);
+      online.value = String(promotionsOnlineOnly);
+      field(policy,'ให้โปรโมชั่นเฉพาะการจองผ่านหน้าลูกค้า',online);
+      policy.append(button('บันทึกเงื่อนไขโปรโมชั่น','submit'));
+      policy.onsubmit = event => {
+        event.preventDefault();
+        void persist('set_merchant_promotions_online_only',{p_enabled:online.value === 'true'},'categories');
+      };
+      categoryPanel.append(policy);
+    }
+
     if (categories.length) {
       const header = node('div');
       header.className = 'merchant-category-header';

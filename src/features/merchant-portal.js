@@ -7,9 +7,9 @@ import { passStatus, passTokenPattern, renderPassDetails } from './booking-pass-
 import { renderDailyReport } from './daily-report.js?v=report-labels-45';
 import { renderPlatformTools, renderShopBusinessTools, showSignupPackages } from './platform-tools.js?v=platform-shop-management-43';
 import { addThunderCheck } from './thunder-slip.js?v=bank-slip-preview-37';
-import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=promotion-delete';
+import { loadPlatformAdmin, renderLineSettings } from './line-settings.js?v=online-promotions';
 import { renderMerchantTeam } from './merchant-team.js?v=team-slip-credits-1';
-import { renderMerchantSettings } from './merchant-settings.js?v=promotion-delete';
+import { renderMerchantSettings } from './merchant-settings.js?v=online-promotions';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, timeAtShop } from './booking-slots.js?v=business-day-1';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 import { createSupabaseStore, listMerchantShops } from '../data/supabase-store.js?v=platform-shop-management-43';
@@ -732,9 +732,10 @@ if (typeof window.supabase?.createClient !== 'function') {
 
     try {
       const store = createSupabaseStore(client, shop.value);
-      const [categories, resources, layouts, templateAccess] = await Promise.all([
+      const [categories, resources, layouts, templateAccess, shopSettings] = await Promise.all([
         store.getCategories(), store.getResources(), canEditLayout() ? store.getLayouts() : Promise.resolve([]),
-        currentRole === 'owner' ? client.rpc('editable_merchant_category_templates',{p_shop_id:shop.value}) : null
+        currentRole === 'owner' ? client.rpc('editable_merchant_category_templates',{p_shop_id:shop.value}) : null,
+        store.getShop()
       ]);
       if (request !== bookingRequest) return;
       const editableTemplates = new Map((templateAccess?.data || []).map(row => [row.code,row.editable]));
@@ -746,11 +747,12 @@ if (typeof window.supabase?.createClient !== 'function') {
         option.dataset.template = category.template;
         if (category.price != null) option.dataset.price = category.price;
         option.dataset.serviceFee = category.service_fee || 0;
-        option.dataset.hourPromotions = JSON.stringify(category.hour_promotions || {});
+        option.dataset.hourPromotions = JSON.stringify(shopSettings?.promotions_online_only ? {} : category.hour_promotions || {});
         return option;
       }));
       loadMerchantResources();
       if (canEditLayout()) renderMerchantSettings(advancedSettings, { categoryContainer: categorySettings, categories, resources, layouts, owner: currentRole === 'owner',
+        promotionsOnlineOnly: shopSettings?.promotions_online_only,
         save: async (rpc, parameters) => {
           if (shopMenu.value !== shop.value) throw new Error('Shop changed');
           const { data, error } = await client.rpc(rpc, { ...parameters, p_shop_id: shop.value });

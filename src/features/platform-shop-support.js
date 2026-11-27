@@ -1,5 +1,5 @@
 import { mountPromotionForm } from './promotion-form.js?v=promotion-delete';
-import { renderMerchantSettings } from './merchant-settings.js?v=promotion-delete';
+import { renderMerchantSettings } from './merchant-settings.js?v=online-promotions';
 
 function node(tag,text = '') {
   const item = document.createElement(tag);
@@ -71,10 +71,13 @@ export function shopSupportPanel(client,shop,onShopChanged) {
   const layoutEditor = node('div');
   categoryEditor.className = layoutEditor.className = 'merchant-editor';
   async function loadEditors() {
-    const {data,error} = await client.rpc('platform_shop_support_editors',{p_shop_id:shop.shop_id});
+    const [{data,error}, policy] = await Promise.all([
+      client.rpc('platform_shop_support_editors',{p_shop_id:shop.shop_id}),
+      client.rpc('get_platform_promotions_online_only',{p_shop_id:shop.shop_id})
+    ]);
     if (error) throw error;
     renderMerchantSettings(layoutEditor,{
-      categoryContainer:categoryEditor,...data,owner:true,
+      categoryContainer:categoryEditor,...data,owner:true,promotionsOnlineOnly:policy.data,
       save:async (rpc,args) => {
         const {data,error} = await client.rpc(rpc,{...args,p_shop_id:shop.shop_id});
         if (error) throw error;

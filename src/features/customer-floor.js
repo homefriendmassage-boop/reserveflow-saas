@@ -18,7 +18,7 @@ export function showFloorMessage(message, visible = true) {
   status.textContent = message;
 }
 
-export function renderFloor(plan, resources, resourceField, template) {
+export function renderFloor(plan, resources, resourceField, template, showNextAvailable) {
   const width = bounded(plan.width, 960, 1);
   const height = bounded(plan.height, 540, 1);
   floor.style.setProperty('--floor-width', width);
@@ -48,6 +48,10 @@ export function renderFloor(plan, resources, resourceField, template) {
     button.append(name, availability);
     position(button, floorGeometry(table, index), height, width);
     button.addEventListener('click', () => {
+      if (button.dataset.occupied === 'true') {
+        showNextAvailable?.(resource);
+        return;
+      }
       resourceField.value = resource.code;
       resourceField.dispatchEvent(new Event('input'));
     });
@@ -58,14 +62,14 @@ export function renderFloor(plan, resources, resourceField, template) {
   floor.replaceChildren(...labels, ...buttons);
   floor.classList.remove('hidden');
   status.dataset.availability = ({ seat: 'เลือกที่นั่งว่างจากผัง', vip: 'เลือกห้องว่างจากผัง', table: 'เลือกโต๊ะว่างจากผัง' })[template];
-  status.textContent = status.dataset.availability;
+  status.textContent = status.dataset.availability + ' หรือกดจุดที่จองแล้วเพื่อดูเวลาว่างถัดไป';
   highlightTable(resourceField.value);
 }
 
 function paintAvailability(button, table) {
   const state = table.availability || (table.occupied ? 'booked' : 'available');
-  button.disabled = Boolean(table.occupied);
-  if (button.disabled) {
+  button.dataset.occupied = String(Boolean(table.occupied));
+  if (table.occupied) {
     button.classList.remove('selected');
     button.setAttribute('aria-pressed','false');
   }
@@ -74,9 +78,9 @@ function paintAvailability(button, table) {
   status.dataset.availability = ({
     booked: 'จองแล้ว', in_use: 'กำลังใช้งาน', review: 'รอตรวจสลิป', unpaid: 'รอชำระ', selecting: 'กำลังเลือก'
   })[state] || 'ว่าง';
-  status.textContent = button.classList.contains('selected') && !button.disabled
+  status.textContent = button.classList.contains('selected') && button.dataset.occupied !== 'true'
     ? 'คุณเลือกอยู่' : status.dataset.availability;
-  button.title = button.querySelector('strong').textContent + ' · ' + status.textContent;
+  button.title = button.querySelector('strong').textContent + ' · ' + status.textContent + (button.dataset.occupied === 'true' ? ' · กดดูเวลาว่างถัดไป' : '');
 }
 
 export function refreshFloorAvailability(plan) {
@@ -89,11 +93,11 @@ export function refreshFloorAvailability(plan) {
 
 export function highlightTable(code) {
   for (const button of floor.querySelectorAll('button[data-code]')) {
-    const selected = button.dataset.code === code && !button.disabled;
+    const selected = button.dataset.code === code && button.dataset.occupied !== 'true';
     button.classList.toggle('selected', selected);
     const status = button.querySelector('.floor-availability');
     status.textContent = selected ? 'คุณเลือกอยู่' : status.dataset.availability;
-    button.title = button.querySelector('strong').textContent + ' · ' + status.textContent;
+    button.title = button.querySelector('strong').textContent + ' · ' + status.textContent + (button.dataset.occupied === 'true' ? ' · กดดูเวลาว่างถัดไป' : '');
     button.setAttribute('aria-pressed', String(selected));
   }
 }

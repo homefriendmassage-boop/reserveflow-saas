@@ -1,7 +1,7 @@
 import { bookingPrice } from './booking-pricing.js';
 import { initBookingLiff, submitLiffPayment } from './booking-liff.js';
 import { prepareSlipAttachment } from './customer-slip.js?v=promotion-booking';
-import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=unfinished-floor-44';
+import { highlightTable, refreshFloorAvailability, renderFloor, showFloorMessage } from './customer-floor.js?v=next-available-start';
 import { bookingTimeOptions, businessDateAtShop, calendarSlotDate, dateAtShop, nextBookingDate, timeAtShop } from './booking-slots.js?v=business-day-1';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../data/supabase-config.js';
 
@@ -73,6 +73,24 @@ function setQuantity(field, visible, max) {
   }
 }
 
+function offerForHours(hours) {
+  const exact = availableOffers.find(offer => offer.hours === hours);
+  const highest = availableOffers.find(offer => offer.hours === availableOffers.at(-1)?.hours);
+  return exact || (highest?.allows_extra_hours && hours > highest.hours ? highest : undefined);
+}
+
+function offerTotal(category, offer, hours) {
+  return (Math.round(Number(offer.price) * 100) + Math.round(Number(category.service_fee) * 100)
+    + (hours - offer.hours) * Math.round(Number(category.price) * 100)) / 100;
+}
+
+function describeOffer(offer, hours, showGift = true) {
+  const extras = hours - offer.hours;
+  return offer.name + ' · แพ็กเกจ ' + offer.hours + ' ชม.'
+    + (extras > 0 ? ' + ราคาปกติ ' + extras + ' ชม.' : '')
+    + (showGift && offer.gift ? ' · รับ ' + offer.gift + ' 1 สิทธิ์' : '');
+}
+
 function updateEstimate() {
   const category = selectedCategory();
   const resource = category.resources.find(item => item.code === fields.resource.value);
@@ -103,13 +121,13 @@ function updateEstimate() {
   document.getElementById('bookingSummaryTime').textContent = validPeriod
     ? fields.hour.selectedOptions[0].textContent + ' – ' + end : '—';
   document.getElementById('bookingSummaryHours').textContent = validPeriod ? duration + ' ชั่วโมง' : '—';
-  const price = resource && validPeriod ? (offer ? {
-    total:Number(offer.price)+Number(category.service_fee),packageHours:0
+  const price = validPeriod ? (offer ? {
+    total:offerTotal(category,offer,duration),packageHours:0
   } : bookingPrice(category,Number(units))) : null;
   estimate.textContent = price ? money.format(price.total) : '—';
   const promotion = document.getElementById('bookingPromotion');
-  promotion.classList.toggle('hidden',!(price?.packageHours || (price && offer)));
-  promotion.textContent = price && offer ? offer.name + (offer.gift ? ' · รับ '+offer.gift+' 1 สิทธิ์ต่อรายการ' : '')
+  document.getElementById('bookingPromotionRow').classList.toggle('hidden',!(price?.packageHours || (price && offer)));
+  promotion.textContent = price && offer ? describeOffer(offer,duration)
     : price?.packageHours
     ? 'โปร '+price.packageHours+' ชม.'+(price.extraHours ? ' + ราคาปกติ '+price.extraHours+' ชม.' : '')
       +' · ประหยัด '+money.format(price.savings) : '';
@@ -338,7 +356,7 @@ async function start() {
         void syncSelection();
       }
       if (quiet) refreshFloorAvailability(plan);
-      else renderFloor(plan, category.resources, fields.resource, category.template);
+      else renderFloor(plan, category.resources, fields.resource, category.template, showNextAvailable);
       resourceField.classList.add('hidden');
     } catch {
       if (!quiet && request === planRequest) showFloorMessage('โหลดผังร้านไม่สำเร็จ');
@@ -347,6 +365,56 @@ async function start() {
         floorLoading = false;
         updateEstimate();
       }
+    }
+  }
+
+  const nextStatus = document.getElementById('bookingNextStartStatus');
+  const nextButton = document.getElementById('bookingNextStart');
+  let nextRevision = 0;
+
+  function clearNextAvailable() {
+    ++nextRevision;
+    nextStatus.textContent = '';
+    nextButton.classList.add('hidden');
+  }
+
+  async function showNextAvailable(resource) {
+    if (sending || awaitingSlip) return;
+    clearNextAvailable();
+    const revision = nextRevision;
+    nextStatus.textContent = 'กำลังหาช่วงถัดไปสำหรับ ' + resource.name + '…';
+    try {
+      const {data: time,error} = await client.rpc('booking_resource_next_start', {
+        p_shop_slug: shopSlug, p_category_code: fields.category.value,
+        p_resource_code: resource.code, p_business_date: fields.date.value,
+        p_after: fields.hour.value, p_hours: Number(fields.hours.value)
+      });
+      if (revision !== nextRevision) return;
+      if (error) throw error;
+      if (!time) {
+        nextStatus.textContent = resource.name + ' ไม่มีช่วงว่างถัดไปที่จองได้ในรอบวันนี้';
+        return;
+      }
+      const label = fields.hour.querySelector('option[value="' + time + '"]')?.textContent || time;
+      nextStatus.textContent = resource.name + ' ว่างถัดไปเวลา ' + label;
+      nextButton.textContent = 'เลือก ' + resource.name + ' เวลา ' + label;
+      nextButton.classList.remove('hidden');
+      nextButton.onclick = async () => {
+        clearNextAvailable();
+        invalidateOfferCheck();
+        fields.hour.value = time;
+        if (refreshCustomerSlot() || fields.hour.value !== time) {
+          nextStatus.textContent = 'เวลาเดิมผ่านไปแล้ว กรุณาเลือกช่วงใหม่';
+          void loadFloor();
+          return;
+        }
+        fields.resource.value = resource.code;
+        fields.resource.dispatchEvent(new Event('input'));
+        await loadFloor();
+        if (fields.resource.value !== resource.code) nextStatus.textContent = 'ช่วงนี้มีคนจองแล้ว กรุณาเลือกเวลาใหม่';
+      };
+    } catch {
+      if (revision === nextRevision) nextStatus.textContent = 'ตรวจช่วงถัดไปไม่ได้ ลองเปลี่ยนเวลาเริ่มเพื่อดูผังอีกครั้ง';
     }
   }
 
@@ -359,11 +427,10 @@ async function start() {
     const current = selectedOffer();
     const category = selectedCategory();
     const hourly = ['staff', 'seat', 'vip'].includes(category.template);
-    const price = current ? Number(current.price) + Number(category.service_fee)
+    const price = current ? offerTotal(category,current,hours)
       : hourly ? bookingPrice(category, hours).total : null;
     document.getElementById('bookingCurrentOffer').textContent = loadingOffers ? 'กำลังโหลดโปรโมชั่น…'
-      : (current?.name || hours + ' ชั่วโมง') + (price === null ? '' : ' · ' + money.format(price))
-        + (current?.gift ? ' · ฟรี ' + current.gift : '');
+      : (current ? describeOffer(current,hours) : hours + ' ชั่วโมง') + (price === null ? '' : ' · ' + money.format(price));
     const offer = availableOffers.find(item => item.hours > hours);
     offerField.classList.toggle('hidden', !offer || awaitingSlip);
     offerPicker.replaceChildren();
@@ -393,7 +460,8 @@ async function start() {
 
   async function chooseHours(hours) {
     if (sending || awaitingSlip || loadingOffers || checkingOffer || hours < 1 || hours > Number(fields.hours.max)) return;
-    const offer = availableOffers.find(item => item.hours === hours);
+    clearNextAvailable();
+    const offer = offerForHours(hours);
     const check = ++offerCheck;
     offerStatus.textContent = '';
     checkingOffer = false;
@@ -447,12 +515,13 @@ async function start() {
     loadingOffers = false;
     availableOffers = results.flatMap(result => result.status === 'fulfilled' && Array.isArray(result.value.data)
       ? result.value.data : []);
-    selectedOfferId = availableOffers.find(offer => offer.hours === Number(fields.hours.value))?.id || '';
+    selectedOfferId = offerForHours(Number(fields.hours.value))?.id || '';
     renderOffers();
     updateEstimate();
   }
 
   function invalidateOfferCheck() {
+    clearNextAvailable();
     ++offerCheck;
     checkingOffer = false;
     offerStatus.textContent = '';
@@ -599,7 +668,7 @@ async function start() {
     const resource = category.resources.find(row => row.code === payload.p_resource_code);
     const label = [category.name, resource?.name || payload.p_resource_code, document.getElementById('bookingSummaryDate').textContent,
       document.getElementById('bookingSummaryTime').textContent,
-      document.getElementById('bookingSummaryHours').textContent, selectedOffer()?.name].filter(Boolean).join(' · ');
+      document.getElementById('bookingSummaryHours').textContent, selectedOffer() && describeOffer(selectedOffer(),Number(fields.hours.value),false)].filter(Boolean).join(' · ');
 
     try {
       if (throughLiff) {

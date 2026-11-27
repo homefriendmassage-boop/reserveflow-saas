@@ -26,6 +26,7 @@ declare
   request jsonb;
   quote jsonb;
   job record;
+  merchant_booking uuid;
   image text := 'data:image/png;base64,iVBORw0KGgo=';
   expiry date := (now() at time zone 'Asia/Bangkok')::date + 1;
   client_liff text := '2012709644-AaBbCcDd';
@@ -51,6 +52,17 @@ begin
     perform public.rf_save_promotion_offer(shop,offer,'Cross tenant',3,'gift',360,'Gift',20,true);
     raise exception 'accepted cross-tenant edit';
   exception when insufficient_privilege then null; end;
+  begin
+    perform public.set_merchant_promotions_online_only(shop,true);
+    raise exception 'accepted cross-tenant policy update';
+  exception when insufficient_privilege then null; end;
+  perform set_config('request.jwt.claim.sub',account::text,true);
+  perform public.set_merchant_promotions_online_only(shop,true);
+  merchant_booking:=public.create_merchant_booking(shop,gen_random_uuid(),'seat','S2',expiry,8,0,
+    null,3,null,'Counter guest','0891234567');
+  reset role;
+  if (select amount from public.bookings where id=merchant_booking) is distinct from 380::numeric then
+    raise exception 'online-only policy allowed a counter discount'; end if;
   set local role anon;
   if jsonb_array_length(public.rf_booking_offers('promo-test-a','seat',3))<>2
     or jsonb_array_length(public.rf_booking_offers('promo-test-b','seat',3))<>0 then
@@ -65,6 +77,9 @@ begin
   exception when raise_exception then if sqlerrm<>'PROMOTION_UNAVAILABLE' then raise; end if; end;
   quote:=public.quote_customer_payment(request||jsonb_build_object('p_request_id',gen_random_uuid(),'offer_id',discount));
   if (quote->>'amount')::numeric<>320 then raise exception 'discount total does not match'; end if;
+  quote:=public.quote_customer_payment(request||jsonb_build_object('p_request_id',gen_random_uuid(),'offer_id',discount,'p_hours',4));
+  if (quote->>'amount')::numeric<>440 or (quote->'promotion'->>'extra_hours')::integer<>1
+    then raise exception 'extended promotion total does not match'; end if;
   quote:=public.quote_customer_payment(request);
   if (quote->>'amount')::numeric<>380 or quote->>'qr' not like '%5406380.00%' then
     raise exception 'gift stacked a discount or wrong QR amount';
@@ -90,6 +105,8 @@ begin
     raise exception 'existing verifier did not confirm payment';
   end if;
   reset role;
+  if public.booking_resource_next_start('promo-test-a','seat','S1',expiry,time '12:00',3)
+    is distinct from '15:00' then raise exception 'next booking start did not respect existing slot'; end if;
   token:=public.rf_booking_voucher(pass);
   if token is null or not public.rf_promotion_qr_available(token) then raise exception 'verified voucher missing'; end if;
   set local role service_role;
