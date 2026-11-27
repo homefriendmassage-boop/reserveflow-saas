@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>จองคิว | ReserveFlow</title>
-  <link rel="stylesheet" href="./assets/css/app.css?v=booking-offer-cards">
+  <link rel="stylesheet" href="./assets/css/app.css?v=booking-flow-order">
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="./src/features/customer-portal.js?v=booking-offer-cards"></script>
+  <script type="module" src="./src/features/customer-portal.js?v=booking-flow-order"></script>
 </head>
 <body>
 <header>
@@ -34,10 +34,7 @@
       <section class="panel" id="bookingSelection">
         <h2 id="bookingSelectionTitle">เลือกวัน เวลา และรายการ</h2>
         <p id="bookingSelectionHint" class="sub"></p>
-        <div class="fields live-booking-date">
-          <div class="field hidden"><label for="category">หมวด</label><select id="category" name="category" required></select></div>
-          <div class="field"><label for="date">วันที่ใช้บริการ (รอบ 06:00 ถึงก่อน 06:00 วันถัดไป)</label><input id="date" name="date" type="date" required></div>
-        </div>
+        <div class="field hidden"><label for="category">หมวด</label><select id="category" name="category" required></select></div>
         <div class="field" id="bookingResourceField"><label for="resource">เลือกรายการ</label><select id="resource" name="resource" required></select></div>
         <div id="bookingResourceCards" class="resource-grid hidden" role="group" aria-label="รายการที่จองได้"></div>
         <section id="bookingFloorSection" class="hidden" aria-label="ผังร้าน">
@@ -53,10 +50,18 @@
           <p id="floorStatus" class="sub" role="status"></p>
           <div class="layout-shell"><div class="plan customer-plan live-booking-plan" id="bookingFloor"></div></div>
         </section>
+        <section id="bookingOfferField" class="booking-offers hidden" aria-labelledby="bookingOfferTitle">
+          <h3 id="bookingOfferTitle">เลือกแพ็กเกจหรือจองรายชั่วโมง</h3>
+          <div id="bookingOffer" class="booking-offer-list" role="group" aria-labelledby="bookingOfferTitle"></div>
+          <p id="bookingOfferStatus" class="sub" role="status"></p>
+        </section>
+        <div class="field" id="bookingHoursField"><label for="hours">จำนวนชั่วโมงที่ต้องการจอง</label><input id="hours" name="hours" type="number" min="1" value="1" required></div>
+        <div class="fields live-booking-date">
+          <div class="field"><label for="date">วันที่ใช้บริการ (รอบ 06:00 ถึงก่อน 06:00 วันถัดไป)</label><input id="date" name="date" type="date" required></div>
+        </div>
         <div class="fields live-booking-time">
           <div class="field"><label for="hour">เวลาเริ่ม</label><select id="hour" name="hour" required></select></div>
-          <div class="field"><label for="hours">จำนวนชั่วโมง</label><input id="hours" name="hours" type="number" min="1" value="1" required></div>
-          <div class="field"><label for="bookingEnd">ถึงเวลา</label><input id="bookingEnd" readonly></div>
+          <div class="field"><label for="bookingEnd">เวลาสิ้นสุด</label><input id="bookingEnd" readonly></div>
           <div class="field"><label for="guests">จำนวนคน</label><input id="guests" name="guests" type="number" min="1" value="2" required></div>
           <div class="field"><label for="tickets">จำนวนบัตร</label><input id="tickets" name="tickets" type="number" min="1" value="1" required></div>
         </div>
@@ -66,15 +71,10 @@
         <p class="sub">กรอกรายละเอียดและตรวจสรุปก่อนส่งคำขอ</p>
         <div class="live-booking-contact">
           <div class="field"><label for="customerName">ชื่อผู้จอง</label><input id="customerName" name="customerName" autocomplete="name" placeholder="ชื่อ-นามสกุล" maxlength="100" required></div>
-          <div class="field"><label for="customerPhone">เบอร์โทรศัพท์</label><input id="customerPhone" name="customerPhone" type="tel" autocomplete="tel" placeholder="08xxxxxxxx" maxlength="20" required></div>
+          <div class="field"><label for="customerPhone">เบอร์โทรศัพท์</label><input id="customerPhone" name="customerPhone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="08xxxxxxxx" maxlength="10" pattern="0[0-9]{8,9}" title="กรอกเบอร์โทรศัพท์ไทย 9–10 หลัก ขึ้นต้นด้วย 0" required></div>
           <div class="field"><label for="note">หมายเหตุ (ไม่บังคับ)</label><textarea id="note" name="note" maxlength="500"></textarea></div>
         </div>
         <h2 class="booking-summary-title">สรุปการจอง</h2>
-        <section id="bookingOfferField" class="booking-offers hidden" aria-labelledby="bookingOfferTitle">
-          <h3 id="bookingOfferTitle">โปรโมชั่นสำหรับรายการจอง</h3>
-          <div id="bookingOffer" class="booking-offer-list" role="group" aria-labelledby="bookingOfferTitle"></div>
-          <p id="bookingOfferStatus" class="sub" role="status"></p>
-        </section>
         <div class="summary" aria-live="polite">
           <div><strong>วันที่ใช้บริการ</strong><span id="bookingSummaryDate">—</span></div>
           <div><strong>รายการที่จอง</strong><span id="bookingSummaryResource">ยังไม่ได้เลือก</span></div>

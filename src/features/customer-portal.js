@@ -32,6 +32,7 @@ const money = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB
 let categories = [];
 const offerPicker = document.getElementById('bookingOffer');
 const offerField = document.getElementById('bookingOfferField');
+const hoursField = document.getElementById('bookingHoursField');
 let availableOffers = [];
 let selectedOfferId = '';
 const selectedOffer = () => availableOffers.find(offer => offer.id === selectedOfferId);
@@ -74,7 +75,10 @@ function updateEstimate() {
   const category = selectedCategory();
   const resource = category.resources.find(item => item.code === fields.resource.value);
   const { template } = category;
-  setQuantity(fields.hours, true, template === 'seat' ? 6 : 5);
+  const offer = selectedOffer();
+  fields.hours.max = template === 'seat' ? 6 : 5;
+  if (Number(fields.hours.value) > Number(fields.hours.max)) fields.hours.value = fields.hours.max;
+  hoursField.classList.toggle('hidden', Boolean(offer));
   setQuantity(fields.guests, ['table', 'vip'].includes(template), Math.min(resource?.capacity ?? 100, 100));
   setQuantity(fields.tickets, template === 'ticket', Math.min(resource?.capacity ?? 10, 10));
 
@@ -95,7 +99,6 @@ function updateEstimate() {
   document.getElementById('bookingSummaryTime').textContent = validPeriod
     ? fields.hour.selectedOptions[0].textContent + ' – ' + end : '—';
   document.getElementById('bookingSummaryHours').textContent = validPeriod ? duration + ' ชั่วโมง' : '—';
-  const offer = selectedOffer();
   const price = resource && validPeriod ? (offer ? {
     total:Number(offer.price)+Number(category.service_fee),packageHours:0
   } : bookingPrice(category,Number(units))) : null;
@@ -358,7 +361,7 @@ async function start() {
       card.className = 'booking-offer-card';
       card.setAttribute('aria-pressed', String(selectedOfferId === (offer?.id || '')));
       const title = document.createElement('strong');
-      title.textContent = offer ? offer.name : 'ใช้ราคาทั่วไป';
+      title.textContent = offer ? offer.name : 'จองรายชั่วโมง';
       card.append(title);
       if (offer) {
         const details = document.createElement('small');
@@ -438,6 +441,11 @@ async function start() {
     checkingOffer = false;
     offerStatus.textContent = '';
   }
+
+  fields.customerPhone.addEventListener('input', () => {
+    const digits = fields.customerPhone.value.replace(/[^0-9]/g, '').slice(0, 10);
+    if (fields.customerPhone.value !== digits) fields.customerPhone.value = digits;
+  });
 
   fields.category.addEventListener('change', () => {
     invalidateOfferCheck();
@@ -553,7 +561,7 @@ async function start() {
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
-    if (awaitingSlip || sending || submit.disabled || !fields.resource.value) return;
+    if (awaitingSlip || sending || submit.disabled || !fields.resource.value || !form.reportValidity()) return;
     if (refreshCustomerSlot()) {
       submitStatus.textContent = 'เวลาเดิมผ่านไปแล้ว กรุณาตรวจรอบใหม่ก่อนส่ง';
       void syncSelection();

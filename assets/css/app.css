@@ -567,7 +567,8 @@
   color: #754a18;
 }
 
-.booking-offers { margin-bottom: 14px; }
+.booking-offers { margin-block: 16px 14px; }
+#bookingHoursField { margin-block: 14px; }
 .booking-offers h3 { margin: 0 0 8px; }
 .booking-offer-list { display: grid; gap: 8px; }
 .booking-offer-card {
