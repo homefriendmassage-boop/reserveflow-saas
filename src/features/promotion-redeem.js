@@ -31,7 +31,8 @@ function show(data){
   }
   dl.classList.remove('hidden');
   $('confirm').classList.toggle('hidden',!data.valid);
-  if(data.status==='not_yet_valid')message('คูปองใช้ได้ตั้งแต่ '+new Date(data.valid_from).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'}));
+  if(data.status==='check_in_required')message('กรุณาให้ร้านยืนยันเช็กอินก่อนรับของแถม');
+  else if(data.status==='not_yet_valid')message('คูปองใช้ได้ตั้งแต่ '+new Date(data.valid_from).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'}));
   else if(!data.valid)message(data.status==='redeemed'?'คูปองนี้รับสิทธิ์ไปแล้ว ไม่สามารถใช้ซ้ำได้':'คูปองหมดอายุหรือไม่สามารถใช้ได้');
   else message('ตรวจสอบผ่าน กรุณาตรวจรายละเอียดกับลูกค้าก่อนกดยืนยันรับสิทธิ์');
 }

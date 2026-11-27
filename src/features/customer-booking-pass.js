@@ -46,7 +46,8 @@ async function load() {
     get('passQrHelp').textContent = pending
       ? (data.scan_token ? 'พนักงานสแกนเพื่อเปิดดูรายการได้ เช็กอินได้หลังยืนยันการจอง'
         : 'QR เข้างานจะแสดงหลังร้านยืนยันการจอง')
-      : '';
+      : data.status === 'confirmed' && data.scan_token
+        ? 'หากจองโปรของแถม คูปองจะขึ้นหลังร้านยืนยันเช็กอิน' : '';
     if (!data.scan_token) {
       qr.replaceChildren();
       qr.classList.add('hidden');
@@ -88,5 +89,10 @@ refresh.onclick = load;
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && passTokenPattern.test(token) && !refresh.disabled) void load();
 });
-if (passTokenPattern.test(token)) void load();
+if (passTokenPattern.test(token)) {
+  void load();
+  setInterval(() => {
+    if (!document.hidden && !qr.classList.contains('hidden') && !refresh.disabled) void load();
+  },10000);
+}
 else status.textContent = 'ลิงก์บัตรจองไม่ถูกต้อง กรุณาเปิดจากหน้าจองหรือจาก LINE';

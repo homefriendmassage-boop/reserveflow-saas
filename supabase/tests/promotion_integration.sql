@@ -116,6 +116,12 @@ begin
     and q.payload->>'notification_stage'='confirmed') <> 1 then
     raise exception 'confirmed Flex did not queue once';
   end if;
+  if public.rf_booking_voucher(pass) is not null or exists (
+    select 1 from public.rf_promotion_vouchers where booking_id=booking
+  ) then raise exception 'confirmed payment released a coupon before check-in'; end if;
+  if exists(select 1 from public.rf_promotion_events) then
+    raise exception 'coupon notification queued before check-in'; end if;
+  update public.bookings set status='checked_in' where id=booking;
   token:=public.rf_booking_voucher(pass);
   if token is null or not public.rf_promotion_qr_available(token) then raise exception 'verified voucher missing'; end if;
   set local role service_role;
@@ -162,6 +168,10 @@ begin
   update public.bookings set status='confirmed' where id=second_booking;
   update public.booking_slip_attachments set verification_state='confirmed',verified_amount=380,
     verified_paid_at=now(),thunder_reference='promo-fixture-second' where booking_id=second_booking;
+  update public.bookings set status='completed' where id=second_booking;
+  if public.rf_booking_voucher(pass) is not null then raise exception 'completion bypassed check-in'; end if;
+  update public.bookings set status='checked_in' where id=second_booking;
+  update public.bookings set status='completed' where id=second_booking;
   second_token:=public.rf_booking_voucher(pass);
   if second_token is null then raise exception 'website booking lacks coupon'; end if;
   set local role authenticated;
