@@ -621,16 +621,22 @@ if (typeof window.supabase?.createClient !== 'function') {
     if (currentRole === 'owner') renderMerchantTeam(teamList, teamRows, teamSearch.value, applyTeamAction);
   }
 
-  byId('merchantCopyTeamInvite').onclick = async () => {
-    const field = byId('merchantTeamInviteUrl');
-    try {
-      await navigator.clipboard.writeText(field.value);
-      byId('merchantTeamInviteStatus').textContent = 'คัดลอกลิงก์เชิญทีมงานแล้ว';
-    } catch {
-      field.select();
-      byId('merchantTeamInviteStatus').textContent = 'เลือกลิงก์แล้ว กดคัดลอกจากเบราว์เซอร์';
-    }
-  };
+  function bindTeamLinkCopy(buttonId, fieldId, statusId, copiedMessage) {
+    byId(buttonId).onclick = async () => {
+      const field = byId(fieldId);
+      const feedback = byId(statusId);
+      try {
+        await navigator.clipboard.writeText(field.value);
+        feedback.textContent = copiedMessage;
+      } catch {
+        field.select();
+        feedback.textContent = 'เลือกลิงก์แล้ว กดคัดลอกจากเบราว์เซอร์';
+      }
+    };
+  }
+
+  bindTeamLinkCopy('merchantCopyTeamInvite','merchantTeamInviteUrl','merchantTeamInviteStatus','คัดลอกลิงก์เชิญทีมงานแล้ว');
+  bindTeamLinkCopy('merchantCopyTeamAccess','merchantTeamAccessUrl','merchantTeamAccessStatus','คัดลอกลิงก์เข้าหลังบ้านแล้ว');
 
   async function loadTeam() {
     const request = ++teamRequest;
@@ -641,11 +647,15 @@ if (typeof window.supabase?.createClient !== 'function') {
     const slug = shopMenu.selectedOptions[0]?.dataset.slug;
     invite.classList.toggle('hidden',currentRole !== 'owner' || !slug);
     byId('merchantTeamInviteStatus').textContent = '';
+    byId('merchantTeamAccessStatus').textContent = '';
     if (currentRole !== 'owner') return;
     if (slug) {
       const url = new URL('./merchant.html',location.href);
       url.searchParams.set('join',slug);
       byId('merchantTeamInviteUrl').value = url.href;
+      url.searchParams.delete('join');
+      url.searchParams.set('shop',slug);
+      byId('merchantTeamAccessUrl').value = url.href;
     }
     teamList.textContent = 'กำลังโหลดรายชื่อทีมงาน…';
     try {

@@ -27,30 +27,51 @@ const categoryIcons = { table: '🍽️', seat: '💺', staff: '👤', vip: '�
 const pageParams = new URLSearchParams(location.search);
 const shopSlug = pageParams.get('shop');
 const throughLiff = pageParams.get('line') === '1' || pageParams.has('liff.state');
+let merchantLinkCheck = 0;
+let merchantAccessClient;
 async function showMerchantLink() {
+  const check = ++merchantLinkCheck;
   const link = document.getElementById('bookingMerchantLink');
   try {
     // Keep the storefront's booking requests anonymous. This client checks the separate back-office session.
     const storage = merchantAuthStorage(() => sessionStorage.getItem('reserveflow.remember-device') === 'yes');
     const sessionKey = 'sb-' + new URL(SUPABASE_URL).hostname.split('.')[0] + '-auth-token';
-    if (!storage.getItem(sessionKey)) return;
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    if (!storage.getItem(sessionKey)) {
+      link.classList.add('hidden');
+      return;
+    }
+    const client = merchantAccessClient ??= window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: {flowType:'pkce',storage,detectSessionInUrl:false,autoRefreshToken:false}
     });
     const {data,error} = await client.auth.getSession();
-    if (error || !data.session) return;
+    if (error) throw error;
+    if (check !== merchantLinkCheck) return;
+    if (!data.session) {
+      link.classList.add('hidden');
+      return;
+    }
     const shops = (await listMerchantShops(client)).filter(shop => ['owner','admin','cashier','staff'].includes(shop.role));
-    if (!shops.length) return;
+    if (check !== merchantLinkCheck) return;
+    if (!shops.length) {
+      link.classList.add('hidden');
+      return;
+    }
     const merchant = new URL('./merchant.html',location.href);
     if (shops.some(shop => shop.slug === shopSlug)) merchant.searchParams.set('shop',shopSlug);
     link.href = merchant.href;
     link.classList.remove('hidden');
   } catch {
-    // The public booking page stays available even when account storage is unavailable.
+    if (check === merchantLinkCheck) link.classList.add('hidden');
   }
 }
 
 void showMerchantLink();
+window.addEventListener('pageshow', event => {
+  if (event.persisted) void showMerchantLink();
+});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) void showMerchantLink();
+});
 const money = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' });
 let categories = [];
 const offerPicker = document.getElementById('bookingOffer');
