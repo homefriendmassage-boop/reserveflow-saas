@@ -5,6 +5,24 @@ function fullAccount(value: unknown) {
   return /^[0-9]{6,20}$/.test(account) ? account : null;
 }
 
+function nameParts(name: string) {
+  return name.normalize('NFC').trim().toLowerCase()
+    .replace(/^(นางสาว|นาง|นาย|น\.ส\.)\s*/u,'')
+    .replace(/^(mr|mrs|ms|miss)(\.\s*|\s+)/u,'')
+    .split(/\s+/u);
+}
+
+function agreesWithAbbreviatedName(slipName: string, registeredName: string) {
+  const slip = nameParts(slipName);
+  const registered = nameParts(registeredName);
+  if (slip.length < 2 || slip.length !== registered.length) return false;
+  const tail = slip.at(-1)!;
+  const surname = registered.at(-1)!;
+  const visible = /^(\p{L})(?:[.*•]+)?$/u.exec(tail)?.[1];
+  return Boolean(visible && surname.startsWith(visible) && surname.length > visible.length
+    && slip.slice(0,-1).every((part,index) => part === registered[index]));
+}
+
 export async function verifySlip(payload: string, key: string, send = fetch, matchAccount = false) {
   const response = await send(thunderUrl, {
     method: 'POST', redirect: 'error',
@@ -62,8 +80,17 @@ export async function verifySlip(payload: string, key: string, send = fetch, mat
   const name = data.receiver?.account?.name;
   const presentName = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
   const slipNames = [typeof name === 'string' ? name : name?.th, name?.en].filter(presentName);
-  const receiverNames = slipNames.length || !matchedNumber ? slipNames
-    : [matched.nameTh, matched.nameEn].filter(presentName);
+  // Only use registered names for the identifier this response actually verified.
+  const matchedIdentifierAgrees = !proxyConflict && Boolean(matchedNumber) &&
+    (receiverAccount ? !matchedIsPromptPay && receiverAccount === matchedNumber
+      : matchedIsPromptPay && receiverPromptPay === matchedNumber && !bankNumber);
+  const namePairs = [[typeof name === 'string' ? name : name?.th,matched?.nameTh],[name?.en,matched?.nameEn]];
+  const receiverNames = matchedIdentifierAgrees
+    ? (slipNames.length ? namePairs.flatMap(([slip,registered]) => {
+      if (!presentName(slip)) return [];
+      return presentName(registered) && agreesWithAbbreviatedName(slip,registered) ? [registered] : [slip];
+    }) : [matched.nameTh,matched.nameEn].filter(presentName))
+    : slipNames;
   const time = typeof data.date === 'string' && /(?:Z|[+-]\d{2}:\d{2})$/.test(data.date)
     ? Date.parse(data.date) : NaN;
   return {
