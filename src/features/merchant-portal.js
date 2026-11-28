@@ -1,3 +1,4 @@
+import { merchantAuthStorage } from './merchant-auth-storage.js';
 import { mountPromotionForm } from './promotion-form.js?v=offer-price-feedback';
 import { cancelPromotionLogin, resumePromotionLogin } from './promotion-login.js';
 import { bookingPrice } from './booking-pricing.js';
@@ -418,25 +419,7 @@ if (typeof window.supabase?.createClient !== 'function') {
   status.textContent = 'โหลดระบบเข้าสู่ระบบไม่สำเร็จ กรุณารีเฟรชหน้า';
 } else {
   const remember = byId('merchantRememberDevice');
-  const authStorage = {
-    getItem(key) {
-      return sessionStorage.getItem(key) ?? (key.endsWith('-code-verifier') ? null : localStorage.getItem(key));
-    },
-    setItem(key, value) {
-      const shared = !key.endsWith('-code-verifier') &&
-        (remember.checked || localStorage.getItem(key) !== null);
-      if (shared) {
-        localStorage.setItem(key, value);
-        sessionStorage.removeItem(key);
-      } else {
-        sessionStorage.setItem(key, value);
-      }
-    },
-    removeItem(key) {
-      sessionStorage.removeItem(key);
-      if (!key.endsWith('-code-verifier')) localStorage.removeItem(key);
-    }
-  };
+  const authStorage = merchantAuthStorage(() => remember.checked);
   try { remember.checked = sessionStorage.getItem('reserveflow.remember-device') === 'yes'; } catch {}
   remember.addEventListener('change', () => {
     try { sessionStorage.setItem('reserveflow.remember-device', remember.checked ? 'yes' : 'no'); } catch {}

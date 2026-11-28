@@ -1,3 +1,5 @@
+import { merchantAuthStorage } from './merchant-auth-storage.js';
+import { listMerchantShops } from '../data/supabase-store.js?v=platform-shop-management-43';
 import { bookingPrice } from './booking-pricing.js';
 import { initBookingLiff, submitLiffPayment } from './booking-liff.js?v=friendship-verification';
 import { prepareSlipAttachment } from './customer-slip.js?v=manual-slip-review';
@@ -25,9 +27,30 @@ const categoryIcons = { table: '🍽️', seat: '💺', staff: '👤', vip: '�
 const pageParams = new URLSearchParams(location.search);
 const shopSlug = pageParams.get('shop');
 const throughLiff = pageParams.get('line') === '1' || pageParams.has('liff.state');
-if (shopSlug) {
-  document.getElementById('bookingMerchantLink').href = './merchant.html?' + new URLSearchParams({shop:shopSlug});
+async function showMerchantLink() {
+  const link = document.getElementById('bookingMerchantLink');
+  try {
+    // Keep the storefront's booking requests anonymous. This client checks the separate back-office session.
+    const storage = merchantAuthStorage(() => sessionStorage.getItem('reserveflow.remember-device') === 'yes');
+    const sessionKey = 'sb-' + new URL(SUPABASE_URL).hostname.split('.')[0] + '-auth-token';
+    if (!storage.getItem(sessionKey)) return;
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: {flowType:'pkce',storage,detectSessionInUrl:false,autoRefreshToken:false}
+    });
+    const {data,error} = await client.auth.getSession();
+    if (error || !data.session) return;
+    const shops = (await listMerchantShops(client)).filter(shop => ['owner','admin','cashier','staff'].includes(shop.role));
+    if (!shops.length) return;
+    const merchant = new URL('./merchant.html',location.href);
+    if (shops.some(shop => shop.slug === shopSlug)) merchant.searchParams.set('shop',shopSlug);
+    link.href = merchant.href;
+    link.classList.remove('hidden');
+  } catch {
+    // The public booking page stays available even when account storage is unavailable.
+  }
 }
+
+void showMerchantLink();
 const money = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' });
 let categories = [];
 const offerPicker = document.getElementById('bookingOffer');
