@@ -47,6 +47,7 @@ const dashboard = byId('merchantDashboard');
 const shopMenu = byId('merchantShop');
 const accountPanel = byId('merchantAccount');
 const loginShopKey = 'reserveflow.login-shop';
+const loginInviteKey = 'reserveflow.login-team-invite';
 function setShopUrl(shop) {
   const url = new URL(location.href);
   url.searchParams.set('shop',shop.dataset.slug || shop.value);
@@ -195,6 +196,7 @@ function showLogin(message = '') {
   byId('merchantLineSettings').replaceChildren();
   registration.classList.add('hidden');
   registerForm.reset();
+  byId('merchantTeamInviteRequest').classList.add('hidden');
   joinForm.reset();
   joinStatus.textContent = '';
   byId('merchantJoinPanel').open = false;
@@ -619,12 +621,32 @@ if (typeof window.supabase?.createClient !== 'function') {
     if (currentRole === 'owner') renderMerchantTeam(teamList, teamRows, teamSearch.value, applyTeamAction);
   }
 
+  byId('merchantCopyTeamInvite').onclick = async () => {
+    const field = byId('merchantTeamInviteUrl');
+    try {
+      await navigator.clipboard.writeText(field.value);
+      byId('merchantTeamInviteStatus').textContent = 'คัดลอกลิงก์เชิญทีมงานแล้ว';
+    } catch {
+      field.select();
+      byId('merchantTeamInviteStatus').textContent = 'เลือกลิงก์แล้ว กดคัดลอกจากเบราว์เซอร์';
+    }
+  };
+
   async function loadTeam() {
     const request = ++teamRequest;
     const shopId = shopMenu.value;
     teamRows = [];
     teamList.replaceChildren();
+    const invite = byId('merchantTeamInvite');
+    const slug = shopMenu.selectedOptions[0]?.dataset.slug;
+    invite.classList.toggle('hidden',currentRole !== 'owner' || !slug);
+    byId('merchantTeamInviteStatus').textContent = '';
     if (currentRole !== 'owner') return;
+    if (slug) {
+      const url = new URL('./merchant.html',location.href);
+      url.searchParams.set('join',slug);
+      byId('merchantTeamInviteUrl').value = url.href;
+    }
     teamList.textContent = 'กำลังโหลดรายชื่อทีมงาน…';
     try {
       const { data, error } = await client.rpc('list_merchant_team', { p_shop_id: shopId });
@@ -922,6 +944,34 @@ if (typeof window.supabase?.createClient !== 'function') {
         await openScannedPass();
         return;
       }
+      const inviteUrl = new URL(location.href);
+      let inviteSlug = inviteUrl.searchParams.get('join');
+      try {
+        inviteSlug ||= sessionStorage.getItem(loginInviteKey);
+        sessionStorage.removeItem(loginInviteKey);
+      } catch {}
+      if (/^[a-z0-9][a-z0-9-]{0,99}$/.test(inviteSlug || '')) {
+        const inviteShops = await listMerchantShops(client);
+        const membership = inviteShops.find(shop => shop.slug === inviteSlug);
+        if (!membership || membership.role === 'pending') {
+          inviteUrl.searchParams.set('join',inviteSlug);
+          history.replaceState(history.state,'',inviteUrl);
+          for (const panel of [login,registration,dashboard,accountPanel,byId('platformAdmin')]) panel.classList.add('hidden');
+          const joinPanel = byId('merchantJoinPanel');
+          byId('merchantInviteJoinSlot').append(joinPanel);
+          joinPanel.classList.remove('hidden');
+          joinPanel.open = true;
+          joinForm.elements.slug.value = inviteSlug;
+          joinForm.elements.slug.readOnly = true;
+          byId('merchantTeamInviteRequest').classList.remove('hidden');
+          status.textContent = '';
+          return;
+        }
+        inviteUrl.searchParams.delete('join');
+        inviteUrl.searchParams.set('shop',inviteSlug);
+        history.replaceState(history.state,'',inviteUrl);
+        byId('merchantTeamInviteRequest').classList.add('hidden');
+      }
       byId('merchantAccountUid').textContent = data.session.user.id;
       await loadPlatformAdmin(client, () => loadSession());
       if (!byId('platformAdmin').classList.contains('hidden')) renderPlatformTools(client, () => addShop.click());
@@ -988,8 +1038,11 @@ if (typeof window.supabase?.createClient !== 'function') {
     try {
       cancelPromotionLogin();
       const redirectTo = new URL('./merchant.html', location.href).href;
-      const requestedShop = new URLSearchParams(location.search).get('shop');
+      const params = new URLSearchParams(location.search);
+      const requestedShop = params.get('shop');
       try {
+        if (params.has('join')) sessionStorage.setItem(loginInviteKey,params.get('join'));
+        else sessionStorage.removeItem(loginInviteKey);
         if (requestedShop) sessionStorage.setItem(loginShopKey,requestedShop);
         else sessionStorage.removeItem(loginShopKey);
       } catch {}
@@ -1057,6 +1110,7 @@ if (typeof window.supabase?.createClient !== 'function') {
       });
       if (error) throw error;
       joinForm.reset();
+      if (joinForm.elements.slug.readOnly) joinForm.elements.slug.value = slug;
       joinStatus.textContent = 'ส่งคำขอแล้ว รอเจ้าของร้านอนุมัติ แล้วรีเฟรชหน้านี้';
     } catch (error) {
       const errors = {

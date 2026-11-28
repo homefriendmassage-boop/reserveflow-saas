@@ -8,7 +8,7 @@
   <script defer src="./assets/vendor/supabase-js/supabase.js"></script>
   <script defer src="./assets/vendor/qrcodejs/qrcode.min.js"></script>
   <link rel="stylesheet" href="./assets/css/promotion-manager.css?v=inline-promotions">
-  <script type="module" src="./src/features/merchant-portal.js?v=merchant-link-access"></script>
+  <script type="module" src="./src/features/merchant-portal.js?v=team-invite-link"></script>
 </head>
 <body>
 <header>
@@ -58,6 +58,11 @@
     <button id="merchantAddShopCancel" class="btn soft hidden" type="button">กลับไปร้านเดิม</button>
     <button id="merchantRegisterSignOut" class="btn soft" type="button">ออกจากระบบ</button>
   </section>
+    <section id="merchantTeamInviteRequest" class="panel hidden">
+      <h2>คำเชิญเข้าทีมร้านค้า</h2>
+      <div id="merchantInviteJoinSlot"></div>
+      <a class="btn soft" href="./merchant.html">กลับไปบัญชีและร้านค้า</a>
+    </section>
     <section id="merchantPassPanel" class="panel hidden" tabindex="-1">
       <h2>ตรวจบัตรจอง</h2>
       <p id="merchantPassStatus" role="status"></p>
@@ -130,6 +135,11 @@
       </details>
       <div id="merchantLineSettings"></div>
       <h3>กำหนดสิทธิ์ทีมงาน</h3>
+      <div id="merchantTeamInvite" class="hidden">
+        <label class="field"><span>ลิงก์เชิญทีมงาน</span><input id="merchantTeamInviteUrl" readonly></label>
+        <button id="merchantCopyTeamInvite" class="btn soft small" type="button">คัดลอกลิงก์เชิญทีมงาน</button>
+        <p id="merchantTeamInviteStatus" role="status"></p>
+      </div>
       <div class="field"><label for="merchantTeamSearch">ค้นหาชื่อทีมงานหรือ UID</label><input id="merchantTeamSearch" type="search"></div>
       <p id="merchantTeamStatus" role="status"></p>
       <div id="merchantTeamList" aria-live="polite"></div>
